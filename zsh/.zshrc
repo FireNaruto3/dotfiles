@@ -39,3 +39,6 @@ zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
 #use starship to customize zsh
 eval "$(starship init zsh)"
 fastfetch
+
+# opencode
+export PATH=/home/jonathan/.opencode/bin:$PATH
