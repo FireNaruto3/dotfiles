@@ -2,6 +2,7 @@
         background-image: none;
         box-shadow: none;
         transition: 20ms;
+        outline-style: none;
 }
 
 window {
@@ -28,7 +29,7 @@ button {
 }
 
 button:focus, button:active, button:hover {
-        color: #3700B3;
+        /* color: #3700B3; */
         background-color:rgba(12, 12, 12, 0.5);
         border: 1px solid #4eb300;
 }

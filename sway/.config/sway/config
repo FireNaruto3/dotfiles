@@ -28,6 +28,8 @@ set $file_explorer thunar
 #Border Config
 default_border pixel
 smart_gaps on
+gaps inner 10
+gaps outer 5
 
 #Run system tray network manager
 exec nm-applet --indicator
