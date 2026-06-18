@@ -9,7 +9,7 @@
     "margin-right": 0,
     "margin-left": 0,
 
-    "modules-left": ["custom/applauncher","sway/workspaces", "sway/mode", "sway/window"],
+    "modules-left": ["custom/applauncher","sway/workspaces", "sway/mode", "sway/window","mpris"],
     "modules-center": [
         "clock"
     ],
@@ -30,8 +30,6 @@
         "all-outputs": false,
         "tooltip": false
     },
-
-
     "custom/applauncher": {
         "format": "〇",
         "on-click": "pgrep -x wofi >/dev/null && pkill -x wofi || wofi --show drun --location=top --yoffset=15",
@@ -39,6 +37,18 @@
     },
     "sway/window": {
         "max-length": 20
+    },
+    "mpris": {
+        "format": "DEFAULT: {player_icon} {dynamic}",
+        "format-paused": "DEFAULT: {status_icon} <i>{dynamic}</i>",
+        "player-icons": {
+            "default": "▶",
+            "mpv": "🎵"
+        },
+        "status-icons": {
+            "paused": "⏸"
+	    },
+        "max-length": 30
     },
 
 
@@ -73,7 +83,7 @@
         "tooltip-format": "{timeTo} — {power:.1f}W"
     },
     "clock": {
-        "format": "󰅐 {:%H:%M}",
+        "format": "󰅐  {:%I:%M %p}",
         "tooltip": false
     },
     "network": {

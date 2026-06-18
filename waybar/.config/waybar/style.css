@@ -1,9 +1,8 @@
 * {
-  /* General taskbar font, I like maple mono ^-^*/
   font-family: Maple Mono;
   border-radius: 8;
   font-size: 14px;
-  padding: 0px;
+  padding: 1px;
   background: transparent;
 }
 
@@ -11,7 +10,7 @@ window#waybar {
   /* Linear gradients are used because it makes less harsh rounded border radius, gtk bug :p */
   background-image: linear-gradient(to bottom, #141216 100%);
   border-radius: 14px;
-  padding: 0px;
+  padding: 2px;
   border-style: none;
 }
 
@@ -25,6 +24,7 @@ window#waybar {
 #temperature,
 #custom-power,
 #cpu,
+#mpris,
 #memory,
 #pulseaudio {
   background-image: linear-gradient(to bottom, #27232b 100%);
@@ -41,6 +41,17 @@ window#waybar {
 
 #clock {
   margin-right: 6px;
+}
+
+#mpris {
+  background-image: linear-gradient(to bottom, #27232b 100%);
+  margin: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #d8cab8;
+  border-style: none;
+  transition-duration: 120ms;
+
 }
 
 #pulseaudio:hover {
@@ -112,6 +123,6 @@ window#waybar {
 #battery.warning,
 #battery.critical,
 #battery.urgent {
-  color: #1d2021;
-  background-color: #fc4649;
+  color:#fc4649 ;
+  background-color: #1d2021;
 }
