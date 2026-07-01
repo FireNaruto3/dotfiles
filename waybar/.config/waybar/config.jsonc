@@ -4,12 +4,12 @@
     "layer": "bottom",
     "position": "top",
 
-    "margin-top": 10,
-    "margin-bottom": 10,
+    "margin-top": 0,
+    "margin-bottom": 0,
     "margin-right": 0,
     "margin-left": 0,
 
-    "modules-left": ["custom/applauncher","sway/workspaces", "sway/mode", "sway/window","mpris"],
+    "modules-left": ["custom/applauncher","niri/workspaces","sway/workspaces", "sway/mode", "sway/window","mpris"],
     "modules-center": [
         "clock"
     ],
@@ -24,6 +24,16 @@
         "custom/power"
         
     ],
+
+    "niri/workspaces": {
+        "disable-scroll": true,
+        "all-outputs": false,
+        "tooltip": false,
+        "on-click": "activate",
+        "format": "{index}",
+        "active-only": false,
+        "exclude-empty-workspaces": true
+    },
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -71,7 +81,7 @@
         },
         "format": "{icon} {capacity}%",
         "format-charging": "󰂄 {capacity}%",
-        "format-plugged": "󰂄{capacity}%",
+        "format-plugged": "󰂄 {capacity}%",
         "format-alt": "{icon}{time}",
         "format-full": "󱈑 {capacity}%",
         "format-icons": [
