@@ -12,8 +12,13 @@
     },
     "modules": [
         {
+            "type": "custom",
+            "key": "╭─ Hardware",
+            "keyColor": "green"
+        },
+        {
             "type": "host",
-            "key": "╭─󰌢",
+            "key": "├─󰌢",
             "keyColor": "green"
         },
         {
@@ -79,8 +84,13 @@
         "break",
 
         {
+            "type": "custom",
+            "key": "╭─ Environment",
+            "keyColor": "yellow"
+        },
+        {
             "type": "shell",
-            "key": "╭─",
+            "key": "├─",
             "keyColor": "yellow"
         },
         {
@@ -115,19 +125,19 @@
         },
         {
             "type": "icons",
-            "key": "├─󰀻",
-            "keyColor": "yellow"
-        },
-        {
-            "type": "wallpaper",
-            "key": "╰─󰸉",
+            "key": "╰─󰀻",
             "keyColor": "yellow"
         },
         "break",
 
         {
+            "type": "custom",
+            "key": "╭─ System",
+            "keyColor": "blue"
+        },
+        {
             "type": "title",
-            "key": "╭─",
+            "key": "├─",
             "format": "{user-name}@{host-name}",
             "keyColor": "blue"
         },
