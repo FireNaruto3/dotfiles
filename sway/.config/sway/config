@@ -26,7 +26,8 @@ set $file_explorer thunar
   output eDP-1 resolution 2880x1800@60.001Hz position 2880,0
 
 #Border Config
-default_border pixel
+default_border pixel 1px 
+default_floating_border pixel 1px
 smart_gaps on
 gaps inner 10
 gaps outer 5
