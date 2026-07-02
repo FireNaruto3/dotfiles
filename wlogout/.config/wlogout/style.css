@@ -1,37 +1,46 @@
 * {
-        background-image: none;
-        box-shadow: none;
-        transition: 20ms;
-        outline-style: none;
+    background-image: none;
+    font-family: "JetBrainsMono Nerd Font", monospace;
 }
 
 window {
-        background-color: rgba(12, 12, 12, 0.9);
+    background-color: rgba(20, 29, 43, 0.85);
+    animation: fadeIn 0.05s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 button {
-        color: #FFFFFF;
-        font-size: 20px;
-
-        border-radius: 0;
-        border-color: black;
-
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 25%;
-
-        text-decoration-color: #FFFFFF;
-        background-color: #1E1E1E;
-        border-style: solid;
-        border-width: 1px;
-
-
+    background-color: rgba(164, 177, 205, 0.08);
+    color: #9fef00;
+    border: 1px solid rgba(159, 239, 0, 0.3);
+    background-repeat: no-repeat;
+    background-position: center 35%;
+    background-size: 25%;
+    border-radius: 16px;
+    margin: 10px;
+    padding: 60px 40px 20px;
+    min-width: 140px;
+    transition: background-color 0s, border-color 0s;
 }
 
-button:focus, button:active, button:hover {
-        /* color: #3700B3; */
-        background-color:rgba(12, 12, 12, 0.5);
-        border: 1px solid #4eb300;
+button label {
+    font-size: 13px;
+    color: #9fef00;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+button:hover {
+    background-color: rgba(159, 239, 0, 0.12);
+    border-color: #9fef00;
+}
+
+button:hover label {
+    opacity: 0;
 }
 
 #lock {
@@ -40,14 +49,6 @@ button:focus, button:active, button:hover {
 
 #logout {
     background-image: image(url("/usr/share/wlogout/icons/logout.png"), url("/usr/local/share/wlogout/icons/logout.png"));
-}
-
-#suspend {
-    background-image: image(url("/usr/share/wlogout/icons/suspend.png"), url("/usr/local/share/wlogout/icons/suspend.png"));
-}
-
-#hibernate {
-    background-image: image(url("/usr/share/wlogout/icons/hibernate.png"), url("/usr/local/share/wlogout/icons/hibernate.png"));
 }
 
 #shutdown {
