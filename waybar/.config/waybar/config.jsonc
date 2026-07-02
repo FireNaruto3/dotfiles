@@ -119,7 +119,7 @@
         "tooltip": false
     },
     "custom/power": {
-        "on-click": "wlogout",
+        "on-click": "wlogout -b 2",
         "format": "",
         "tooltip": false
     },
