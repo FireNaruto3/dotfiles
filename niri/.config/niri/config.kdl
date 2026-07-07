@@ -12,30 +12,27 @@
 // After enabling or disabling this, you need to restart the apps for this to take effect.
 prefer-no-csd
 
+
+//INPUT STUFF
 input {
     keyboard {
-        
-        //limit the repeat stuff
+        //rate speed/input for when key starts to repeat
         repeat-rate 35 
         repeat-delay 200
-
         xkb {
             // You can set rules, model, layout, variant and options.
             // For more information, see xkeyboard-config(7).
-
             // For example:
             // layout "us,ru"
             // options "grp:win_space_toggle,compose:ralt,ctrl:nocaps"
-
             // If this section is empty, niri will fetch xkb settings
             // from org.freedesktop.locale1. You can control these using
             // localectl set-x11-keymap.
+            options "caps:capslock"
         }
-
         // Enable numlock on startup, omitting this setting disables it.
         numlock
     }
-
 
     touchpad {
         tap
@@ -71,8 +68,6 @@ input {
     // Setting max-scroll-amount="0%" makes it work only on windows already fully on screen.
     focus-follows-mouse max-scroll-amount="0%"
 }
-
-
 
 
 // https://niri-wm.github.io/niri/Configuration:-Outputs
@@ -111,7 +106,7 @@ output "eDP-1" {
 
 // https://niri-wm.github.io/niri/Configuration:-Layout
 layout {
-    gaps 5
+    gaps 15
     center-focused-column "never"
 
     // You can customize the widths that "switch-preset-column-width" (Mod+R) toggles between.
@@ -127,7 +122,7 @@ layout {
     default-column-width { proportion 0.5; }
 
     focus-ring {
-
+        //off
         // How many logical pixels the ring extends out from the windows.
         width 1.5
 
@@ -143,11 +138,9 @@ layout {
         // The settings are the same as for the focus ring.
         // If you enable the border, you probably want to disable the focus ring.
         off
-
         width 1.5
         active-color "#ffc87f"
         inactive-color "#505050"
-
         // Color of the border around windows that request your attention.
         urgent-color "#9b0000"
     }
@@ -157,16 +150,12 @@ layout {
         // Uncomment the next line to enable shadows.
         //on
         // By default, the shadow draws only around its window, and not behind it.
-
         // Softness controls the shadow blur radius.
         softness 30
-
         // Spread expands the shadow.
         spread 5
-
         // Offset moves the shadow relative to the window.
         offset x=0 y=5
-
         // You can also change the shadow color and opacity.
         color "#0007"
     }
@@ -179,51 +168,63 @@ layout {
 }
 
 
-// Note that running niri as a session supports xdg-desktop-autostart, which may be more convenient to use.
-// This line starts waybar, a commonly used bar for Wayland compositors.
-//spawn-at-startup "waybar"
-spawn-at-startup "mako"
 
+
+// Note that running niri as a session supports xdg-desktop-autostart, which may be more convenient to use.
+
+//DAEMON+PROCESS STARTUPS
+spawn-at-startup "waybar"
+spawn-at-startup "mako"
+spawn-at-startup "swayosd-server"
+spawn-at-startup "awww-daemon"
+spawn-at-startup "waypaper" "--restore"
+spawn-at-startup "swayidle" \
+    "timeout" "270" "brightnessctl -s && brightnessctl set 10%" "resume" "brightnessctl -r" \
+    "timeout" "300" "pgrep -x gtklock || gtklock" \
+    "timeout" "400" "niri msg action power-off-monitors" "resume" "niri msg action power-on-monitors" \
+    "timeout" "500" "systemctl suspend" \
+    "before-sleep" "pgrep -x gtklock || gtklock" 
+  
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
-spawn-sh-at-startup "swaybg -i /home/jonathan/dotfiles/wallpapers/Gloomy.jpg"
 
 hotkey-overlay {
     // Uncomment this line to disable the "Important Hotkeys" pop-up at startup.
     skip-at-startup
 }
-
 gestures{
     hot-corners{
         off
     }
 }
 
-// You can change the path where screenshots are saved.
-// A ~ at the front will be expanded to the home directory.
+//SCREENSHOT PATH
 // The path is formatted with strftime(3) to give you the screenshot date and time.
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
-// You can also set this to null to disable saving screenshots to disk.
-// screenshot-path null
-
-
+//ANIMATIONS
 // https://niri-wm.github.io/niri/Configuration:-Animations
 animations {
     // Slow down all animations by this factor. Values below 1 speed them up instead.
     //slowdown 0.1
 }
 
-// Window rules let you adjust behavior for individual windows.
+
+//WINDOW RULES
 // https://niri-wm.github.io/niri/Configuration:-Window-Rules
-
-
 window-rule {
     // This regular expression is intentionally made as specific as possible,
     // since this is the default config, and we want no false positives.
     // You can get away with just app-id="wezterm" if you want.
     match app-id=r#"^org\.wezfurlong\.wezterm$"#
     default-column-width {}
+}
+
+window-rule {
+    match app-id="waypaper"
+    open-floating true
+    default-floating-position x=0 y=0 relative-to="bottom"
+    opacity 0.5
 }
 
 window-rule {
@@ -240,25 +241,11 @@ window-rule {
     open-floating true
 }
 
-// Example: block out two password managers from screen capture.
-// (This example rule is commented out with a "/-" in front.)
-/-window-rule {
-    match app-id=r#"^org\.keepassxc\.KeePassXC$"#
-    match app-id=r#"^org\.gnome\.World\.Secrets$"#
 
-    block-out-from "screen-capture"
-
-    // Use this instead if you want them visible on third-party screenshot tools.
-    // block-out-from "screencast"
-}
-
-
-
-
+//BINDS
 binds {
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
-    // The allow-when-locked=true property makes them work even when the session is locked
 
     //OVERVIEW
     Mod+Shift+Slash { show-hotkey-overlay; }
@@ -267,16 +254,27 @@ binds {
 
     //SYSTEM
     Mod+Return hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
-    Mod+D hotkey-overlay-title="Run an Application: wofi" { spawn-sh "pkill wofi || exec wofi"; }
+    Mod+D hotkey-overlay-title="Run an Application: rofi" { spawn-sh "pkill rofi || exec rofi -show drun"; }
     Mod+E hotkey-overlay-title="Open the file manager: thunar" {spawn-sh "pkill thunar || exec thunar"; } 
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: gtklock" { spawn "gtklock"; }
+    Mod+W { spawn "sh" "-c" "pkill -x waypaper || waypaper"; }
 
-    //AUDIO
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
-    XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
-    XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+
+    //AUDIO and BRIGHTNESS
     // "-l 1.0" limits the volume to 100%.
+    //XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0"; }
+    //XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-"; }
+    //XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    //XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+    //XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+5%"; }
+    //XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "5%-"; }
+
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "raise"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "lower"; }
+    XF86AudioMute        allow-when-locked=true { spawn "swayosd-client" "--output-volume" "mute-toggle"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn "swayosd-client" "--input-volume" "mute-toggle"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "swayosd-client" "--brightness" "raise"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "swayosd-client" "--brightness" "lower"; }
 
     //MEDIA
     // Example media keys mapping using playerctl, this will work with any MPRIS-enabled media player.
@@ -286,10 +284,9 @@ binds {
     XF86AudioPrev        allow-when-locked=true { spawn-sh "playerctl previous"; }
     XF86AudioNext        allow-when-locked=true { spawn-sh "playerctl next"; }
 
-    //BRIGHTNESS
-    // Example brightness key mappings for brightnessctl.
-    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
+
+    //SCREENSHOT
+    F6 { screenshot; }
 
     //FOCUS WINDOWS
     Mod+H     { focus-column-left; }
@@ -306,6 +303,15 @@ binds {
     Mod+Ctrl+J     { move-window-down; }
     Mod+Ctrl+K     { move-window-up; }
     Mod+Ctrl+L     { move-column-right; }
+
+    //MOVE WORKSPACES
+    Mod+U             { focus-workspace-down; }
+    Mod+I             { focus-workspace-up; }
+    Mod+Ctrl+U        { move-column-to-workspace-down; }
+    Mod+Ctrl+I      { move-column-to-workspace-up; }
+    Mod+Shift+U        { move-workspace-down; }
+    Mod+Shift+I        { move-workspace-up; }
+
 
 
     //monitor stuff 
@@ -326,22 +332,6 @@ binds {
     Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
     Mod+Shift+Ctrl+L     { move-column-to-monitor-right; }
 
-
-    Mod+Page_Down      { focus-workspace-down; }
-    Mod+Page_Up        { focus-workspace-up; }
-    Mod+U              { focus-workspace-down; }
-    Mod+I              { focus-workspace-up; }
-    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
-    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
-    Mod+Ctrl+U         { move-column-to-workspace-down; }
-    Mod+Ctrl+I         { move-column-to-workspace-up; }
-
-
-    Mod+Shift+Page_Down { move-workspace-down; }
-    Mod+Shift+Page_Up   { move-workspace-up; }
-    Mod+Shift+U         { move-workspace-down; }
-    Mod+Shift+I         { move-workspace-up; }
-
     //MOUSE STUFF
     Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
     Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
@@ -351,29 +341,15 @@ binds {
     Mod+WheelScrollLeft       { focus-column-left; }
     Mod+Ctrl+WheelScrollRight { move-column-right; }
     Mod+Ctrl+WheelScrollLeft  { move-column-left; }
-
-
-    // Usually scrolling up and down with Shift in applications results in
-    // horizontal scrolling; these binds replicate that.
     Mod+Shift+WheelScrollDown      { focus-column-right; }
     Mod+Shift+WheelScrollUp        { focus-column-left; }
     Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
     Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
 
-    // Similarly, you can bind touchpad scroll "ticks".
-    // Touchpad scrolling is continuous, so for these binds it is split into
-    // discrete intervals.
-    // These binds are also affected by touchpad's natural-scroll, so these
-    // example binds are "inverted", since we have natural-scroll enabled for
-    // touchpads by default.
-    // Mod+TouchpadScrollDown { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.02+"; }
-    // Mod+TouchpadScrollUp   { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.02-"; }
-
     // You can refer to workspaces by index. However, keep in mind that niri is a dynamic workspace system, 
-    //so these commands are kind of "best effort". Trying to refer to a workspace index bigger than
+    // so these commands are kind of "best effort". Trying to refer to a workspace index bigger than
     // the current workspace count will instead refer to the bottommost (empty) workspace.
     // For example, with 2 workspaces + 1 empty, indices 3, 4, 5 and so on will all refer to the 3rd workspace.
-
     //FOCUS WORKSPACES 
     Mod+1 { focus-workspace 1; }
     Mod+2 { focus-workspace 2; }
@@ -459,19 +435,7 @@ binds {
     // Toggle tabbed column display mode.
     // Windows in this column will appear as vertical tabs,
     // rather than stacked on top of each other.
-    Mod+W { toggle-column-tabbed-display; }
-
-    // Actions to switch layouts.
-    // Note: if you uncomment these, make sure you do NOT have
-    // a matching layout switch hotkey configured in xkb options above.
-    // Having both at once on the same hotkey will break the switching,
-    // since it will switch twice upon pressing the hotkey (once by xkb, once by niri).
-    // Mod+Space       { switch-layout "next"; }
-    // Mod+Shift+Space { switch-layout "prev"; }
-
-    Print { screenshot; }
-    Ctrl+Print { screenshot-screen; }
-    Alt+Print { screenshot-window; }
+    //Mod+W { toggle-column-tabbed-display; }
 
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here
@@ -483,11 +447,8 @@ binds {
     // which ensures niri always processes them, even when an inhibitor is active.
     Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-    // The quit action will show a confirmation dialog to avoid accidental exits.
-    Mod+Shift+E { quit; }
-    Ctrl+Alt+Delete { quit; }
 
-    // Powers off the monitors. To turn them back on, do any input like
-    // moving the mouse or pressing any other key.
+    //QUIT AND POWER OFF MONITORS
+    Ctrl+Alt+Delete { quit; }
     Mod+Shift+P { power-off-monitors; }
 }
