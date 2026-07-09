@@ -67,7 +67,7 @@
     "exec": "/home/jonathan/dotfiles/waybar/.config/waybar/temp.sh",
     "interval": 5,
     "return-type": "json",
-    "format": "",
+    "format": "󰒓",
     "tooltip": true,
   },
 
@@ -122,9 +122,9 @@
     "format-full": "{icon} {capacity}%",
     "format-charging": "󰂄 {capacity}%",
     "format-plugged": "󰚥 {capacity}%",
-    "format-alt": "{timeTo} - {power:.1f} V",
     "format-icons": ["󰂎", "󰁺", "󰁼", "󰁿", "󰂁", "󰁹"],
-    "tooltip": false,
+    "tooltip": true,
+    "tooltip-format": "{timeTo}\n{power:.1f} W",
   },
 
   "custom/notification": {
