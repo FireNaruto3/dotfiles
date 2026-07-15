@@ -173,7 +173,7 @@ layout {
 // Note that running niri as a session supports xdg-desktop-autostart, which may be more convenient to use.
 
 //DAEMON+PROCESS STARTUPS
-spawn-at-startup "waybar"
+spawn-at-startup "quickshell"
 spawn-at-startup "mako"
 spawn-at-startup "swayosd-server"
 spawn-at-startup "awww-daemon"
