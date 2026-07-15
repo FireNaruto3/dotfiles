@@ -1,0 +1,161 @@
+@define-color surface #101419;
+@define-color surface_alt #1a1b26;
+@define-color surface_hover #293847;
+@define-color border rgba(180, 220, 220, 0.18);
+@define-color foreground #c6d0f5;
+@define-color muted #737994;
+@define-color accent #99d1db;
+@define-color accent_alt #bd93f9;
+
+* {
+  font-family: "JetBrains Mono Nerd Font", "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: @foreground;
+}
+
+window,
+window.background,
+scrolledwindow,
+scrolledwindow > viewport {
+  background-color: rgba(16, 20, 25, 0.97);
+}
+
+button {
+  min-height: 28px;
+  padding: 7px 12px;
+  border: 1px solid @border;
+  border-radius: 12px;
+  background-color: @surface_alt;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+  transition: 150ms ease-in-out;
+}
+
+button:hover {
+  border-color: rgba(153, 209, 219, 0.55);
+  background-color: @surface_hover;
+  background-image: none;
+  box-shadow: 0 0 8px rgba(153, 209, 219, 0.16);
+}
+
+button:active,
+button:checked {
+  border-color: @accent;
+  background-color: rgba(153, 209, 219, 0.20);
+}
+
+button:disabled {
+  color: @muted;
+  border-color: rgba(115, 121, 148, 0.12);
+  background-color: rgba(26, 27, 38, 0.55);
+}
+
+button > image,
+button:hover > image {
+  -gtk-icon-shadow: none;
+  -gtk-icon-effect: none;
+}
+
+scrolledwindow {
+  border: 1px solid rgba(180, 220, 220, 0.10);
+  border-radius: 14px;
+}
+
+scrolledwindow grid {
+  padding: 8px;
+  background-color: rgba(11, 14, 18, 0.62);
+}
+
+grid > button.image-button,
+scrolledwindow grid > button {
+  margin: 7px;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background-color: rgba(26, 27, 38, 0.82);
+  background-image: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.24);
+}
+
+grid > button.image-button:hover,
+scrolledwindow grid > button:hover {
+  border-color: rgba(153, 209, 219, 0.48);
+  background-color: rgba(41, 56, 71, 0.90);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.34);
+}
+
+grid > button.highlighted-button,
+scrolledwindow grid > button.highlighted-button {
+  border-color: @accent_alt;
+  background-color: rgba(189, 147, 249, 0.16);
+  background-image: none;
+  box-shadow: 0 0 12px rgba(189, 147, 249, 0.28);
+}
+
+.highlighted-button > image,
+.highlighted-button:hover > image {
+  -gtk-icon-effect: none;
+}
+
+entry,
+combobox button.combo {
+  min-height: 28px;
+  padding: 6px 10px;
+  border: 1px solid @border;
+  border-radius: 10px;
+  background-color: @surface_alt;
+  background-image: none;
+  box-shadow: none;
+  caret-color: @accent;
+}
+
+entry:focus,
+combobox button.combo:hover {
+  border-color: @accent;
+  box-shadow: 0 0 7px rgba(153, 209, 219, 0.18);
+}
+
+entry selection {
+  color: @surface;
+  background-color: @accent;
+}
+
+combobox arrow {
+  color: @accent;
+}
+
+separator {
+  min-width: 1px;
+  min-height: 1px;
+  background-color: @border;
+}
+
+scrollbar {
+  background-color: transparent;
+}
+
+scrollbar slider {
+  min-width: 7px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background-color: rgba(115, 121, 148, 0.48);
+}
+
+scrollbar slider:hover {
+  background-color: rgba(153, 209, 219, 0.68);
+}
+
+tooltip,
+tooltip.background {
+  border: 1px solid @border;
+  border-radius: 10px;
+  background-color: @surface_alt;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+tooltip label {
+  padding: 7px 10px;
+  color: @foreground;
+}
