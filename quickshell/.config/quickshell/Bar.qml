@@ -7,6 +7,9 @@ PanelWindow {
     required property var systemData
     required property var niriData
 
+    signal toggleSystemMonitor()
+    signal toggleClockDashboard()
+
     anchors {
         top: true
         left: true
@@ -16,12 +19,6 @@ PanelWindow {
     implicitHeight: 38
     exclusiveZone: 38
     color: "transparent"
-
-    function cpuBars(value) {
-        const bars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
-        const index = Math.max(0, Math.min(7, Math.floor(value / 12.5)))
-        return bars[index].repeat(4)
-    }
 
     function volumeIcon() {
         if (systemData.muted)
@@ -146,18 +143,8 @@ PanelWindow {
         }
 
         Pill {
-            text: `${bar.cpuBars(bar.systemData.cpu)} ${String(bar.systemData.cpu).padStart(2, " ")}%`
-            tooltip: `CPU usage: ${bar.systemData.cpu}%`
-            onClicked: Quickshell.execDetached(["ghostty", "-e", "btop"])
-        }
-
-        Pill {
-            text: `󰍛 ${bar.systemData.memoryUsed.toFixed(1)}G`
-            tooltip: `${bar.systemData.memoryUsed.toFixed(1)}G / ${bar.systemData.memoryTotal.toFixed(1)}G`
-        }
-
-        Pill {
             maximumWidth: 190
+            visible: bar.niriData.focusedWindow !== null
             text: bar.niriData.focusedWindow
                 ? (bar.niriData.focusedWindow.title || bar.niriData.focusedWindow.app_id || "")
                 : ""
@@ -169,9 +156,8 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         foreground: "#99d1db"
-        text: Qt.formatDateTime(clock.date, "hh:mm:ss AP  -  dddd, dd")
-        tooltip: Qt.formatDateTime(clock.date, "dddd, MMMM d, yyyy")
-        onClicked: Quickshell.execDetached(["gnome-clocks"])
+        text: Qt.formatDateTime(clock.date, "hh:mm:ss AP  -  MMMM dd, dddd")
+        onClicked: bar.toggleClockDashboard()
     }
 
     Rectangle {
@@ -190,8 +176,9 @@ PanelWindow {
             id: rightModules
 
             SystemButton {
-                text: "󰒓"
-                tooltip: `CPU: ${bar.systemData.cpuTemp}°C\nGPU: ${bar.systemData.gpuTemp}°C`
+                text: "󰒋"
+                tooltip: "Toggle System Resource Monitor"
+                onClicked: bar.toggleSystemMonitor()
             }
 
             SystemButton {
