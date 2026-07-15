@@ -181,13 +181,12 @@ spawn-at-startup "mako"
 spawn-at-startup "swayosd-server"
 spawn-at-startup "awww-daemon"
 spawn-at-startup "waypaper" "--restore"
-spawn-at-startup "swayidle" \
+spawn-at-startup "swayidle" "-w" \
     "timeout" "270" "brightnessctl -s && brightnessctl set 10%" "resume" "brightnessctl -r" \
-    "timeout" "300" "pgrep -x gtklock || gtklock" \
+    "timeout" "300" "/home/jonathan/.config/quickshell/scripts/lock.sh" \
     "timeout" "400" "niri msg action power-off-monitors" "resume" "niri msg action power-on-monitors" \
-    "timeout" "500" "systemctl suspend" \
-    "timeout" "3600" "systemctl poweroff" \
-    "before-sleep" "pgrep -x gtklock || gtklock" 
+    "timeout" "500" "systemctl suspend-then-hibernate" \
+    "before-sleep" "/home/jonathan/.config/quickshell/scripts/lock.sh"
   
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
@@ -258,7 +257,7 @@ binds {
     Mod+Return hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
     Mod+D hotkey-overlay-title="Run an Application: rofi" { spawn-sh "pkill rofi || exec rofi -show drun"; }
     Mod+E hotkey-overlay-title="Open the file manager: thunar" {spawn-sh "pkill thunar || exec thunar"; } 
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: gtklock" { spawn "gtklock"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: Quickshell" { spawn "/home/jonathan/.config/quickshell/scripts/lock.sh"; }
     Mod+W { spawn "sh" "-c" "pkill -x waypaper || waypaper"; }
 
     //AUDIO and BRIGHTNESS
