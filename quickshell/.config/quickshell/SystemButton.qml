@@ -8,6 +8,7 @@ Rectangle {
     property color foreground: "#c6d0f5"
     property color hoverBackground: "#80669970"
     property int horizontalPadding: 15
+    property bool tooltipSuppressed: false
 
     signal clicked(int button)
     signal wheel(int delta)
@@ -37,7 +38,11 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: event => root.clicked(event.button)
+        onClicked: event => {
+            root.tooltipSuppressed = true
+            root.clicked(event.button)
+        }
+        onExited: root.tooltipSuppressed = false
         onWheel: event => {
             root.wheel(event.angleDelta.y)
             event.accepted = true
@@ -46,7 +51,7 @@ Rectangle {
 
     HoverTooltip {
         target: root
-        shown: mouse.containsMouse
+        shown: mouse.containsMouse && !root.tooltipSuppressed && root.tooltip.length > 0
         text: root.tooltip
     }
 }
