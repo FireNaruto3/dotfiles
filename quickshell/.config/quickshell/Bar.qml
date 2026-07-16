@@ -6,9 +6,12 @@ PanelWindow {
 
     required property var systemData
     required property var niriData
+    required property var powerData
 
     signal toggleSystemMonitor()
     signal toggleClockDashboard()
+    signal togglePowerControl()
+    signal toggleFanControl()
 
     anchors {
         top: true
@@ -226,9 +229,19 @@ PanelWindow {
             }
 
             SystemButton {
+                readonly property int fanPercent: bar.powerData.cpuFanPercent(bar.systemData.cpuTemp)
+
+                text: fanPercent >= 0 ? `󰈐 ${fanPercent}%` : "󰈐 Auto"
+                foreground: bar.powerData.cpuFan > 0 ? "#99d1db" : "#758083"
+                tooltip: `CPU target: ${fanPercent >= 0 ? `${fanPercent}%` : "Automatic"} · ${bar.powerData.cpuFan > 0 ? `${bar.powerData.cpuFan} RPM` : "Off"} · ${bar.systemData.cpuTemp}°C\nGPU: ${bar.powerData.gpuFan > 0 ? `${bar.powerData.gpuFan} RPM` : "Off"} · Discrete\nMID: ${bar.powerData.midFan > 0 ? `${bar.powerData.midFan} RPM` : "Off"}\nProfile: ${bar.powerData.asusProfile}`
+                onClicked: bar.toggleFanControl()
+            }
+
+            SystemButton {
                 text: `${bar.batteryIcon()} ${bar.systemData.battery}%`
                 foreground: bar.batteryColor()
                 tooltip: `${bar.systemData.batteryState}\n${bar.systemData.batteryTime}\n${bar.systemData.batteryPower.toFixed(1)} W`
+                onClicked: bar.togglePowerControl()
             }
 
             SystemButton {
