@@ -5,23 +5,26 @@ QtObject {
     id: root
 
     property var values: ({})
+    property var resourceValues: ({})
+    property bool resourceMonitoring: false
     readonly property string scriptPath: Qt.resolvedUrl("scripts/system-stats.sh").toString().replace("file://", "")
+    readonly property string resourceScriptPath: Qt.resolvedUrl("scripts/resource-stats.sh").toString().replace("file://", "")
 
-    readonly property int cpu: values.cpu || 0
-    readonly property string load1: values.load_1 || "0.00"
-    readonly property string load5: values.load_5 || "0.00"
-    readonly property string load15: values.load_15 || "0.00"
-    readonly property int gpu: values.gpu || 0
-    readonly property string gpuClock: values.gpu_clock || "-"
-    readonly property string gpuMaxClock: values.gpu_max_clock || "-"
-    readonly property real memoryUsed: values.memory_used || 0
-    readonly property real memoryTotal: values.memory_total || 0
-    readonly property int memoryPercent: values.memory_percent || 0
-    readonly property real memoryCache: values.memory_cache || 0
-    readonly property real swapUsed: values.swap_used || 0
-    readonly property real swapTotal: values.swap_total || 0
-    readonly property int cpuTemp: values.cpu_temp || 0
-    readonly property int gpuTemp: values.gpu_temp || 0
+    readonly property int cpu: resourceValues.cpu || 0
+    readonly property string load1: resourceValues.load_1 || "0.00"
+    readonly property string load5: resourceValues.load_5 || "0.00"
+    readonly property string load15: resourceValues.load_15 || "0.00"
+    readonly property int gpu: resourceValues.gpu || 0
+    readonly property string gpuClock: resourceValues.gpu_clock || "-"
+    readonly property string gpuMaxClock: resourceValues.gpu_max_clock || "-"
+    readonly property real memoryUsed: resourceValues.memory_used || 0
+    readonly property real memoryTotal: resourceValues.memory_total || 0
+    readonly property int memoryPercent: resourceValues.memory_percent || 0
+    readonly property real memoryCache: resourceValues.memory_cache || 0
+    readonly property real swapUsed: resourceValues.swap_used || 0
+    readonly property real swapTotal: resourceValues.swap_total || 0
+    readonly property int cpuTemp: resourceValues.cpu_temp || 0
+    readonly property int gpuTemp: resourceValues.gpu_temp || 0
     readonly property string bluetooth: values.bluetooth || "off"
     readonly property string bluetoothDevice: values.bluetooth_device || ""
     readonly property string network: values.network || "disconnected"
@@ -37,6 +40,11 @@ QtObject {
     readonly property int batteryHealth: values.battery_health || 0
     readonly property string uptime: values.uptime || "-"
     readonly property bool dnd: values.dnd || false
+
+    onResourceMonitoringChanged: {
+        if (resourceMonitoring && !resourceCollector.running)
+            resourceCollector.running = true
+    }
 
     property Process collector: Process {
         id: collector
@@ -61,6 +69,31 @@ QtObject {
         onTriggered: {
             if (!collector.running)
                 collector.running = true
+        }
+    }
+
+    property Process resourceCollector: Process {
+        id: resourceCollector
+
+        command: ["bash", root.resourceScriptPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.resourceValues = JSON.parse(text.trim())
+                } catch (error) {
+                    console.warn("Unable to parse resource data:", error, text)
+                }
+            }
+        }
+    }
+
+    property Timer resourceRefreshTimer: Timer {
+        interval: 1000
+        running: root.resourceMonitoring
+        repeat: true
+        onTriggered: {
+            if (!resourceCollector.running)
+                resourceCollector.running = true
         }
     }
 }

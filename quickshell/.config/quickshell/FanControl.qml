@@ -4,14 +4,49 @@ import Quickshell
 PanelWindow {
     id: window
 
-    required property var systemData
     required property var powerData
+    property bool showPercent: true
 
     readonly property var fans: [
-        { label: "CPU", rpm: powerData.cpuFan, detail: `${systemData.cpuTemp}°C` },
-        { label: "GPU", rpm: powerData.gpuFan, detail: "Discrete" },
-        { label: "MID", rpm: powerData.midFan, detail: "System" }
+        {
+            label: "CPU",
+            rpm: powerData.cpuFan,
+            temperature: powerData.cpuTemp,
+            curveEnabled: powerData.cpuFanCurveEnabled,
+            curve: powerData.cpuFanCurve,
+            detail: `${powerData.cpuTemp}°C`
+        },
+        {
+            label: "GPU",
+            rpm: powerData.gpuFan,
+            temperature: powerData.gpuTemp,
+            curveEnabled: powerData.gpuFanCurveEnabled,
+            curve: powerData.gpuFanCurve,
+            detail: powerData.gpuTemp > 0 ? `${powerData.gpuTemp}°C` : "Discrete"
+        },
+        {
+            label: "MID",
+            rpm: powerData.midFan,
+            temperature: 0,
+            curveEnabled: powerData.midFanCurveEnabled,
+            curve: powerData.midFanCurve,
+            detail: "System"
+        }
     ]
+
+    function fanValue(fan) {
+        if (fan.rpm <= 0)
+            return "Off"
+        if (!showPercent)
+            return `${fan.rpm} RPM`
+
+        const percent = powerData.fanCurvePercent(
+            fan.curve,
+            fan.temperature,
+            fan.curveEnabled
+        )
+        return percent >= 0 ? `${percent}%` : "N/A"
+    }
 
     anchors {
         top: true
@@ -63,7 +98,7 @@ PanelWindow {
                 Text {
                     width: parent.width / 2
                     horizontalAlignment: Text.AlignRight
-                    text: window.powerData.asusProfile
+                    text: `${window.powerData.asusProfile} · ${window.showPercent ? "%" : "RPM"}`
                     color: "#a9f3d1"
                     font.family: "JetBrains Mono Nerd Font"
                     font.pixelSize: 11
@@ -85,7 +120,7 @@ PanelWindow {
                         width: (window.width - 44) / 3
                         height: 92
                         radius: 7
-                        color: "#b31a1b26"
+                        color: fanMouse.containsMouse ? "#80669970" : "#b31a1b26"
 
                         Column {
                             anchors.centerIn: parent
@@ -103,7 +138,7 @@ PanelWindow {
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.rpm > 0 ? `${modelData.rpm} RPM` : "Off"
+                                text: window.fanValue(modelData)
                                 color: modelData.rpm > 0 ? "#99d1db" : "#596468"
                                 font.family: "JetBrains Mono Nerd Font"
                                 font.pixelSize: 12
@@ -117,6 +152,14 @@ PanelWindow {
                                 font.family: "JetBrains Mono Nerd Font"
                                 font.pixelSize: 10
                             }
+                        }
+
+                        MouseArea {
+                            id: fanMouse
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: window.showPercent = !window.showPercent
                         }
                     }
                 }
