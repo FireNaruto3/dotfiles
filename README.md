@@ -58,6 +58,10 @@ The lock screen uses a 12-hour clock with AM/PM, displays live battery percentag
 
 > `Mod` is the Super/Windows key.
 
+Directional bindings follow a consistent hierarchy: `Mod` focuses, `Mod+Shift`
+moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
+`Mod+Ctrl+Shift` moves across monitors or reorders an entire workspace.
+
 ### General
 
 | Keybind | Action |
@@ -75,8 +79,10 @@ The lock screen uses a 12-hour clock with AM/PM, displays live battery percentag
 
 | Keybind | Action |
 |---------|--------|
-| `Mod+H/J/K/L` | Focus left/down/up/right |
-| `Mod+Ctrl+H/J/K/L` | Move a column or window |
+| `Mod+H/J/K/L` | Focus the column left/right or window down/up |
+| `Mod+Shift+H/J/K/L` | Move the column left/right or window down/up |
+| `Mod+Home/End` | Focus the first/last column |
+| `Mod+Shift+Home/End` | Move the column to the first/last position |
 | `Mod+R` / `Mod+Shift+R` | Cycle column widths |
 | `Mod+F` | Maximize the current column |
 | `Mod+Shift+F` | Toggle fullscreen |
@@ -88,9 +94,28 @@ The lock screen uses a 12-hour clock with AM/PM, displays live battery percentag
 | Keybind | Action |
 |---------|--------|
 | `Mod+U` / `Mod+I` | Focus workspace down/up |
-| `Mod+Ctrl+U/I` | Move the current column between workspaces |
+| `Mod+Shift+U/I` | Move the current column to the workspace down/up |
+| `Mod+Ctrl+Shift+U/I` | Reorder the entire workspace down/up |
 | `Mod+1-9` | Focus a numbered workspace |
 | `Mod+Shift+1-9` | Move the current column to a numbered workspace |
+
+### Monitors
+
+| Keybind | Action |
+|---------|--------|
+| `Mod+Ctrl+H/J/K/L` | Focus the monitor left/down/up/right |
+| `Mod+Ctrl+Arrow keys` | Focus a monitor by direction |
+| `Mod+Ctrl+Shift+H/J/K/L` | Move the current column to a monitor |
+| `Mod+Ctrl+Shift+Arrow keys` | Move the current column to a monitor |
+
+### Mouse Navigation
+
+| Keybind | Action |
+|---------|--------|
+| `Mod+Wheel up/down` | Focus the workspace up/down |
+| `Mod+Shift+Wheel up/down` | Move the current column to the workspace up/down |
+| `Mod+Wheel left/right` | Focus the column left/right |
+| `Mod+Shift+Wheel left/right` | Move the column left/right |
 
 Media keys control playback through `playerctl` and display volume, microphone, and brightness changes through SwayOSD.
 
