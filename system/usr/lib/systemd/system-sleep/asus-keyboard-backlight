@@ -1,0 +1,17 @@
+#!/bin/sh
+
+device="leds:asus::kbd_backlight"
+systemd_backlight="/usr/lib/systemd/systemd-backlight"
+
+case "$1" in
+    pre)
+        "$systemd_backlight" save "$device" || :
+        ;;
+    post)
+        # The firmware resets the keyboard LED while resuming from hibernation.
+        sleep 0.5
+        "$systemd_backlight" load "$device" || :
+        ;;
+esac
+
+exit 0
