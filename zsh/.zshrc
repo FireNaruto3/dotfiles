@@ -75,6 +75,9 @@ plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 
 source $ZSH/oh-my-zsh.sh
 
+# Keep parameter-elided command words visible on dark terminal themes.
+ZSH_HIGHLIGHT_STYLES[comment]='fg=8'
+
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
