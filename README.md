@@ -33,7 +33,8 @@ The ASUS power panel is machine-specific and expects `BAT1`, output `eDP-1`, and
 | Config | Description |
 |--------|-------------|
 | Niri | Scrollable tiling, window rules, startup services, and keybindings |
-| Quickshell | Workspaces, focused window, clock, media, system monitor, lock screen, and power/fan panels |
+| Quickshell | Workspaces, focused window, clock, media, system monitor, battery-aware lock screen, and power/fan panels |
+| Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
 | Ghostty | Box theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
@@ -46,6 +47,12 @@ The ASUS power panel is machine-specific and expects `BAT1`, output `eDP-1`, and
 | Fastfetch | Custom system-information layout and ASCII art |
 
 The `sway/` and `waybar/` directories are retained as legacy alternatives; the active desktop uses Niri and Quickshell.
+
+## Power Behavior
+
+Lid close, the physical power or sleep key, the lock-screen **Sleep** action, and the idle timeout all suspend first and hibernate after 30 minutes. This policy applies on battery and AC power, while a docked lid close is ignored. A system-sleep hook preserves the ASUS keyboard-backlight level across suspend and hibernation.
+
+The lock screen uses a 12-hour clock with AM/PM, displays live battery percentage, and provides restart, sleep, logout, and power-off actions.
 
 ## Keymaps
 
@@ -96,6 +103,24 @@ git clone git@github.com:FireNaruto3/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 stow niri quickshell ghostty nvim rofi mako swayosd wlogout \
   fastfetch starship tmux zsh waypaper gtklock autostart
+```
+
+System-wide files are tracked under `system/` and installed as root-owned copies rather than user-writable symlinks:
+
+```bash
+sudo install -D -o root -g root -m 0644 \
+  system/etc/systemd/logind.conf.d/90-sleep-policy.conf \
+  /etc/systemd/logind.conf.d/90-sleep-policy.conf
+
+sudo install -D -o root -g root -m 0644 \
+  system/etc/systemd/sleep.conf.d/90-hibernate-delay.conf \
+  /etc/systemd/sleep.conf.d/90-hibernate-delay.conf
+
+sudo install -D -o root -g root -m 0755 \
+  system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+  /usr/lib/systemd/system-sleep/asus-keyboard-backlight
+
+sudo systemctl reload systemd-logind.service
 ```
 
 Wallpapers remain in `~/dotfiles/wallpapers` because several configs reference that directory directly. Some files also contain `/home/jonathan` paths and should be adjusted before using the configuration under another account.

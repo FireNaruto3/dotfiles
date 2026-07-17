@@ -14,6 +14,7 @@ WlSessionLockSurface {
     property url backgroundSource: ""
     property var wallpaperModel: null
     property bool settingsExpanded: false
+    required property var systemData
 
     signal authenticate(string response)
     signal passwordEdited(string text)
@@ -27,6 +28,25 @@ WlSessionLockSurface {
     SystemClock {
         id: clock
         precision: SystemClock.Seconds
+    }
+
+    function batteryIcon() {
+        if (systemData.batteryState === "Charging")
+            return "󰂄"
+        if (systemData.batteryState === "Full")
+            return "󰁹"
+        const icons = ["󰂎", "󰁺", "󰁼", "󰁿", "󰂁", "󰁹"]
+        return icons[Math.max(0, Math.min(5, Math.floor(systemData.battery / 20)))]
+    }
+
+    function batteryColor() {
+        if (systemData.batteryState === "Charging")
+            return "#a6d189"
+        if (systemData.battery <= 15)
+            return "#e78284"
+        if (systemData.battery <= 30)
+            return "#e5c890"
+        return "#a8c7f0"
     }
 
     Rectangle {
@@ -46,6 +66,28 @@ WlSessionLockSurface {
         Rectangle {
             anchors.fill: parent
             color: "#5934383e"
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: Math.max(24, parent.height * 0.035)
+            anchors.rightMargin: Math.max(24, parent.width * 0.022)
+            width: 92
+            height: 38
+            radius: 19
+            color: "#cc202226"
+            border.width: 1
+            border.color: "#26ffffff"
+
+            Text {
+                anchors.centerIn: parent
+                text: `${surface.batteryIcon()} ${surface.systemData.battery}%`
+                color: surface.batteryColor()
+                font.family: "JetBrains Mono Nerd Font"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+            }
         }
 
         Repeater {
@@ -83,7 +125,7 @@ WlSessionLockSurface {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDateTime(clock.date, "HH:mm")
+                text: Qt.formatDateTime(clock.date, "hh:mm AP")
                 color: "#f0eef2"
                 font.family: "JetBrains Mono Nerd Font"
                 font.pixelSize: Math.max(74, Math.min(surface.width, surface.height) * 0.13)
@@ -420,7 +462,7 @@ WlSessionLockSurface {
                 Repeater {
                     model: [
                         { icon: "󰜉", label: "Restart", action: "restart", destructive: false },
-                        { icon: "󰤄", label: "Suspend", action: "suspend", destructive: false },
+                        { icon: "󰤄", label: "Sleep", action: "suspend", destructive: false },
                         { icon: "󰍃", label: "Log out", action: "logout", destructive: false },
                         { icon: "󰐥", label: "Power off", action: "poweroff", destructive: true }
                     ]

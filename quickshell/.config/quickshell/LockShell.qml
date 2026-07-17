@@ -40,7 +40,7 @@ ShellRoot {
     function runPowerAction(action) {
         const commands = {
             restart: ["systemctl", "reboot"],
-            suspend: ["systemctl", "suspend"],
+            suspend: ["systemctl", "suspend-then-hibernate"],
             poweroff: ["systemctl", "poweroff"],
             logout: ["loginctl", "terminate-user", Quickshell.env("USER")]
         }
@@ -50,6 +50,10 @@ ShellRoot {
     }
 
     Component.onCompleted: Quickshell.watchFiles = false
+
+    SystemData {
+        id: systemSource
+    }
 
     Process {
         command: ["bash", root.wallpaperScanner]
@@ -158,6 +162,7 @@ ShellRoot {
             revealDelay: root.revealDelay
             backgroundSource: root.backgroundSource
             wallpaperModel: root.wallpapers
+            systemData: systemSource
 
             onAuthenticate: response => {
                 root.inputText = ""
