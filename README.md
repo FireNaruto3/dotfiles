@@ -66,6 +66,7 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 
 | Keybind | Action |
 |---------|--------|
+| `Mod+Shift+/` | Show the Niri hotkey overlay |
 | `Mod+Return` | Open Ghostty |
 | `Mod+D` | Open Rofi |
 | `Mod+E` | Open Thunar |
@@ -75,7 +76,7 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Mod+O` | Toggle the Niri overview |
 | `F6` | Take a screenshot |
 
-### Window Management
+### Focus and Movement
 
 | Keybind | Action |
 |---------|--------|
@@ -83,10 +84,29 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Mod+Shift+H/J/K/L` | Move the column left/right or window down/up |
 | `Mod+Home/End` | Focus the first/last column |
 | `Mod+Shift+Home/End` | Move the column to the first/last position |
-| `Mod+R` / `Mod+Shift+R` | Cycle column widths |
+
+### Columns and Windows
+
+| Keybind | Action |
+|---------|--------|
+| `Mod+[` | Consume into or expel from the column on the left |
+| `Mod+]` | Consume into or expel from the column on the right |
+| `Mod+,` | Consume one window from the right into the focused column |
+| `Mod+.` | Expel the bottom window from the focused column to the right |
+| `Mod+R` | Cycle forward through preset column widths |
+| `Mod+Shift+R` | Cycle backward through preset column widths |
+| `Mod+Ctrl+Shift+R` | Cycle through preset window heights |
+| `Mod+Ctrl+R` | Reset the focused window height |
 | `Mod+F` | Maximize the current column |
 | `Mod+Shift+F` | Toggle fullscreen |
-| `Mod+V` | Toggle floating |
+| `Mod+M` | Maximize the window to the screen edges |
+| `Mod+Ctrl+F` | Expand the column to the available width |
+| `Mod+C` | Center the focused column |
+| `Mod+Ctrl+C` | Center all visible columns |
+| `Mod+-` / `Mod+=` | Decrease/increase the column width by 10% |
+| `Mod+Shift+-` / `Mod+Shift+=` | Decrease/increase the window height by 10% |
+| `Mod+V` | Toggle the focused window between floating and tiled |
+| `Mod+Shift+V` | Switch focus between floating and tiled windows |
 | `Mod+Shift+W` | Toggle tabbed columns |
 
 ### Workspaces
@@ -117,7 +137,30 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Mod+Wheel left/right` | Focus the column left/right |
 | `Mod+Shift+Wheel left/right` | Move the column left/right |
 
-Media keys control playback through `playerctl` and display volume, microphone, and brightness changes through SwayOSD.
+### Audio, Brightness, and Media
+
+These hardware keys remain active while the session is locked.
+
+| Keybind | Action |
+|---------|--------|
+| `XF86AudioRaiseVolume` (volume up) | Raise the output volume through SwayOSD |
+| `XF86AudioLowerVolume` (volume down) | Lower the output volume through SwayOSD |
+| `XF86AudioMute` (volume mute) | Toggle output mute through SwayOSD |
+| `XF86AudioMicMute` (microphone mute) | Toggle microphone mute through SwayOSD |
+| `XF86MonBrightnessUp` (brightness up) | Raise display brightness through SwayOSD |
+| `XF86MonBrightnessDown` (brightness down) | Lower display brightness through SwayOSD |
+| `XF86AudioPlay` / `XF86AudioPause` | Toggle playback through `playerctl` |
+| `XF86AudioStop` | Stop playback through `playerctl` |
+| `XF86AudioPrev` | Play the previous track through `playerctl` |
+| `XF86AudioNext` | Play the next track through `playerctl` |
+
+### Session and Displays
+
+| Keybind | Action |
+|---------|--------|
+| `Mod+Escape` | Toggle whether applications can inhibit Niri shortcuts |
+| `Mod+Shift+P` | Power off all monitors |
+| `Ctrl+Alt+Delete` | Quit Niri |
 
 ## Usage
 
