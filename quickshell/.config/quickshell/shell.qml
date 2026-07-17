@@ -46,10 +46,12 @@ ShellRoot {
 
     SystemData {
         id: systemSource
+        resourceMonitoring: systemMonitor.visible
     }
 
     PowerData {
         id: powerSource
+        fanMonitoring: fanControl.visible
     }
 
     NiriData {
@@ -85,7 +87,6 @@ ShellRoot {
         id: fanControl
 
         screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
-        systemData: systemSource
         powerData: powerSource
         visible: false
     }
@@ -119,7 +120,6 @@ ShellRoot {
             screen: modelData
             systemData: systemSource
             niriData: niriSource
-            powerData: powerSource
             onToggleSystemMonitor: root.toggleSystemMonitor()
             onToggleClockDashboard: root.toggleClockDashboard()
             onTogglePowerControl: root.togglePowerControl(modelData)
