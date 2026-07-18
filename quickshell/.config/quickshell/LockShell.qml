@@ -79,7 +79,7 @@ ShellRoot {
         JsonAdapter {
             id: wallpaperSettings
 
-            property string wallpaper: "file:///home/jonathan/dotfiles/wallpapers/Karina5.jpg"
+            property string wallpaper: "file://" + Quickshell.env("HOME") + "/dotfiles/wallpapers/Karina5.jpg"
         }
     }
 

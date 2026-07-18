@@ -1,6 +1,6 @@
 #!/bin/sh
 
-config="/home/jonathan/.config/quickshell/LockShell.qml"
+config="$HOME/.config/quickshell/LockShell.qml"
 
 qs -d -n -p "$config" || exit 1
 
@@ -16,7 +16,10 @@ done
 
 # Keep a proven locker available if Quickshell cannot acquire the protocol.
 if command -v gtklock >/dev/null 2>&1; then
-    exec gtklock -d
+    exec gtklock -d \
+        -s "$HOME/.config/gtklock/style.css" \
+        -x "$HOME/.config/gtklock/layout.xml" \
+        -b "$HOME/dotfiles/wallpapers/Karina5.jpg"
 fi
 
 exit 1

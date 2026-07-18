@@ -64,7 +64,7 @@
 
 
   "custom/temperature": {
-    "exec": "/home/jonathan/dotfiles/waybar/.config/waybar/temp.sh",
+    "exec": "$HOME/.config/waybar/temp.sh",
     "interval": 5,
     "return-type": "json",
     "format": "󰒓",

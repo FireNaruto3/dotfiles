@@ -1,6 +1,6 @@
 {
     "label" : "lock",
-    "action" : "/home/jonathan/.config/quickshell/scripts/lock.sh",
+    "action" : "$HOME/.config/quickshell/scripts/lock.sh",
     "text" : "Lock",
     "keybind" : "l"
 }

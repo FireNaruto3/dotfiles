@@ -4,8 +4,6 @@
 
 window {
     background-color: transparent;
-       background-image: url("/home/jonathan/dotfiles/wallpapers/Karina5.jpg");
-
    background-size: cover;
    background-repeat: no-repeat;
    background-position: center;
@@ -76,7 +74,6 @@ works with userinfo/user-image modules
     min-height: 282px;
     box-shadow:
         0 6px 24px rgba(0,0,0,0.28);
-background-image: url("/home/teymur/Pictures/wojacks and pepe/pepe-small-coffee-thumbnail.png");
     background-size: cover;
     background-position: center;
     margin-bottom: 16px;

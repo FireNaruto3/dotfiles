@@ -108,11 +108,11 @@ ZSH_HIGHLIGHT_STYLES[comment]='fg=8'
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 # opencode
-export PATH=/home/jonathan/.opencode/bin:$PATH
+export PATH="$HOME/.opencode/bin:$PATH"
 
 # Starship prompt (must come after oh-my-zsh.sh source above)
 eval "$(starship init zsh)"
 
 fastfetch
 # Created by `pipx` on 2026-07-06 02:36:49
-export PATH="$PATH:/home/jonathan/.local/bin"
+export PATH="$PATH:$HOME/.local/bin"

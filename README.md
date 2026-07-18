@@ -173,6 +173,8 @@ stow niri quickshell ghostty nvim rofi mako swayosd wlogout \
   fastfetch starship tmux zsh waypaper gtklock autostart
 ```
 
+Keep the repository at `~/dotfiles`: wallpaper files and the Fastfetch logo are referenced through that conventional location, while account-specific paths use `$HOME` or `~`. If you clone elsewhere, update those `~/dotfiles` references before starting the desktop.
+
 System-wide files are tracked under `system/` and installed as root-owned copies rather than user-writable symlinks:
 
 ```bash
@@ -191,4 +193,4 @@ sudo install -D -o root -g root -m 0755 \
 sudo systemctl reload systemd-logind.service
 ```
 
-Wallpapers remain in `~/dotfiles/wallpapers` because several configs reference that directory directly. Some files also contain `/home/jonathan` paths and should be adjusted before using the configuration under another account.
+Wallpapers remain in `~/dotfiles/wallpapers` because the desktop and lock-screen configs reference that directory. Wallpaper paths use the current user's home directory and do not need account-specific changes.
