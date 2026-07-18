@@ -3,7 +3,7 @@
 set -u
 shopt -s nullglob nocaseglob
 
-directory="/home/user/dotfiles/wallpapers"
+directory="$HOME/dotfiles/wallpapers"
 files=(
     "$directory"/*.jpg
     "$directory"/*.jpeg
