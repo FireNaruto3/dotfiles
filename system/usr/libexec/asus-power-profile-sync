@@ -1,0 +1,66 @@
+#!/bin/sh
+
+set -eu
+
+mode=${1:-event}
+state_dir=/run/asus-power-profile-sync
+state_file=$state_dir/ac-state
+
+case $mode in
+    event)
+        ;;
+    force)
+        ;;
+    *)
+        printf 'Usage: %s [event|force]\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
+mkdir -p "$state_dir"
+exec 9>"$state_dir/lock"
+flock -x 9
+
+# Charger state can lag the resume or udev notification briefly.
+sleep 1
+
+ac_state=battery
+for supply in /sys/class/power_supply/*; do
+    [ -r "$supply/type" ] || continue
+    [ -r "$supply/online" ] || continue
+
+    IFS= read -r supply_type < "$supply/type"
+    case $supply_type in
+        Mains|USB|USB_C|USB_PD)
+            IFS= read -r supply_online < "$supply/online"
+            if [ "$supply_online" = 1 ]; then
+                ac_state=ac
+                break
+            fi
+            ;;
+    esac
+done
+
+if [ "$mode" = event ] && [ -r "$state_file" ]; then
+    IFS= read -r previous_state < "$state_file"
+    [ "$previous_state" = "$ac_state" ] && exit 0
+fi
+
+profiles=$(asusctl profile get)
+case $ac_state in
+    ac)
+        profile=$(printf '%s\n' "$profiles" | sed -n 's/^AC profile //p')
+        ;;
+    battery)
+        profile=$(printf '%s\n' "$profiles" | sed -n 's/^Battery profile //p')
+        ;;
+esac
+
+if [ -z "$profile" ]; then
+    printf 'Unable to read the ASUS %s default profile\n' "$ac_state" >&2
+    exit 1
+fi
+
+asusctl profile set "$profile"
+printf '%s\n' "$ac_state" > "$state_file"
+printf 'Applied ASUS %s profile for %s power\n' "$profile" "$ac_state"

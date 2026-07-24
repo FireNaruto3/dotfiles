@@ -5,47 +5,42 @@ PanelWindow {
     id: window
 
     required property var powerData
-    property bool showPercent: true
 
-    readonly property var fans: [
-        {
-            label: "CPU",
-            rpm: powerData.cpuFan,
-            temperature: powerData.cpuTemp,
-            curveEnabled: powerData.cpuFanCurveEnabled,
-            curve: powerData.cpuFanCurve,
-            detail: `${powerData.cpuTemp}°C`
-        },
-        {
-            label: "GPU",
-            rpm: powerData.gpuFan,
-            temperature: powerData.gpuTemp,
-            curveEnabled: powerData.gpuFanCurveEnabled,
-            curve: powerData.gpuFanCurve,
-            detail: powerData.gpuTemp > 0 ? `${powerData.gpuTemp}°C` : "Discrete"
-        },
-        {
-            label: "MID",
-            rpm: powerData.midFan,
-            temperature: 0,
-            curveEnabled: powerData.midFanCurveEnabled,
-            curve: powerData.midFanCurve,
-            detail: "System"
-        }
-    ]
-
-    function fanValue(fan) {
+    function fanRpmValue(fan) {
+        if (!fan.rpmAvailable)
+            return "Unavailable"
         if (fan.rpm <= 0)
             return "Off"
-        if (!showPercent)
-            return `${fan.rpm} RPM`
+        return `${fan.rpm} RPM`
+    }
 
-        const percent = powerData.fanCurvePercent(
+    function fanCurveDetail(fan) {
+        if (fan.rpmOnly)
+            return "RPM only"
+        if (!fan.curveAvailable)
+            return "Curve unavailable"
+        if (!fan.curveEnabled)
+            return "Firmware auto"
+        if (!fan.temperatureAvailable) {
+            if (fan.temperatureState === "suspended")
+                return "dGPU suspended"
+            if (fan.temperatureState === "disabled")
+                return "dGPU disabled"
+            return "Target unavailable"
+        }
+
+        const target = powerData.fanCurvePercent(
             fan.curve,
             fan.temperature,
             fan.curveEnabled
         )
-        return percent >= 0 ? `${percent}%` : "N/A"
+        return target >= 0 ? `${target}% @ ${fan.temperature}°C` : "Target unavailable"
+    }
+
+    function fanRpmColor(fan) {
+        if (!fan.rpmAvailable)
+            return "#e78284"
+        return fan.rpm > 0 ? "#99d1db" : "#596468"
     }
 
     anchors {
@@ -58,7 +53,7 @@ PanelWindow {
     }
 
     implicitWidth: 350
-    implicitHeight: 226
+    implicitHeight: 176
     exclusiveZone: 0
     exclusionMode: ExclusionMode.Ignore
     aboveWindows: true
@@ -98,7 +93,7 @@ PanelWindow {
                 Text {
                     width: parent.width / 2
                     horizontalAlignment: Text.AlignRight
-                    text: `${window.powerData.asusProfile} · ${window.showPercent ? "%" : "RPM"}`
+                    text: window.powerData.fanProfile
                     color: "#a9f3d1"
                     font.family: "JetBrains Mono Nerd Font"
                     font.pixelSize: 11
@@ -112,15 +107,44 @@ PanelWindow {
                 spacing: 8
 
                 Repeater {
-                    model: window.fans
+                    model: 3
 
                     Rectangle {
-                        required property var modelData
+                        id: fanCard
+
+                        required property int index
+
+                        readonly property string fanLabel: index === 0 ? "CPU" : (index === 1 ? "GPU" : "MID")
+                        readonly property int rpm: index === 0
+                            ? window.powerData.cpuFan
+                            : (index === 1 ? window.powerData.gpuFan : window.powerData.midFan)
+                        readonly property bool rpmAvailable: index === 0
+                            ? window.powerData.cpuFanAvailable
+                            : (index === 1 ? window.powerData.gpuFanAvailable : window.powerData.midFanAvailable)
+                        readonly property bool rpmOnly: index === 2
+                        readonly property int temperature: index === 0
+                            ? window.powerData.cpuTemp
+                            : (index === 1 ? window.powerData.gpuTemp : 0)
+                        readonly property bool temperatureAvailable: index === 0
+                            ? window.powerData.cpuTempAvailable
+                            : (index === 1 ? window.powerData.gpuTempAvailable : false)
+                        readonly property string temperatureState: index === 0
+                            ? (window.powerData.cpuTempAvailable ? "active" : "unavailable")
+                            : (index === 1 ? window.powerData.gpuTempState : "")
+                        readonly property bool curveAvailable: index === 0
+                            ? window.powerData.cpuFanCurveAvailable
+                            : (index === 1 ? window.powerData.gpuFanCurveAvailable : false)
+                        readonly property bool curveEnabled: index === 0
+                            ? window.powerData.cpuFanCurveEnabled
+                            : (index === 1 ? window.powerData.gpuFanCurveEnabled : false)
+                        readonly property var curve: index === 0
+                            ? window.powerData.cpuFanCurve
+                            : (index === 1 ? window.powerData.gpuFanCurve : [])
 
                         width: (window.width - 44) / 3
                         height: 92
                         radius: 7
-                        color: fanMouse.containsMouse ? "#80669970" : "#b31a1b26"
+                        color: "#b31a1b26"
 
                         Column {
                             anchors.centerIn: parent
@@ -128,7 +152,7 @@ PanelWindow {
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
+                                text: fanCard.fanLabel
                                 color: "#758083"
                                 font.family: "JetBrains Mono Nerd Font"
                                 font.pixelSize: 10
@@ -138,56 +162,25 @@ PanelWindow {
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: window.fanValue(modelData)
-                                color: modelData.rpm > 0 ? "#99d1db" : "#596468"
+                                text: window.fanRpmValue(fanCard)
+                                color: window.fanRpmColor(fanCard)
                                 font.family: "JetBrains Mono Nerd Font"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.bold: true
                             }
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.detail
+                                text: window.fanCurveDetail(fanCard)
                                 color: "#8c999d"
                                 font.family: "JetBrains Mono Nerd Font"
-                                font.pixelSize: 10
+                                font.pixelSize: 9
                             }
-                        }
-
-                        MouseArea {
-                            id: fanMouse
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: window.showPercent = !window.showPercent
                         }
                     }
                 }
             }
 
-            Rectangle {
-                width: parent.width
-                height: 38
-                radius: 7
-                color: editorMouse.containsMouse ? "#80669970" : "#293f4749"
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰒓  Open Fan Curves"
-                    color: "#c9d3d6"
-                    font.family: "JetBrains Mono Nerd Font"
-                    font.pixelSize: 11
-                    font.bold: true
-                }
-
-                MouseArea {
-                    id: editorMouse
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: Quickshell.execDetached(["rog-control-center"])
-                }
-            }
         }
     }
 }

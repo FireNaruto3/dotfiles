@@ -8,25 +8,28 @@ PanelWindow {
     required property var powerData
     property string requestedGpuMode: ""
     property string requestedSystemAction: ""
+    property int chargeLimitPreview: -1
     property int keyboardPreview: -1
+    readonly property int displayedChargeLimit: chargeLimitPreview >= 0
+        ? chargeLimitPreview
+        : powerData.chargeLimit
     readonly property int displayedKeyboardBrightness: keyboardPreview >= 0
         ? keyboardPreview
         : powerData.keyboardBrightness
 
     readonly property var powerProfiles: [
-        { label: "Quiet", value: "power-saver" },
-        { label: "Balanced", value: "balanced" },
-        { label: "Performance", value: "performance" }
+        { label: "Power Saver", value: "power-saver", asusValue: "Quiet" },
+        { label: "Balanced", value: "balanced", asusValue: "Balanced" },
+        { label: "Performance", value: "performance", asusValue: "Performance" }
     ]
-    readonly property var asusProfiles: ["Quiet", "Balanced", "Performance"]
     readonly property var gpuModes: [
         { label: "Integrated", value: "Integrated" },
         { label: "Hybrid", value: "Hybrid" },
         { label: "dGPU", value: "AsusMuxDgpu" }
     ]
     readonly property var displayModes: [
-        { label: "60 Hz", refresh: 60, mode: "2880x1800@60.001" },
-        { label: "120 Hz", refresh: 120, mode: "2880x1800@120.000" }
+        { label: "60 Hz", refresh: 60 },
+        { label: "120 Hz", refresh: 120 }
     ]
 
     anchors {
@@ -39,8 +42,9 @@ PanelWindow {
     }
 
     implicitWidth: 350
-    implicitHeight: 552
+    implicitHeight: 606
         + (pendingActionVisible() ? 64 : 0)
+        + (gpuIssueVisible() ? 44 : 0)
         + (powerData.errorMessage.length > 0 ? 56 : 0)
     exclusiveZone: 0
     exclusionMode: ExclusionMode.Ignore
@@ -54,25 +58,83 @@ PanelWindow {
         else
             requestedGpuMode = ""
         requestedSystemAction = ""
+        chargeLimitPreview = -1
         keyboardPreview = -1
     }
 
-    function gpuSupported(mode) {
-        return powerData.supportedModes.indexOf(mode) !== -1
+    function gpuModeLabel(mode) {
+        for (const entry of gpuModes) {
+            if (entry.value === mode)
+                return entry.label
+        }
+        return mode
+    }
+
+    function gpuModeDescription(mode) {
+        if (mode === "Integrated")
+            return "Uses only the AMD iGPU for the best battery life. NVIDIA and dGPU-connected outputs will be unavailable."
+        if (mode === "Hybrid")
+            return "Uses AMD for the desktop while keeping NVIDIA available for application offloading and runtime suspension."
+        return "Routes the display through NVIDIA for maximum performance at the cost of battery life."
+    }
+
+    function gpuRequiredAction(mode) {
+        return mode === "AsusMuxDgpu" || powerData.gpuMode === "AsusMuxDgpu"
+            ? "reboot"
+            : "logout"
+    }
+
+    function gpuStatusText() {
+        const labels = {
+            "active": "dGPU active",
+            "suspended": "dGPU suspended",
+            "off": "dGPU off",
+            "dgpu_disabled": "dGPU disabled",
+            "asus_mux_discreet": "MUX discrete",
+            "transitioning": "GPU transition pending"
+        }
+        return labels[powerData.gpuStatus] || powerData.gpuStatus
+    }
+
+    function gpuStatusColor() {
+        if (powerData.gpuStatus === "active" || powerData.gpuStatus === "asus_mux_discreet"
+            || powerData.gpuStatus === "transitioning")
+            return "#e5c890"
+        if (powerData.gpuStatus === "suspended" || powerData.gpuStatus === "off"
+            || powerData.gpuStatus === "dgpu_disabled")
+            return "#a9f3d1"
+        return "#758083"
+    }
+
+    function gpuIssueVisible() {
+        return !powerData.gpuTransitionPending && powerData.gpuSwitchError.length > 0
     }
 
     function pendingActionVisible() {
-        return powerData.pendingAction !== "No action required"
+        return powerData.gpuTransitionPending
+            || (powerData.gpuSwitchError.length === 0
+            && powerData.pendingAction !== "No action required"
             && powerData.pendingAction !== "Unknown"
+            )
     }
 
     function pendingActionKind() {
+        if (powerData.gpuTransitionPending)
+            return powerData.gpuActionRequired
+        if (powerData.gpuSwitchError.length > 0)
+            return ""
         const action = powerData.pendingAction.toLowerCase()
         if (action.indexOf("reboot") !== -1)
             return "reboot"
         if (action.indexOf("logout") !== -1 || action.indexOf("log out") !== -1)
             return "logout"
         return ""
+    }
+
+    function systemActionReady(action) {
+        if (powerData.gpuTransitionPending)
+            return powerData.gpuActionReady && action === powerData.gpuActionRequired
+        return powerData.gpuSwitchError.length === 0
     }
 
     Rectangle {
@@ -125,6 +187,34 @@ PanelWindow {
             Rectangle { width: parent.width; height: 1; color: "#2ec8e6e6" }
 
             Text {
+                text: "DISPLAY REFRESH RATE"
+                color: "#758083"
+                font.family: "JetBrains Mono Nerd Font"
+                font.pixelSize: 10
+                font.bold: true
+            }
+
+            Row {
+                width: parent.width
+                spacing: 7
+
+                Repeater {
+                    model: window.displayModes
+
+                    PowerChoice {
+                        required property var modelData
+
+                        width: (window.width - 35) / 2
+                        label: modelData.label
+                        selected: window.powerData.displayRefresh === modelData.refresh
+                        enabled: !window.powerData.busy
+                            && window.powerData.displayRefreshRates.indexOf(modelData.refresh) !== -1
+                        onClicked: window.powerData.setDisplayRefresh(modelData.refresh)
+                    }
+                }
+            }
+
+            Text {
                 text: "ACTIVE POWER PROFILE"
                 color: "#758083"
                 font.family: "JetBrains Mono Nerd Font"
@@ -152,14 +242,7 @@ PanelWindow {
             }
 
             Text {
-                text: `ASUS profile: ${window.powerData.asusProfile}`
-                color: "#8c999d"
-                font.family: "JetBrains Mono Nerd Font"
-                font.pixelSize: 10
-            }
-
-            Text {
-                text: "AC DEFAULT"
+                text: "DEFAULT POWER PROFILE WHEN ON AC POWER"
                 color: "#758083"
                 font.family: "JetBrains Mono Nerd Font"
                 font.pixelSize: 10
@@ -171,22 +254,22 @@ PanelWindow {
                 spacing: 7
 
                 Repeater {
-                    model: window.asusProfiles
+                    model: window.powerProfiles
 
                     PowerChoice {
-                        required property string modelData
+                        required property var modelData
 
                         width: (window.width - 42) / 3
-                        label: modelData
-                        selected: window.powerData.acProfile === modelData
+                        label: modelData.label
+                        selected: window.powerData.acProfile === modelData.asusValue
                         enabled: !window.powerData.busy
-                        onClicked: window.powerData.setDefaultProfile(modelData, true)
+                        onClicked: window.powerData.setDefaultProfile(modelData.asusValue, true)
                     }
                 }
             }
 
             Text {
-                text: "BATTERY DEFAULT"
+                text: "DEFAULT POWER PROFILE WHEN ON BATTERY"
                 color: "#758083"
                 font.family: "JetBrains Mono Nerd Font"
                 font.pixelSize: 10
@@ -198,16 +281,16 @@ PanelWindow {
                 spacing: 7
 
                 Repeater {
-                    model: window.asusProfiles
+                    model: window.powerProfiles
 
                     PowerChoice {
-                        required property string modelData
+                        required property var modelData
 
                         width: (window.width - 42) / 3
-                        label: modelData
-                        selected: window.powerData.batteryProfile === modelData
+                        label: modelData.label
+                        selected: window.powerData.batteryProfile === modelData.asusValue
                         enabled: !window.powerData.busy
-                        onClicked: window.powerData.setDefaultProfile(modelData, false)
+                        onClicked: window.powerData.setDefaultProfile(modelData.asusValue, false)
                     }
                 }
             }
@@ -229,8 +312,8 @@ PanelWindow {
                 Text {
                     width: parent.width / 2
                     horizontalAlignment: Text.AlignRight
-                    text: window.powerData.gpuStatus
-                    color: window.powerData.gpuStatus === "active" ? "#a9f3d1" : "#758083"
+                    text: window.gpuStatusText()
+                    color: window.gpuStatusColor()
                     font.family: "JetBrains Mono Nerd Font"
                     font.pixelSize: 10
                 }
@@ -249,8 +332,122 @@ PanelWindow {
                         width: (window.width - 42) / 3
                         label: modelData.label
                         selected: window.powerData.gpuMode === modelData.value
-                        enabled: !window.powerData.busy && window.gpuSupported(modelData.value)
+                        enabled: !window.powerData.busy
+                            && window.powerData.gpuSwitchReady
+                            && window.powerData.gpuMode !== modelData.value
                         onClicked: window.requestedGpuMode = modelData.value
+                    }
+                }
+            }
+
+            Text {
+                width: parent.width
+                visible: window.gpuIssueVisible()
+                text: window.powerData.gpuSwitchError
+                color: "#e78284"
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                font.family: "JetBrains Mono Nerd Font"
+                font.pixelSize: 10
+            }
+
+            Item {
+                width: parent.width
+                height: 66
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    text: "CHARGE LIMIT"
+                    color: "#758083"
+                    font.family: "JetBrains Mono Nerd Font"
+                    font.pixelSize: 10
+                    font.bold: true
+                }
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    text: window.powerData.chargeLimit === 0
+                        ? "Unavailable"
+                        : `${window.displayedChargeLimit}%`
+                    color: window.powerData.chargeLimit === 0 ? "#758083" : "#a9f3d1"
+                    font.family: "JetBrains Mono Nerd Font"
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    id: chargeLimitTrack
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 14
+                    height: 6
+                    radius: 3
+                    color: "#293f4749"
+                    opacity: window.powerData.chargeLimit > 0 ? 1 : 0.4
+
+                    Rectangle {
+                        width: chargeLimitHandle.x + chargeLimitHandle.width / 2
+                        height: parent.height
+                        radius: parent.radius
+                        color: "#63758d"
+                    }
+
+                    Repeater {
+                        model: 5
+
+                        Rectangle {
+                            required property int index
+
+                            x: chargeLimitHandle.width / 2 - width / 2
+                                + index / 4 * (chargeLimitTrack.width - chargeLimitHandle.width)
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 3
+                            height: 10
+                            radius: 1
+                            color: "#8c999d"
+                        }
+                    }
+
+                    Rectangle {
+                        id: chargeLimitHandle
+
+                        x: (Math.max(20, window.displayedChargeLimit) - 20) / 80
+                            * (parent.width - width)
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 18
+                        height: 18
+                        radius: 9
+                        color: chargeLimitMouse.pressed ? "#a8c7f0" : "#99d1db"
+                    }
+
+                    MouseArea {
+                        id: chargeLimitMouse
+
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 30
+                        enabled: window.powerData.chargeLimit > 0 && !window.powerData.busy
+
+                        function updateLimit(mouseX) {
+                            const ratio = Math.max(0, Math.min(1, mouseX / width))
+                            window.chargeLimitPreview = Math.round((20 + ratio * 80) / 5) * 5
+                        }
+
+                        onPressed: event => updateLimit(event.x)
+                        onPositionChanged: event => {
+                            if (pressed)
+                                updateLimit(event.x)
+                        }
+                        onReleased: event => {
+                            updateLimit(event.x)
+                            window.powerData.setChargeLimit(window.chargeLimitPreview)
+                            window.chargeLimitPreview = -1
+                        }
                     }
                 }
             }
@@ -358,33 +555,6 @@ PanelWindow {
                 }
             }
 
-            Text {
-                text: "DISPLAY REFRESH RATE"
-                color: "#758083"
-                font.family: "JetBrains Mono Nerd Font"
-                font.pixelSize: 10
-                font.bold: true
-            }
-
-            Row {
-                width: parent.width
-                spacing: 7
-
-                Repeater {
-                    model: window.displayModes
-
-                    PowerChoice {
-                        required property var modelData
-
-                        width: (window.width - 35) / 2
-                        label: modelData.label
-                        selected: window.powerData.displayRefresh === modelData.refresh
-                        enabled: !window.powerData.busy
-                        onClicked: window.powerData.setDisplayMode(modelData.mode)
-                    }
-                }
-            }
-
             Rectangle {
                 width: parent.width
                 height: window.pendingActionVisible() ? 54 : 0
@@ -397,9 +567,13 @@ PanelWindow {
                     anchors.leftMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - actionButton.width - (actionButton.visible ? 28 : 20)
-                    text: window.powerData.pendingMode === "Unknown"
-                        ? window.powerData.pendingAction
-                        : `${window.powerData.pendingMode}: ${window.powerData.pendingAction}`
+                    text: window.powerData.gpuTransitionPending
+                        ? (window.powerData.gpuActionReady
+                            ? `${window.gpuModeLabel(window.powerData.gpuRequestedMode)} selected · ${window.powerData.gpuActionRequired} required`
+                            : `Preparing ${window.gpuModeLabel(window.powerData.gpuRequestedMode)} transition`)
+                        : (window.powerData.pendingMode === "Unknown"
+                            ? window.powerData.pendingAction
+                            : `${window.powerData.pendingMode}: ${window.powerData.pendingAction}`)
                     color: "#e5c890"
                     elide: Text.ElideRight
                     font.family: "JetBrains Mono Nerd Font"
@@ -416,7 +590,8 @@ PanelWindow {
                     height: 32
                     radius: 6
                     visible: window.pendingActionKind().length > 0
-                    opacity: window.powerData.busy ? 0.45 : 1
+                    opacity: window.powerData.busy || (window.powerData.gpuTransitionPending
+                        && !window.powerData.gpuActionReady) ? 0.45 : 1
                     color: actionMouse.containsMouse ? "#80669970" : "#3b4148"
 
                     Text {
@@ -434,6 +609,7 @@ PanelWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         enabled: !window.powerData.busy
+                            && window.systemActionReady(window.pendingActionKind())
                         onClicked: window.requestedSystemAction = window.pendingActionKind()
                     }
                 }
@@ -463,7 +639,7 @@ PanelWindow {
             Rectangle {
                 anchors.centerIn: parent
                 width: 300
-                height: 174
+                height: window.requestedGpuMode.length > 0 ? 190 : 174
                 radius: 10
                 color: "#f21b1d21"
                 border.width: 1
@@ -477,7 +653,7 @@ PanelWindow {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: window.requestedGpuMode.length > 0
-                            ? `Switch GPU mode to ${window.requestedGpuMode}?`
+                            ? `Switch GPU mode to ${window.gpuModeLabel(window.requestedGpuMode)}?`
                             : (window.requestedSystemAction === "reboot" ? "Reboot now?" : "Log out now?")
                         color: "#e2e5ea"
                         font.family: "JetBrains Mono Nerd Font"
@@ -488,7 +664,7 @@ PanelWindow {
                     Text {
                         width: parent.width
                         text: window.requestedGpuMode.length > 0
-                            ? "Applications using the GPU may close. A logout or reboot can be required."
+                            ? `${window.gpuModeDescription(window.requestedGpuMode)} An explicit ${window.gpuRequiredAction(window.requestedGpuMode)} is required; it will not happen automatically.`
                             : "Save your work before continuing."
                         color: "#858d98"
                         horizontalAlignment: Text.AlignHCenter
@@ -533,7 +709,10 @@ PanelWindow {
                                             if (window.requestedGpuMode.length > 0) {
                                                 window.powerData.setGpuMode(window.requestedGpuMode)
                                             } else if (window.requestedSystemAction.length > 0) {
-                                                window.powerData.runSystemAction(window.requestedSystemAction)
+                                                if (window.systemActionReady(window.requestedSystemAction))
+                                                    window.powerData.runGpuTransitionAction(window.requestedSystemAction)
+                                                else
+                                                    window.powerData.setError("GPU transition is no longer ready")
                                             }
                                         }
                                         window.requestedGpuMode = ""

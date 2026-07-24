@@ -6,8 +6,9 @@ PanelWindow {
 
     required property var systemData
     required property var niriData
+    readonly property string displayScriptPath: Qt.resolvedUrl("scripts/display-control.sh").toString().replace("file://", "")
 
-    signal toggleSystemMonitor()
+    signal openResources()
     signal toggleClockDashboard()
     signal togglePowerControl()
     signal toggleFanControl()
@@ -179,8 +180,8 @@ PanelWindow {
 
             SystemButton {
                 text: "󰒋"
-                tooltip: "Toggle System Resource Monitor"
-                onClicked: bar.toggleSystemMonitor()
+                tooltip: "Toggle Resources"
+                onClicked: bar.openResources()
             }
 
             SystemButton {
@@ -223,13 +224,13 @@ PanelWindow {
                 text: `${bar.brightnessIcon()}  ${bar.systemData.brightness}%`
                 tooltip: `Brightness: ${bar.systemData.brightness}%`
                 onWheel: delta => Quickshell.execDetached([
-                    "brightnessctl", "set", delta > 0 ? "+5%" : "5%-"
+                    "bash", bar.displayScriptPath, "set-brightness",
+                    delta > 0 ? "+5%" : "5%-"
                 ])
             }
 
             SystemButton {
                 text: "󰈐"
-                foreground: "#758083"
                 tooltip: "Fan monitor"
                 onClicked: bar.toggleFanControl()
             }

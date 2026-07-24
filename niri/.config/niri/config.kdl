@@ -74,9 +74,8 @@ input {
 
 
 // https://niri-wm.github.io/niri/Configuration:-Outputs
-output "eDP-1" {
-    // Run `niri msg outputs` while inside a niri instance to list all outputs and their modes.
-    // The built-in laptop monitor is usually called "eDP-1".
+output "Samsung Display Corp. ATNA40CU05-0  Unknown" {
+    // Match the panel by EDID identity because connector numbers change with GPU probe order.
     mode "2880x1800@60.001"
     transform "normal"
     scale 1.75
@@ -182,7 +181,7 @@ spawn-at-startup "swayosd-server"
 spawn-at-startup "awww-daemon"
 spawn-at-startup "waypaper" "--restore"
 spawn-at-startup "swayidle" "-w" \
-    "timeout" "270" "brightnessctl -s && brightnessctl set 10%" "resume" "brightnessctl -r" \
+    "timeout" "270" "$HOME/.config/quickshell/scripts/display-control.sh save-brightness && $HOME/.config/quickshell/scripts/display-control.sh set-brightness 10%" "resume" "$HOME/.config/quickshell/scripts/display-control.sh restore-brightness" \
     "timeout" "300" "$HOME/.config/quickshell/scripts/lock.sh" \
     "timeout" "400" "niri msg action power-off-monitors" "resume" "niri msg action power-on-monitors" \
     "timeout" "500" "systemctl suspend-then-hibernate" \
@@ -273,8 +272,8 @@ binds {
     XF86AudioLowerVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "lower"; }
     XF86AudioMute        allow-when-locked=true { spawn "swayosd-client" "--output-volume" "mute-toggle"; }
     XF86AudioMicMute     allow-when-locked=true { spawn "swayosd-client" "--input-volume" "mute-toggle"; }
-    XF86MonBrightnessUp   allow-when-locked=true { spawn "swayosd-client" "--brightness" "raise"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "swayosd-client" "--brightness" "lower"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/display-control.sh brightness-osd raise"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/display-control.sh brightness-osd lower"; }
 
     //MEDIA
     // Example media keys mapping using playerctl, this will work with any MPRIS-enabled media player.
