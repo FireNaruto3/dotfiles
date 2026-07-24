@@ -2,9 +2,7 @@
 
 set -euo pipefail
 
-session=${1:-}
-leader=${2:-}
-target=${3:-}
+target=${1:-}
 case $target in
     Integrated|Hybrid) ;;
     *)
@@ -49,22 +47,6 @@ if [[ $marker_target != "$target" || $marker_phase != prepared ]]; then
     fail_transition "GPU transition marker is no longer prepared for $target"
 fi
 
-# Stay outside the graphical session and wait for its compositor to fully exit.
-for _ in {1..300}; do
-    if ! kill -0 "$leader" 2>/dev/null \
-        && ! loginctl show-session "$session" >/dev/null 2>&1; then
-        break
-    fi
-    sleep 0.1
-done
-if kill -0 "$leader" 2>/dev/null || loginctl show-session "$session" >/dev/null 2>&1; then
-    fail_transition "Timed out waiting for the old graphical session to exit"
-fi
-
-# Process exit closes its DRM and NVIDIA file descriptors synchronously. Leave a
-# short scheduling grace period without consuming logind's user-manager delay.
-sleep 0.2
-
 state=$(bash "$script_dir/power-state.sh")
 if [[ $(jq -r '.gpu_transition_pending' <<< "$state") != true \
     || $(jq -r '.gpu_action_ready' <<< "$state") != true \
@@ -74,6 +56,53 @@ if [[ $(jq -r '.gpu_transition_pending' <<< "$state") != true \
 fi
 
 write_phase applying
+
+# Niri runs as a user service outside loginctl's session scope. Its detached
+# helper scopes may exit while the session shuts down, so stop each one on a
+# best-effort basis and let the NVIDIA holder check enforce safety.
+if ! scope_state=$(systemctl --user list-units 'app-niri-*.scope' \
+    --type=scope --state=running --output=json); then
+    fail_transition "Unable to enumerate Niri helper scopes"
+fi
+mapfile -t niri_scopes < <(jq -r '.[].unit' <<< "$scope_state")
+for niri_scope in "${niri_scopes[@]}"; do
+    systemctl --user stop "$niri_scope" 2>/dev/null || true
+done
+
+if ! systemctl --user stop niri.service; then
+    fail_transition "Unable to stop the Niri user service"
+fi
+
+if ! command -v lsof >/dev/null; then
+    fail_transition "lsof is required to verify NVIDIA device users"
+fi
+
+shopt -s nullglob
+nvidia_devices=()
+for nvidia_device in /dev/nvidia*; do
+    [[ -c $nvidia_device ]] && nvidia_devices+=("$nvidia_device")
+done
+for vendor_file in /sys/class/drm/*/device/vendor; do
+    read -r vendor < "$vendor_file" || continue
+    [[ ${vendor,,} == 0x10de ]] || continue
+    drm_path=${vendor_file%/device/vendor}
+    drm_name=${drm_path##*/}
+    [[ -e /dev/dri/$drm_name ]] && nvidia_devices+=("/dev/dri/$drm_name")
+done
+shopt -u nullglob
+
+holders=
+if (( ${#nvidia_devices[@]} > 0 )); then
+    for _ in {1..50}; do
+        holders=$(lsof -t "${nvidia_devices[@]}" 2>/dev/null || true)
+        [[ -z $holders ]] && break
+        sleep 0.1
+    done
+fi
+if [[ -n $holders ]]; then
+    holders=${holders//$'\n'/, }
+    fail_transition "NVIDIA devices are still in use by process IDs: $holders"
+fi
 
 if ! output=$(supergfxctl --mode "$target" 2>&1); then
     fail_transition "${output:-Unable to request GPU mode $target}"

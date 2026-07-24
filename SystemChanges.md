@@ -222,14 +222,18 @@ request records a transition marker under
 Hybrid/Integrated requests are prepared without calling Supergfx while Niri is
 still using NVIDIA device files. After a second confirmation, the action helper
 starts `gpu-mode-apply-after-logout.sh` as a transient user service outside the
-graphical session and terminates only the current session. The worker waits for
-that session and its compositor to fully exit, revalidates the request, and only
-then calls Supergfx. This avoids Supergfx's logout timeout and prevents Niri
-from blocking NVIDIA module removal. The worker verifies both the reported mode
-and ASUS firmware state before marking the transition complete. If logind stops
-the transient user service after logout, the next power-state poll reconciles
-the applying marker against live Supergfx and firmware state, clearing it on
-success or reporting that the source mode was restored.
+graphical session. Niri is managed by `niri.service`, outside logind's session
+scope, and its startup helpers run in detached `app-niri-*.scope` units. The
+worker revalidates the request, stops the Niri service and those helper scopes,
+and verifies that no process holds an NVIDIA character or DRM device before it
+calls Supergfx. The normal `niri-session` wrapper then closes the current GDM
+session. This prevents Niri or SwayOSD from blocking NVIDIA module removal.
+
+The worker verifies both the reported mode and ASUS firmware state before
+marking the transition complete. If logind stops the transient user service
+after logout, the next power-state poll reconciles the applying marker against
+live Supergfx and firmware state, clearing it on success or reporting that the
+source mode was restored.
 
 dGPU MUX transitions retain Supergfx's reboot workflow. Logout and reboot are
 never automatic: both require separate confirmation. The marker is reconciled

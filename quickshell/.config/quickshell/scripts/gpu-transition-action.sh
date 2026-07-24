@@ -49,15 +49,8 @@ fi
 if [[ $action == reboot ]]; then
     systemctl reboot
 else
-    session=${XDG_SESSION_ID:-}
-    if [[ -z $session ]]; then
-        printf 'Unable to determine the current login session\n' >&2
-        exit 1
-    fi
-
-    leader=$(loginctl show-session "$session" -p Leader --value)
     target=$(jq -r '.mode // "Unknown"' "$state_dir/gpu-mode-transition.json")
-    if [[ ! $leader =~ ^[0-9]+$ || $target == Unknown ]]; then
+    if [[ $target == Unknown ]]; then
         printf 'Unable to prepare the GPU transition worker\n' >&2
         exit 1
     fi
@@ -68,6 +61,5 @@ else
         --service-type=exec \
         --setenv=XDG_STATE_HOME="$state_home" \
         /usr/bin/bash "$script_dir/gpu-mode-apply-after-logout.sh" \
-        "$session" "$leader" "$target" >/dev/null
-    loginctl terminate-session "$session"
+        "$target" >/dev/null
 fi
