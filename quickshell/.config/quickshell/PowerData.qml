@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import Quickshell.Io
 
 QtObject {
@@ -7,12 +6,16 @@ QtObject {
 
     property var values: ({})
     property var fanValues: ({})
+    property bool powerMonitoring: false
     property bool fanMonitoring: false
     property bool busy: false
     property bool refreshPending: false
     property string errorMessage: ""
     readonly property string scriptPath: Qt.resolvedUrl("scripts/power-state.sh").toString().replace("file://", "")
     readonly property string fanScriptPath: Qt.resolvedUrl("scripts/fan-stats.sh").toString().replace("file://", "")
+    readonly property string gpuModeScriptPath: Qt.resolvedUrl("scripts/gpu-mode-switch.sh").toString().replace("file://", "")
+    readonly property string gpuActionScriptPath: Qt.resolvedUrl("scripts/gpu-transition-action.sh").toString().replace("file://", "")
+    readonly property string displayScriptPath: Qt.resolvedUrl("scripts/display-control.sh").toString().replace("file://", "")
 
     readonly property string powerProfile: values.power_profile || "unknown"
     readonly property string asusProfile: values.asus_profile || "Unknown"
@@ -22,21 +25,35 @@ QtObject {
     readonly property string gpuStatus: values.gpu_status || "unknown"
     readonly property string pendingAction: values.pending_action || "Unknown"
     readonly property string pendingMode: values.pending_mode || "Unknown"
-    readonly property string supportedModes: values.supported_modes || "[]"
+    readonly property bool gpuSwitchReady: values.gpu_switch_ready || false
+    readonly property string gpuSwitchError: values.gpu_switch_error || ""
+    readonly property bool gpuTransitionPending: values.gpu_transition_pending || false
+    readonly property bool gpuActionReady: values.gpu_action_ready || false
+    readonly property string gpuActionRequired: values.gpu_action_required || ""
+    readonly property string gpuRequestedMode: values.gpu_requested_mode || "Unknown"
     readonly property int keyboardBrightness: values.keyboard_brightness || 0
     readonly property int keyboardMax: values.keyboard_max || 0
+    readonly property int chargeLimit: values.charge_limit || 0
     readonly property int displayRefresh: values.display_refresh || 0
+    readonly property var displayRefreshRates: values.display_refresh_rates || []
+    readonly property string fanProfile: fanValues.fan_profile || "Unknown"
     readonly property int cpuTemp: fanValues.cpu_temp || 0
+    readonly property bool cpuTempAvailable: fanValues.cpu_temp_available === true
     readonly property int gpuTemp: fanValues.gpu_temp || 0
+    readonly property bool gpuTempAvailable: fanValues.gpu_temp_available === true
+    readonly property string gpuTempState: fanValues.gpu_temp_state || "unavailable"
     readonly property int cpuFan: fanValues.cpu_fan || 0
+    readonly property bool cpuFanAvailable: fanValues.cpu_fan_available === true
     readonly property int gpuFan: fanValues.gpu_fan || 0
+    readonly property bool gpuFanAvailable: fanValues.gpu_fan_available === true
     readonly property int midFan: fanValues.mid_fan || 0
+    readonly property bool midFanAvailable: fanValues.mid_fan_available === true
+    readonly property bool cpuFanCurveAvailable: fanValues.cpu_fan_curve_available === true
+    readonly property bool gpuFanCurveAvailable: fanValues.gpu_fan_curve_available === true
     readonly property bool cpuFanCurveEnabled: fanValues.cpu_fan_curve_enabled || false
     readonly property bool gpuFanCurveEnabled: fanValues.gpu_fan_curve_enabled || false
-    readonly property bool midFanCurveEnabled: fanValues.mid_fan_curve_enabled || false
     readonly property var cpuFanCurve: fanValues.cpu_fan_curve || []
     readonly property var gpuFanCurve: fanValues.gpu_fan_curve || []
-    readonly property var midFanCurve: fanValues.mid_fan_curve || []
 
     function fanCurvePercent(curve, temperature, enabled) {
         if (!enabled || temperature <= 0 || curve.length === 0)
@@ -62,6 +79,11 @@ QtObject {
     onFanMonitoringChanged: {
         if (fanMonitoring && !fanCollector.running)
             fanCollector.running = true
+    }
+
+    onPowerMonitoringChanged: {
+        if (powerMonitoring && !collector.running)
+            collector.running = true
     }
 
     function refresh() {
@@ -99,8 +121,12 @@ QtObject {
         run(["asusctl", "profile", "set", onAc ? "--ac" : "--battery", profile])
     }
 
+    function setChargeLimit(limit) {
+        run(["asusctl", "battery", "limit", limit.toString()])
+    }
+
     function setGpuMode(mode) {
-        run(["supergfxctl", "--mode", mode])
+        run(["bash", gpuModeScriptPath, mode])
     }
 
     function setKeyboardBrightness(level) {
@@ -109,27 +135,18 @@ QtObject {
             run(["asusctl", "leds", "set", levels[level]])
     }
 
-    function setDisplayMode(mode) {
-        run(["niri", "msg", "output", "eDP-1", "mode", mode])
+    function setDisplayRefresh(refresh) {
+        run(["bash", displayScriptPath, "set-refresh", refresh.toString()])
     }
 
-    function runSystemAction(action) {
-        if (action === "reboot") {
-            run(["systemctl", "reboot"])
-        } else if (action === "logout") {
-            const session = Quickshell.env("XDG_SESSION_ID")
-            if (session)
-                run(["loginctl", "terminate-session", session])
-            else
-                setError("Unable to determine the current login session")
-        }
+    function runGpuTransitionAction(action) {
+        run(["bash", gpuActionScriptPath, action])
     }
 
     property Process collector: Process {
         id: collector
 
         command: ["bash", root.scriptPath]
-        running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -158,6 +175,8 @@ QtObject {
                 root.setError(actionError.text.trim() || actionOutput.text.trim() || "Power setting failed")
             root.refreshPending = true
             refreshTimer.restart()
+            if (root.fanMonitoring && !fanCollector.running)
+                fanCollector.running = true
         }
     }
 
@@ -177,7 +196,7 @@ QtObject {
     }
 
     property Timer fanPollTimer: Timer {
-        interval: 3000
+        interval: 1000
         running: root.fanMonitoring
         repeat: true
         onTriggered: {
@@ -195,7 +214,7 @@ QtObject {
 
     property Timer pollTimer: Timer {
         interval: 3000
-        running: true
+        running: root.powerMonitoring
         repeat: true
         onTriggered: root.refresh()
     }

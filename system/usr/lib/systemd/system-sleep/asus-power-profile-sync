@@ -1,0 +1,9 @@
+#!/bin/sh
+
+case $1 in
+    post)
+        /usr/libexec/asus-power-profile-sync force
+        ;;
+esac
+
+exit 0

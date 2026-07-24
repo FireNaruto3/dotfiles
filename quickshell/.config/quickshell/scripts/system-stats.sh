@@ -2,6 +2,8 @@
 
 set -u
 
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
 if bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then
   bluetooth="on"
 else
@@ -35,26 +37,54 @@ else
   muted=false
 fi
 
-brightness=$(brightnessctl -m 2>/dev/null | awk -F, '{gsub(/%/, "", $4); print $4; exit}')
+brightness=$(bash "$script_dir/display-control.sh" brightness 2>/dev/null || printf '0')
 brightness=${brightness:-0}
 
-battery=$(cat /sys/class/power_supply/BAT1/capacity 2>/dev/null || printf '0')
-battery_state=$(cat /sys/class/power_supply/BAT1/status 2>/dev/null || printf 'Unknown')
-if [[ -r /sys/class/power_supply/BAT1/power_now ]]; then
-  battery_power=$(awk '{printf "%.1f", $1/1000000}' /sys/class/power_supply/BAT1/power_now)
-elif [[ -r /sys/class/power_supply/BAT1/voltage_now && -r /sys/class/power_supply/BAT1/current_now ]]; then
+battery_info=$(upower -i /org/freedesktop/UPower/devices/DisplayDevice 2>/dev/null || true)
+battery=$(awk -F': *' '/percentage:/ {gsub(/%/, "", $2); print $2; exit}' <<< "$battery_info")
+battery_state=$(awk -F': *' '/state:/ {print $2; exit}' <<< "$battery_info")
+case $battery_state in
+  charging) battery_state=Charging ;;
+  discharging) battery_state=Discharging ;;
+  fully-charged) battery_state=Full ;;
+  pending-charge) battery_state='Pending charge' ;;
+  pending-discharge) battery_state='Pending discharge' ;;
+  *) battery_state=Unknown ;;
+esac
+battery_power=$(awk -F': *' '/energy-rate:/ {print $2 + 0; exit}' <<< "$battery_info")
+battery_time=$(awk -F': *' '/time to empty:|time to full:/ {print $2; exit}' <<< "$battery_info")
+battery=${battery:-0}
+battery_power=${battery_power:-0}
+battery_time=${battery_time:-}
+
+battery_path=
+for supply in /sys/class/power_supply/*; do
+  [[ -r $supply/type ]] || continue
+  read -r supply_type < "$supply/type"
+  [[ $supply_type == Battery ]] || continue
+  if [[ -r $supply/present ]]; then
+    read -r supply_present < "$supply/present"
+    [[ $supply_present == 1 ]] || continue
+  fi
+  if [[ -r $supply/scope ]]; then
+    read -r supply_scope < "$supply/scope"
+    [[ $supply_scope == System ]] || continue
+  fi
+  battery_path=$supply
+  break
+done
+
+if [[ -n $battery_path && -r $battery_path/power_now ]]; then
+  battery_power=$(awk '{printf "%.1f", $1/1000000}' "$battery_path/power_now")
+elif [[ -n $battery_path && -r $battery_path/voltage_now && -r $battery_path/current_now ]]; then
   battery_power=$(awk 'NR==FNR {voltage=$1; next} {printf "%.1f", voltage*$1/1000000000000}' \
-    /sys/class/power_supply/BAT1/voltage_now \
-    /sys/class/power_supply/BAT1/current_now)
-else
-  battery_power=0
+    "$battery_path/voltage_now" \
+    "$battery_path/current_now")
 fi
-battery_time=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 2>/dev/null \
-  | awk -F': *' '/time to empty|time to full/ {print $2; exit}')
-if [[ -r /sys/class/power_supply/BAT1/charge_full_design ]]; then
+if [[ -n $battery_path && -r $battery_path/charge_full_design && -r $battery_path/charge_full ]]; then
   battery_health=$(awk 'NR==FNR {full=$1; next} {printf "%.0f", full/$1*100}' \
-    /sys/class/power_supply/BAT1/charge_full \
-    /sys/class/power_supply/BAT1/charge_full_design)
+    "$battery_path/charge_full" \
+    "$battery_path/charge_full_design")
 else
   battery_health=0
 fi
