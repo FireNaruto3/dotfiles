@@ -4,22 +4,36 @@ import Quickshell.Io
 ShellRoot {
     id: root
 
-    function toggleSystemMonitor() {
-        clockDashboard.visible = false
-        powerControl.visible = false
-        fanControl.visible = false
-        systemMonitor.visible = !systemMonitor.visible
+    function openResources() {
+        Quickshell.execDetached([
+            "sh", "-c",
+            "pkill -TERM -x -u \"$(id -u)\" resources || exec resources"
+        ])
     }
 
-    function toggleClockDashboard() {
-        systemMonitor.visible = false
+    function toggleClockDashboard(screen) {
         powerControl.visible = false
         fanControl.visible = false
-        clockDashboard.visible = !clockDashboard.visible
+        if (clockDashboard.visible && clockDashboard.screen === screen) {
+            clockDashboard.visible = false
+        } else {
+            clockDashboard.screen = screen
+            clockDashboard.visible = true
+        }
+    }
+
+    function focusedScreen() {
+        const focusedWorkspace = niriSource.workspaces.find(workspace => workspace.is_focused)
+        if (focusedWorkspace) {
+            for (let index = 0; index < Quickshell.screens.length; index++) {
+                if (Quickshell.screens[index].name === focusedWorkspace.output)
+                    return Quickshell.screens[index]
+            }
+        }
+        return Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     }
 
     function togglePowerControl(screen) {
-        systemMonitor.visible = false
         clockDashboard.visible = false
         fanControl.visible = false
 
@@ -32,7 +46,6 @@ ShellRoot {
     }
 
     function toggleFanControl(screen) {
-        systemMonitor.visible = false
         clockDashboard.visible = false
         powerControl.visible = false
 
@@ -46,11 +59,11 @@ ShellRoot {
 
     SystemData {
         id: systemSource
-        resourceMonitoring: systemMonitor.visible
     }
 
     PowerData {
         id: powerSource
+        powerMonitoring: powerControl.visible || fanControl.visible
         fanMonitoring: fanControl.visible
     }
 
@@ -58,18 +71,10 @@ ShellRoot {
         id: niriSource
     }
 
-    EngineRoom {
-        id: systemMonitor
-
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
-        systemData: systemSource
-        visible: false
-    }
-
     ClockDashboard {
         id: clockDashboard
 
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        screen: null
         systemData: systemSource
         visible: false
     }
@@ -77,7 +82,7 @@ ShellRoot {
     PowerControl {
         id: powerControl
 
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        screen: null
         systemData: systemSource
         powerData: powerSource
         visible: false
@@ -86,7 +91,7 @@ ShellRoot {
     FanControl {
         id: fanControl
 
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        screen: null
         powerData: powerSource
         visible: false
     }
@@ -95,19 +100,19 @@ ShellRoot {
         target: "panels"
 
         function toggleClock(): void {
-            root.toggleClockDashboard()
+            root.toggleClockDashboard(root.focusedScreen())
         }
 
         function toggleSystem(): void {
-            root.toggleSystemMonitor()
+            root.openResources()
         }
 
         function togglePower(): void {
-            root.togglePowerControl(Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+            root.togglePowerControl(root.focusedScreen())
         }
 
         function toggleFan(): void {
-            root.toggleFanControl(Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+            root.toggleFanControl(root.focusedScreen())
         }
     }
 
@@ -120,8 +125,8 @@ ShellRoot {
             screen: modelData
             systemData: systemSource
             niriData: niriSource
-            onToggleSystemMonitor: root.toggleSystemMonitor()
-            onToggleClockDashboard: root.toggleClockDashboard()
+            onOpenResources: root.openResources()
+            onToggleClockDashboard: root.toggleClockDashboard(modelData)
             onTogglePowerControl: root.togglePowerControl(modelData)
             onToggleFanControl: root.toggleFanControl(modelData)
         }
