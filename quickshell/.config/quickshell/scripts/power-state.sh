@@ -35,7 +35,12 @@ if [[ $pending_action != "No action required" || $pending_mode != "Unknown" ]]; 
     # Supergfx holds its GPU lock while waiting for logout, so Power would block.
     gpu_status=transitioning
 else
-    gpu_status=$(supergfxctl --status 2>/dev/null || printf 'unknown')
+    case $gpu_mode in
+        Integrated) gpu_status=dgpu_disabled ;;
+        Hybrid) gpu_status=$(supergfxctl --status 2>/dev/null || printf 'unknown') ;;
+        AsusMuxDgpu) gpu_status=asus_mux_discreet ;;
+        *) gpu_status=unknown ;;
+    esac
 fi
 gpu_always_reboot=$(busctl call \
     org.supergfxctl.Daemon \

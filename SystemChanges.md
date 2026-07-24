@@ -1,7 +1,7 @@
 # System Changes
 
 This document inventories custom system and hardware behavior on this laptop as
-of July 22, 2026. It distinguishes root-installed configuration from Niri and
+of July 24, 2026. It distinguishes root-installed configuration from Niri and
 Quickshell user-session behavior. The active desktop is Niri with Quickshell;
 the retained Sway and Waybar configurations are not included.
 
@@ -60,9 +60,27 @@ and suspend-then-hibernate with these settings:
 - The hibernation transition is allowed while connected to AC power.
 - The machine currently has a 20 GiB `/swap.img` swap file enabled.
 
-The repository does not configure the swap file, resume offset, firmware, or
-kernel support required for hibernation. The policy enables and requests the
-behavior but cannot guarantee that platform hibernation is functional.
+Hibernation uses systemd's dynamic `HibernateLocation` EFI variable. Systemd
+discovers the active `/swap.img`, records its backing device and physical
+offset before hibernating, and lets the initrd consume that EFI metadata on the
+next boot. Static `resume=` and `resume_offset=` kernel parameters are
+intentionally absent. On an ordinary boot without a hibernation image, both
+`/sys/power/resume` and `/sys/power/resume_offset` should be zero.
+
+A static-resume configuration was tested and removed on July 24, 2026. Dracut
+resolved the correct backing partition and attempted resume during initrd, but
+after finding no image the kernel reset `/sys/power/resume` to `0:0` while
+leaving the nonzero offset in `/sys/power/resume_offset`. Systemd 259 classifies
+that state as `SLEEP_RESUME_MISCONFIGURED`, making hibernation unavailable.
+Dynamic EFI resume avoids that invalid normal-boot state and matches the setup
+that successfully hibernated on July 15, 2026.
+
+Direct hibernation was validated again on kernel `7.0.0-28-generic` on July 24,
+2026. The kernel logged hibernation entry and exit in the same boot, systemd
+reported success, and the NVIDIA and ASUS resume hooks completed. After a
+successful hibernate/resume cycle, `/sys/power/resume` contains `259:7` and
+`/sys/power/resume_offset` contains `59015168`; systemd populated these values
+dynamically from the active swap file.
 
 ### Sleep hooks
 
@@ -195,14 +213,14 @@ runtime-suspend.
 
 `/etc/supergfxd.conf` currently defines:
 
-- Saved mode: `Hybrid`.
+- Saved mode: `Integrated`.
 - VFIO support: disabled.
 - Force every transition to reboot: disabled.
 - Logind integration: enabled.
 - Logout timeout: 180 seconds.
 - Hotplug handling: ASUS.
 
-The live Supergfx mode was `Hybrid` when this inventory was taken, and
+The live Supergfx mode was `Integrated` when this inventory was taken, and
 `supergfxd.service` was active.
 
 Quickshell exposes three modes:
