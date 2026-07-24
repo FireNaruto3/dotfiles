@@ -269,4 +269,9 @@ sudo systemctl reload systemd-logind.service
 sudo systemctl restart supergfxd.service
 ```
 
+Hibernation uses systemd's dynamic `HibernateLocation` EFI variable with the
+active `/swap.img`; no static `resume=` or `resume_offset=` kernel parameters
+are installed. On an ordinary boot without a hibernation image,
+`/sys/power/resume` and `/sys/power/resume_offset` should both be zero.
+
 Wallpapers remain in `~/dotfiles/wallpapers` because the desktop and lock-screen configs reference that directory. Wallpaper paths use the current user's home directory and do not need account-specific changes.

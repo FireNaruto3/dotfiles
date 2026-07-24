@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Services.SystemTray
 
 PanelWindow {
     id: bar
@@ -161,6 +162,39 @@ PanelWindow {
         foreground: "#99d1db"
         text: Qt.formatDateTime(clock.date, "hh:mm:ss AP  -  MMMM dd, dddd")
         onClicked: bar.toggleClockDashboard()
+    }
+
+    Rectangle {
+        id: trayGroup
+
+        anchors.right: rightGroup.left
+        anchors.rightMargin: 5
+        anchors.verticalCenter: parent.verticalCenter
+        visible: trayRepeater.count > 0
+        implicitWidth: trayRow.implicitWidth + 8
+        implicitHeight: 30
+        radius: 15
+        color: "#1a1b26"
+        clip: true
+
+        Row {
+            id: trayRow
+
+            anchors.centerIn: parent
+
+            Repeater {
+                id: trayRepeater
+
+                model: SystemTray.items.values.filter(item => item.status !== Status.Passive)
+
+                TrayItem {
+                    required property var modelData
+
+                    hostWindow: bar
+                    trayItem: modelData
+                }
+            }
+        }
     }
 
     Rectangle {
