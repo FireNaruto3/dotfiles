@@ -28,10 +28,10 @@ if [[ -n "$wifi_line" ]]; then
   ssid=${ssid%:*}
 fi
 
-volume_line=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || true)
-volume=$(awk '{printf "%.0f", $2 * 100}' <<< "$volume_line")
+volume_line=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null || true)
+volume=$(awk -F/ 'NR == 1 {gsub(/[^0-9]/, "", $2); print $2}' <<< "$volume_line")
 volume=${volume:-0}
-if [[ "$volume_line" == *"[MUTED]"* ]]; then
+if pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q '^Mute: yes$'; then
   muted=true
 else
   muted=false
