@@ -22,7 +22,7 @@ Screenshots will be added here.
 | `wlogout` | Session and power menu |
 | `resources` | System resource monitor launched from the bar |
 | `thunar`, `pavucontrol`, `blueman` | File, audio, and Bluetooth utilities |
-| `brightnessctl`, `wpctl`, `playerctl` | Brightness, audio, and media controls |
+| `brightnessctl`, `wpctl`, `pactl`, `playerctl` | Brightness, audio, and media controls (`pactl` is provided by `pulseaudio-utils`) |
 | `jq`, `lm-sensors`, `upower` | System, temperature, and battery telemetry |
 | `powerprofilesctl`, `asusctl`, `supergfxctl` | ASUS laptop power and GPU controls |
 | JetBrains Mono Nerd Font, Papirus | Interface font and icon theme |
@@ -190,11 +190,15 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 
 These hardware keys remain active while the session is locked.
 
+Output-volume changes are serialized and read back through PipeWire's Pulse
+compatibility service. SwayOSD, pavucontrol, and the Quickshell bar therefore
+show the same confirmed percentage even during key repeat.
+
 | Keybind | Action |
 |---------|--------|
-| `XF86AudioRaiseVolume` (volume up) | Raise the output volume through SwayOSD |
-| `XF86AudioLowerVolume` (volume down) | Lower the output volume through SwayOSD |
-| `XF86AudioMute` (volume mute) | Toggle output mute through SwayOSD |
+| `XF86AudioRaiseVolume` (volume up) | Raise the default output volume and show SwayOSD |
+| `XF86AudioLowerVolume` (volume down) | Lower the default output volume and show SwayOSD |
+| `XF86AudioMute` (volume mute) | Toggle default output mute and show SwayOSD |
 | `XF86AudioMicMute` (microphone mute) | Toggle microphone mute through SwayOSD |
 | `XF86MonBrightnessUp` (brightness up) | Raise display brightness through SwayOSD |
 | `XF86MonBrightnessDown` (brightness down) | Lower display brightness through SwayOSD |

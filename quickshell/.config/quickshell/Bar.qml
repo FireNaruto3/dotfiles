@@ -7,6 +7,7 @@ PanelWindow {
 
     required property var systemData
     required property var niriData
+    readonly property string audioScriptPath: Qt.resolvedUrl("scripts/audio-control.sh").toString().replace("file://", "")
     readonly property string displayScriptPath: Qt.resolvedUrl("scripts/display-control.sh").toString().replace("file://", "")
 
     signal openResources()
@@ -249,8 +250,7 @@ PanelWindow {
                 tooltip: bar.systemData.muted ? "Audio muted" : `Volume: ${bar.systemData.volume}%`
                 onClicked: Quickshell.execDetached(["pavucontrol"])
                 onWheel: delta => Quickshell.execDetached([
-                    "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@",
-                    delta > 0 ? "5%+" : "5%-"
+                    "bash", bar.audioScriptPath, delta > 0 ? "raise" : "lower"
                 ])
             }
 

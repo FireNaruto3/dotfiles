@@ -268,9 +268,9 @@ binds {
     //XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+5%"; }
     //XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "5%-"; }
 
-    XF86AudioRaiseVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "raise"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "lower"; }
-    XF86AudioMute        allow-when-locked=true { spawn "swayosd-client" "--output-volume" "mute-toggle"; }
+    XF86AudioRaiseVolume allow-when-locked=true cooldown-ms=75 { spawn-sh "$HOME/.config/quickshell/scripts/audio-control.sh raise"; }
+    XF86AudioLowerVolume allow-when-locked=true cooldown-ms=75 { spawn-sh "$HOME/.config/quickshell/scripts/audio-control.sh lower"; }
+    XF86AudioMute        allow-when-locked=true repeat=false { spawn-sh "$HOME/.config/quickshell/scripts/audio-control.sh mute"; }
     XF86AudioMicMute     allow-when-locked=true { spawn "swayosd-client" "--input-volume" "mute-toggle"; }
     XF86MonBrightnessUp   allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/display-control.sh brightness-osd raise"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/display-control.sh brightness-osd lower"; }

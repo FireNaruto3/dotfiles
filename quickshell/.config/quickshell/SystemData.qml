@@ -22,6 +22,13 @@ QtObject {
     readonly property string uptime: values.uptime || "-"
     readonly property bool dnd: values.dnd || false
 
+    function updateAudio(volume, muted) {
+        root.values = Object.assign({}, root.values, {
+            volume: volume,
+            muted: muted
+        })
+    }
+
     property Process collector: Process {
         id: collector
 

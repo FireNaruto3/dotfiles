@@ -114,6 +114,10 @@ ShellRoot {
         function toggleFan(): void {
             root.toggleFanControl(root.focusedScreen())
         }
+
+        function updateAudio(volume: int, muted: bool): void {
+            systemSource.updateAudio(volume, muted)
+        }
     }
 
     Variants {
