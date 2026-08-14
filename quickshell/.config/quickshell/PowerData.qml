@@ -6,6 +6,7 @@ QtObject {
 
     property var values: ({})
     property var fanValues: ({})
+    property var fanCurveValues: ({})
     property bool powerMonitoring: false
     property bool fanMonitoring: false
     property bool busy: false
@@ -13,6 +14,7 @@ QtObject {
     property string errorMessage: ""
     readonly property string scriptPath: Qt.resolvedUrl("scripts/power-state.sh").toString().replace("file://", "")
     readonly property string fanScriptPath: Qt.resolvedUrl("scripts/fan-stats.sh").toString().replace("file://", "")
+    readonly property string fanCurveScriptPath: Qt.resolvedUrl("scripts/fan-curves.sh").toString().replace("file://", "")
     readonly property string displayScriptPath: Qt.resolvedUrl("scripts/display-control.sh").toString().replace("file://", "")
 
     readonly property string powerProfile: values.power_profile || "unknown"
@@ -21,7 +23,7 @@ QtObject {
     readonly property int chargeLimit: values.charge_limit || 0
     readonly property int displayRefresh: values.display_refresh || 0
     readonly property var displayRefreshRates: values.display_refresh_rates || []
-    readonly property string fanProfile: fanValues.fan_profile || "Unknown"
+    readonly property string fanProfile: fanCurveValues.fan_profile || "Unknown"
     readonly property int cpuTemp: fanValues.cpu_temp || 0
     readonly property bool cpuTempAvailable: fanValues.cpu_temp_available === true
     readonly property int gpuTemp: fanValues.gpu_temp || 0
@@ -33,12 +35,12 @@ QtObject {
     readonly property bool gpuFanAvailable: fanValues.gpu_fan_available === true
     readonly property int midFan: fanValues.mid_fan || 0
     readonly property bool midFanAvailable: fanValues.mid_fan_available === true
-    readonly property bool cpuFanCurveAvailable: fanValues.cpu_fan_curve_available === true
-    readonly property bool gpuFanCurveAvailable: fanValues.gpu_fan_curve_available === true
-    readonly property bool cpuFanCurveEnabled: fanValues.cpu_fan_curve_enabled || false
-    readonly property bool gpuFanCurveEnabled: fanValues.gpu_fan_curve_enabled || false
-    readonly property var cpuFanCurve: fanValues.cpu_fan_curve || []
-    readonly property var gpuFanCurve: fanValues.gpu_fan_curve || []
+    readonly property bool cpuFanCurveAvailable: fanCurveValues.cpu_fan_curve_available === true
+    readonly property bool gpuFanCurveAvailable: fanCurveValues.gpu_fan_curve_available === true
+    readonly property bool cpuFanCurveEnabled: fanCurveValues.cpu_fan_curve_enabled || false
+    readonly property bool gpuFanCurveEnabled: fanCurveValues.gpu_fan_curve_enabled || false
+    readonly property var cpuFanCurve: fanCurveValues.cpu_fan_curve || []
+    readonly property var gpuFanCurve: fanCurveValues.gpu_fan_curve || []
 
     function fanCurvePercent(curve, temperature, enabled) {
         if (!enabled || temperature <= 0 || curve.length === 0)
@@ -62,8 +64,12 @@ QtObject {
     }
 
     onFanMonitoringChanged: {
-        if (fanMonitoring && !fanCollector.running)
-            fanCollector.running = true
+        if (fanMonitoring) {
+            if (!fanCollector.running)
+                fanCollector.running = true
+            if (!fanCurveCollector.running)
+                fanCurveCollector.running = true
+        }
     }
 
     onPowerMonitoringChanged: {
@@ -150,6 +156,8 @@ QtObject {
             refreshTimer.restart()
             if (root.fanMonitoring && !fanCollector.running)
                 fanCollector.running = true
+            if (root.fanMonitoring && !fanCurveCollector.running)
+                fanCurveCollector.running = true
         }
     }
 
@@ -168,6 +176,21 @@ QtObject {
         }
     }
 
+    property Process fanCurveCollector: Process {
+        id: fanCurveCollector
+
+        command: ["bash", root.fanCurveScriptPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.fanCurveValues = JSON.parse(text.trim())
+                } catch (error) {
+                    console.warn("Unable to parse fan curve data:", error, text)
+                }
+            }
+        }
+    }
+
     property Timer fanPollTimer: Timer {
         interval: 1000
         running: root.fanMonitoring
@@ -175,6 +198,16 @@ QtObject {
         onTriggered: {
             if (!fanCollector.running)
                 fanCollector.running = true
+        }
+    }
+
+    property Timer fanCurvePollTimer: Timer {
+        interval: 15000
+        running: root.fanMonitoring
+        repeat: true
+        onTriggered: {
+            if (!fanCurveCollector.running)
+                fanCurveCollector.running = true
         }
     }
 

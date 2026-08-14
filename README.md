@@ -60,7 +60,7 @@ The lock screen uses a 12-hour clock with AM/PM, displays live battery percentag
 
 The fan panel is monitor-only and polls the ASUS CPU, GPU, and MID fan RPM sensors once per second while visible. Every card continuously shows measured RPM, including a valid stopped state. CPU and GPU show their curve target as secondary information when an enabled custom curve and controlling temperature are available; otherwise they identify firmware control or unavailable telemetry. MID is RPM-only because this laptop exposes its fan speed but not its controlling temperature.
 
-NVIDIA temperature is read from hwmon only when the dGPU is already active; Integrated mode and a runtime-suspended Hybrid dGPU are never woken for telemetry. `supergfxctl` is consulted only to determine that telemetry state, and `nvidia-smi` is restricted to dGPU MUX mode, where NVIDIA cannot runtime-suspend. The cards are persistent rather than rebuilt on each telemetry sample, so polling cannot disrupt hover or click state. Use `asusctl` to manage custom curves:
+NVIDIA temperature is read only in dGPU MUX mode, where NVIDIA cannot runtime-suspend. Integrated mode reports the dGPU disabled, while Hybrid mode reports active or suspended without querying NVIDIA telemetry, so polling cannot wake the dGPU or delay suspension. Live RPM and temperature data updates once per second; ASUS profile and curve metadata updates every 15 seconds to avoid repeated daemon calls. The cards are persistent rather than rebuilt on each telemetry sample, so polling cannot disrupt hover or click state. Use `asusctl` to manage custom curves:
 
 ```bash
 # Inspect one profile.

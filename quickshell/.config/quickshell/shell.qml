@@ -63,7 +63,7 @@ ShellRoot {
 
     PowerData {
         id: powerSource
-        powerMonitoring: powerControl.visible || fanControl.visible
+        powerMonitoring: powerControl.visible
         fanMonitoring: fanControl.visible
     }
 
