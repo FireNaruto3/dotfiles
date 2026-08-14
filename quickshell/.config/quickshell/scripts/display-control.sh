@@ -161,13 +161,6 @@ case ${1:-} in
         [[ -n ${2:-} ]] || { printf 'Missing brightness value\n' >&2; exit 1; }
         brightnessctl -d "$device" set "$2"
         ;;
-    brightness-osd)
-        device=$(backlight_device) || exit 1
-        case ${2:-} in
-            raise|lower) swayosd-client --device "$device" --brightness "$2" ;;
-            *) printf 'Invalid brightness action: %s\n' "${2:-}" >&2; exit 1 ;;
-        esac
-        ;;
     save-brightness)
         device=$(backlight_device) || exit 1
         brightnessctl -d "$device" -s
@@ -177,7 +170,7 @@ case ${1:-} in
         brightnessctl -d "$device" -r
         ;;
     *)
-        printf 'Usage: %s {state|output|set-refresh HZ|backlight|brightness|set-brightness VALUE|brightness-osd raise|lower|save-brightness|restore-brightness}\n' "$0" >&2
+        printf 'Usage: %s {state|output|set-refresh HZ|backlight|brightness|set-brightness VALUE|save-brightness|restore-brightness}\n' "$0" >&2
         exit 2
         ;;
 esac

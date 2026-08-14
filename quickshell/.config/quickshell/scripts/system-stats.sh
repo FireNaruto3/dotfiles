@@ -37,8 +37,40 @@ else
   muted=false
 fi
 
+microphone_line=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || true)
+if [[ $microphone_line == *"[MUTED]"* ]]; then
+  microphone_muted=true
+else
+  microphone_muted=false
+fi
+
+lock_state() {
+  local path value
+
+  shopt -s nullglob
+  for path in /sys/class/leds/*::"$1"; do
+    [[ -r $path/brightness ]] || continue
+    read -r value < "$path/brightness"
+    if [[ $value == 1 ]]; then
+      shopt -u nullglob
+      printf 'true\n'
+      return
+    fi
+  done
+  shopt -u nullglob
+  printf 'false\n'
+}
+
+caps_lock=$(lock_state capslock)
+num_lock=$(lock_state numlock)
+scroll_lock=$(lock_state scrolllock)
+
 brightness=$(bash "$script_dir/display-control.sh" brightness 2>/dev/null || printf '0')
 brightness=${brightness:-0}
+keyboard_line=$(brightnessctl -d 'asus::kbd_backlight' -m 2>/dev/null || true)
+IFS=, read -r _ _ keyboard_brightness _ keyboard_max <<< "$keyboard_line"
+keyboard_brightness=${keyboard_brightness:-0}
+keyboard_max=${keyboard_max:-3}
 
 battery_info=$(upower -i /org/freedesktop/UPower/devices/DisplayDevice 2>/dev/null || true)
 battery=$(awk -F': *' '/percentage:/ {gsub(/%/, "", $2); print $2; exit}' <<< "$battery_info")
@@ -113,7 +145,13 @@ jq -cn \
   --argjson signal "${signal:-0}" \
   --argjson volume "$volume" \
   --argjson muted "$muted" \
+  --argjson microphone_muted "$microphone_muted" \
   --argjson brightness "$brightness" \
+  --argjson keyboard_brightness "$keyboard_brightness" \
+  --argjson keyboard_max "$keyboard_max" \
+  --argjson caps_lock "$caps_lock" \
+  --argjson num_lock "$num_lock" \
+  --argjson scroll_lock "$scroll_lock" \
   --argjson battery "$battery" \
   --arg battery_state "$battery_state" \
   --argjson battery_power "$battery_power" \
@@ -123,7 +161,10 @@ jq -cn \
   --argjson dnd "$dnd" \
   '{bluetooth: $bluetooth, bluetooth_device: $bluetooth_device,
     network: $network, ssid: $ssid, signal: $signal,
-    volume: $volume, muted: $muted, brightness: $brightness,
+    volume: $volume, muted: $muted, microphone_muted: $microphone_muted,
+    brightness: $brightness, keyboard_brightness: $keyboard_brightness,
+    keyboard_max: $keyboard_max, caps_lock: $caps_lock,
+    num_lock: $num_lock, scroll_lock: $scroll_lock,
     battery: $battery, battery_state: $battery_state,
     battery_power: $battery_power, battery_time: $battery_time,
     battery_health: $battery_health, uptime: $uptime, dnd: $dnd}'

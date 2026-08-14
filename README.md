@@ -11,11 +11,10 @@ Screenshots will be added here.
 | Package | Purpose |
 |---------|---------|
 | `niri` | Scrollable-tiling Wayland compositor |
-| `quickshell` | Top bar, dashboards, lock screen, and power controls |
+| `quickshell` | Top bar, hardware-key OSD, dashboards, lock screen, and power controls |
 | `ghostty` | Terminal emulator |
 | `rofi` | Application launcher |
 | `mako` | Notifications and do-not-disturb mode |
-| `swayosd` | Volume, microphone, and brightness overlays |
 | `swayidle` | Idle dimming, locking, display power, and suspend handling |
 | `gtklock` | Fallback locker when Quickshell cannot acquire session lock |
 | `waypaper` + `awww` | Wallpaper selection and restoration |
@@ -24,7 +23,8 @@ Screenshots will be added here.
 | `thunar`, `pavucontrol`, `blueman` | File, audio, and Bluetooth utilities |
 | `brightnessctl`, `wpctl`, `playerctl` | Brightness, audio, and media controls |
 | `jq`, `lm-sensors`, `upower` | System, temperature, and battery telemetry |
-| `powerprofilesctl`, `asusctl`, `supergfxctl` | ASUS laptop power controls and GPU-aware telemetry |
+| `powerprofilesctl`, compatible `asusctl`/`asusd` | ASUS laptop power, fan, and firmware controls |
+| `systemd` (`busctl`), `util-linux` (`flock`) | Safe GPU-mode queue inspection and serialization |
 | JetBrains Mono Nerd Font, Papirus | Interface font and icon theme |
 
 The ASUS power panel is machine-specific and expects the Samsung ATNA40CU05-0 internal panel with 2880x1800 modes at 60 Hz and 120 Hz. Runtime helpers discover the panel connector, backlight, and system battery rather than relying on probe-order names such as `eDP-1`, `amdgpu_bl1`, or `BAT1`. The panel provides manual active-profile control through `powerprofilesctl`; ASUS fan curves are managed with `asusctl` rather than ROG Control Center.
@@ -34,21 +34,22 @@ The ASUS power panel is machine-specific and expects the Samsung ATNA40CU05-0 in
 | Config | Description |
 |--------|-------------|
 | Niri | Scrollable tiling, window rules, startup services, and keybindings |
-| Quickshell | Workspaces, focused window, clock, media, resource-monitor launcher, battery-aware lock screen, and power/fan panels |
+| Quickshell | Workspaces, hardware-key OSD, focused window, clock, media, resource-monitor launcher, battery-aware lock screen, and power/fan panels |
 | Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
 | Ghostty | Box theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
-| SwayOSD | Hardware-key overlays |
 | Waypaper | Wallpaper picker using the `awww` backend |
 | Wlogout | Styled logout and power actions |
 | Neovim | Lua configuration using `lazy.nvim`, Snacks, Oil, Neogit, and Gitsigns |
 | Zsh | Oh My Zsh, syntax highlighting, and Starship |
 | Tmux | Vi copy mode, mouse support, and a minimal status line |
 | Fastfetch | Custom system-information layout and ASCII art |
+| Scripts | Reboot-only ASUS graphics-mode switching command |
 | OpenCode | Model selection and global engineering instructions |
 
-The `sway/` and `waybar/` directories are retained as legacy alternatives; the active desktop uses Niri and Quickshell.
+The `sway/`, `waybar/`, and `swayosd/` directories are retained as legacy
+alternatives; the active desktop uses Niri and Quickshell's built-in OSD.
 
 ## Power Behavior
 
@@ -77,6 +78,28 @@ asusctl fan-curve --default
 asusctl fan-curve --mod-profile Balanced --fan cpu \
   --data '30c:1%,49c:2%,59c:10%,69c:20%,79c:35%,89c:55%,99c:75%,109c:100%'
 ```
+
+### Graphics Modes
+
+`gpu-mode` uses the ASUS firmware attributes exposed by `asusd`; it does not
+unload GPU drivers or remove PCI devices from the running desktop. Changes are
+queued in memory and applied by `asus-shutdown` after graphical sessions exit,
+then the machine reboots immediately:
+
+```bash
+gpu-mode status
+gpu-mode integrated
+gpu-mode hybrid
+gpu-mode ultimate
+```
+
+Integrated sets `dgpu_disable=1` with the MUX in Optimus mode, Hybrid enables
+the dGPU while retaining Optimus mode, and Ultimate enables the dGPU with the
+hardware MUX in discrete mode. The command verifies both queued firmware values
+before requesting a reboot and neutralizes the queue if verification or the
+reboot request fails. It requires compatible Armoury attribute support in
+`asusctl`/`asusd`, an active `asus-shutdown.service`, `busctl`, `systemctl`, and
+`flock`. Use `--yes` only for intentional non-interactive use.
 
 ## Keymaps
 
@@ -164,15 +187,19 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 ### Audio, Brightness, and Media
 
 These hardware keys remain active while the session is locked.
+The normal Quickshell instance shows a bottom-center OSD for volume, microphone,
+brightness, media, and keyboard-lock changes while the session is unlocked.
 
 | Keybind | Action |
 |---------|--------|
-| `XF86AudioRaiseVolume` (volume up) | Raise the output volume through SwayOSD |
-| `XF86AudioLowerVolume` (volume down) | Lower the output volume through SwayOSD |
-| `XF86AudioMute` (volume mute) | Toggle output mute through SwayOSD |
-| `XF86AudioMicMute` (microphone mute) | Toggle microphone mute through SwayOSD |
-| `XF86MonBrightnessUp` (brightness up) | Raise display brightness through SwayOSD |
-| `XF86MonBrightnessDown` (brightness down) | Lower display brightness through SwayOSD |
+| `XF86AudioRaiseVolume` (volume up) | Raise the default output volume through PipeWire |
+| `XF86AudioLowerVolume` (volume down) | Lower the default output volume through PipeWire |
+| `XF86AudioMute` (volume mute) | Toggle the default output mute through PipeWire |
+| `XF86AudioMicMute` (microphone mute) | Toggle the default input mute through PipeWire |
+| `XF86MonBrightnessUp` (brightness up) | Raise the runtime-selected display backlight |
+| `XF86MonBrightnessDown` (brightness down) | Lower the runtime-selected display backlight |
+| `XF86KbdBrightnessUp` (keyboard light up) | Raise the ASUS keyboard-backlight level |
+| `XF86KbdBrightnessDown` (keyboard light down) | Lower the ASUS keyboard-backlight level |
 | `XF86AudioPlay` / `XF86AudioPause` | Toggle playback through `playerctl` |
 | `XF86AudioStop` | Stop playback through `playerctl` |
 | `XF86AudioPrev` | Play the previous track through `playerctl` |
@@ -193,11 +220,15 @@ The repository uses a GNU Stow package layout. Clone it into `~/dotfiles`, then 
 ```bash
 git clone git@github.com:FireNaruto3/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-stow niri quickshell ghostty nvim rofi mako swayosd wlogout \
-  fastfetch starship tmux zsh waypaper gtklock autostart opencode
+stow niri quickshell ghostty nvim rofi mako wlogout \
+  fastfetch starship tmux zsh waypaper gtklock autostart opencode scripts
 ```
 
 Keep the repository at `~/dotfiles`: wallpaper files and the Fastfetch logo are referenced through that conventional location, while account-specific paths use `$HOME` or `~`. If you clone elsewhere, update those `~/dotfiles` references before starting the desktop.
+
+The active Quickshell fan telemetry calls `~/.local/bin/gpu-mode` to select a
+GPU-safe temperature path, so stow the `scripts` package whenever using the
+Quickshell package.
 
 System-wide files are tracked under `system/` and installed as root-owned copies rather than user-writable symlinks:
 
@@ -215,13 +246,44 @@ sudo install -D -o root -g root -m 0755 \
   /usr/lib/systemd/system-sleep/asus-keyboard-backlight
 
 sudo install -D -o root -g root -m 0644 \
-  system/etc/supergfxd.conf \
-  /etc/supergfxd.conf
+  system/etc/modprobe.d/asus-nvidia.conf \
+  /etc/modprobe.d/asus-nvidia.conf
 
 sudo systemctl daemon-reload
 sudo systemctl reload systemd-logind.service
-sudo systemctl restart supergfxd.service
 ```
+
+Module options may be copied into the initramfs by the distribution. After
+installing or changing `asus-nvidia.conf`, regenerate the initramfs with the
+distribution's normal tooling when applicable, then reboot before relying on
+the new NVIDIA or backlight policy. `systemctl daemon-reload` does not apply
+modprobe changes.
+
+For the one-time migration from Supergfx, disable its daemon and remove its
+mutable configuration after installing `asus-nvidia.conf`:
+
+```bash
+sudo systemctl disable --now supergfxd.service
+sudo mv /etc/supergfxd.conf /etc/supergfxd.conf.supergfx-disabled
+sudo mv /etc/modprobe.d/supergfxd.conf \
+  /etc/modprobe.d/supergfxd.conf.supergfx-disabled
+```
+
+The `supergfxctl` package may remain installed, but `supergfxd.service` must not
+run alongside ASUS firmware-managed mode switching. If Supergfx previously
+renamed `/usr/share/vulkan/icd.d/nvidia_icd.json` to
+`nvidia_icd.json_inactive`, restore the original filename before using Hybrid
+or Ultimate mode:
+
+```bash
+if [ ! -e /usr/share/vulkan/icd.d/nvidia_icd.json ] && \
+   [ -e /usr/share/vulkan/icd.d/nvidia_icd.json_inactive ]; then
+  sudo mv /usr/share/vulkan/icd.d/nvidia_icd.json_inactive \
+    /usr/share/vulkan/icd.d/nvidia_icd.json
+fi
+```
+
+Alternatively, reinstall the NVIDIA package that owns the ICD file.
 
 Hibernation uses systemd's dynamic `HibernateLocation` EFI variable with the
 active `/swap.img`; no static `resume=` or `resume_offset=` kernel parameters
@@ -229,3 +291,20 @@ are installed. On an ordinary boot without a hibernation image,
 `/sys/power/resume` and `/sys/power/resume_offset` should both be zero.
 
 Wallpapers remain in `~/dotfiles/wallpapers` because the desktop and lock-screen configs reference that directory. Wallpaper paths use the current user's home directory and do not need account-specific changes.
+
+## Validation
+
+Run the focused checks after changing the active desktop or GPU-mode helper:
+
+```bash
+niri validate -c niri/.config/niri/config.kdl
+bash -n quickshell/.config/quickshell/scripts/*.sh \
+  scripts/.local/bin/gpu-mode tests/gpu-mode.sh
+sh -n quickshell/.config/quickshell/scripts/lock.sh \
+  system/usr/lib/systemd/system-sleep/asus-keyboard-backlight
+bash tests/gpu-mode.sh
+```
+
+The Quickshell OSD still requires runtime validation. Do not launch
+`LockShell.qml` as a syntax check because it attempts to acquire the Wayland
+session lock.
