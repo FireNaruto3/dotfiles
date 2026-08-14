@@ -157,7 +157,6 @@ mid_fan=$(numeric_or_zero "$mid_fan")
 
 jq -cn \
     --arg fan_profile "$fan_profile" \
-    --arg gpu_mode "$gpu_mode" \
     --argjson cpu_temp "$cpu_temp" \
     --argjson cpu_temp_available "$cpu_temp_available" \
     --argjson gpu_temp "$gpu_temp" \
@@ -175,7 +174,6 @@ jq -cn \
     --argjson gpu_fan_curve_available "$gpu_fan_curve_available" \
     '{
         fan_profile: $fan_profile,
-        gpu_mode: $gpu_mode,
         cpu_temp: $cpu_temp,
         cpu_temp_available: $cpu_temp_available,
         gpu_temp: $gpu_temp,
