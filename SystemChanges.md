@@ -141,9 +141,11 @@ reproducible from the tracked `system/` files alone:
 - The ASUS Slash display is disabled.
 
 The exact fan curve points are stored in `/etc/asusd/fan_curves.ron`.
-Quickshell's fan panel is monitor-only and polls once per second while visible.
-It reads measured CPU, GPU, and MID RPM across every ASUS profile, distinguishes
-a valid stopped fan from an unavailable sensor, and does not modify fan curves.
+Quickshell's fan panel is monitor-only and polls live sensors once per second
+while visible. It reads measured CPU, GPU, and MID RPM across every ASUS
+profile, distinguishes a valid stopped fan from an unavailable sensor, and does
+not modify fan curves. Active-profile and curve metadata is refreshed every 15
+seconds rather than on every live sample.
 MID is RPM-only because its controlling temperature is not exposed. Every card
 always shows measured RPM. CPU/GPU add a secondary target calculated only from
 an enabled custom curve and an available controlling temperature; disabled
@@ -151,11 +153,10 @@ curves are identified as firmware-controlled rather than being presented as an
 inaccurate percentage. Persistent cards are not recreated by each telemetry
 sample, avoiding interaction flicker during polling.
 
-NVIDIA temperature is queried only when its PCI runtime state is already
-active. Integrated mode reports the dGPU disabled, and a runtime-suspended
-Hybrid dGPU reports suspended without being woken. NVIDIA hwmon is preferred;
-`nvidia-smi` is restricted to dGPU MUX mode, where NVIDIA cannot
-runtime-suspend.
+NVIDIA temperature is queried only in dGPU MUX mode. Integrated mode reports
+the dGPU disabled, while Hybrid reports its PCI runtime state without reading
+NVIDIA telemetry, so polling cannot wake the dGPU or delay runtime suspension.
+NVIDIA hwmon is preferred; `nvidia-smi` is the MUX-mode fallback.
 
 ## Supergfx State
 
@@ -171,7 +172,7 @@ runtime-suspend.
 The live Supergfx mode was `Integrated` when this inventory was taken, and
 `supergfxd.service` was active. Quickshell does not expose GPU-mode controls or
 manage GPU transitions. Its fan telemetry uses `supergfxctl --get` only to
-avoid waking NVIDIA while collecting temperature data.
+choose the safe telemetry path.
 
 ## NVIDIA And Backlight Driver State
 
@@ -258,6 +259,6 @@ supergfxctl --get
 - Hibernation depends on system support outside this repository.
 - The display helper intentionally fails instead of guessing when connector or
   backlight discovery is ambiguous.
-- GPU temperature is queried only when NVIDIA is already active, avoiding an
-  accidental wake of a suspended Hybrid dGPU.
+- GPU temperature is queried only in dGPU MUX mode; Hybrid telemetry reads only
+  PCI runtime state.
 - Logout from the lock screen or wlogout terminates all sessions for the user.

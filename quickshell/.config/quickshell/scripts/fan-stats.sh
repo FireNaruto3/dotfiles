@@ -50,7 +50,9 @@ elif [[ -n $nvidia_device ]]; then
 
     if [[ $runtime_status == suspended ]]; then
         gpu_temp_state=suspended
-    elif [[ $runtime_status == active || $gpu_mode == AsusMuxDgpu ]]; then
+    elif [[ $gpu_mode == Hybrid && $runtime_status == active ]]; then
+        gpu_temp_state=active
+    elif [[ $gpu_mode == AsusMuxDgpu ]]; then
         for hwmon in "$nvidia_device"/hwmon/hwmon*; do
             [[ -d $hwmon ]] || continue
             for input_path in "$hwmon"/temp*_input; do
@@ -64,9 +66,7 @@ elif [[ -n $nvidia_device ]]; then
             done
         done
 
-        # Hybrid telemetry must not keep a temporarily active dGPU awake.
-        if [[ $gpu_temp_available != true && $gpu_mode == AsusMuxDgpu \
-            && -r $nvidia_device/power/runtime_status ]]; then
+        if [[ $gpu_temp_available != true && -r $nvidia_device/power/runtime_status ]]; then
             read -r runtime_status < "$nvidia_device/power/runtime_status"
             if [[ $runtime_status == active ]]; then
                 gpu_temp=$(nvidia-smi --query-gpu=temperature.gpu \
@@ -79,29 +79,6 @@ elif [[ -n $nvidia_device ]]; then
         fi
     fi
 fi
-
-fan_profile=Unknown
-fan_curves=
-for _ in 1 2 3; do
-    profiles_before=$(asusctl profile get 2>/dev/null || true)
-    profile_before=$(sed -n 's/^Active profile: //p' <<< "$profiles_before")
-    [[ -n $profile_before ]] || break
-
-    fan_curves=$(asusctl fan-curve --get-enabled 2>/dev/null || true)
-    profiles_after=$(asusctl profile get 2>/dev/null || true)
-    profile_after=$(sed -n 's/^Active profile: //p' <<< "$profiles_after")
-    if [[ $profile_before == "$profile_after" ]]; then
-        fan_profile=$profile_before
-        break
-    fi
-    fan_curves=
-    sleep 0.05
-done
-
-cpu_fan_curve=$(sed -n 's/^CPU: //p' <<< "$fan_curves")
-gpu_fan_curve=$(sed -n 's/^GPU: //p' <<< "$fan_curves")
-[[ -n $cpu_fan_curve ]] && cpu_fan_curve_available=true || cpu_fan_curve_available=false
-[[ -n $gpu_fan_curve ]] && gpu_fan_curve_available=true || gpu_fan_curve_available=false
 
 cpu_fan=0
 gpu_fan=0
@@ -156,7 +133,6 @@ gpu_fan=$(numeric_or_zero "$gpu_fan")
 mid_fan=$(numeric_or_zero "$mid_fan")
 
 jq -cn \
-    --arg fan_profile "$fan_profile" \
     --argjson cpu_temp "$cpu_temp" \
     --argjson cpu_temp_available "$cpu_temp_available" \
     --argjson gpu_temp "$gpu_temp" \
@@ -168,12 +144,7 @@ jq -cn \
     --argjson gpu_fan_available "$gpu_fan_available" \
     --argjson mid_fan "$mid_fan" \
     --argjson mid_fan_available "$mid_fan_available" \
-    --arg cpu_fan_curve "$cpu_fan_curve" \
-    --argjson cpu_fan_curve_available "$cpu_fan_curve_available" \
-    --arg gpu_fan_curve "$gpu_fan_curve" \
-    --argjson gpu_fan_curve_available "$gpu_fan_curve_available" \
     '{
-        fan_profile: $fan_profile,
         cpu_temp: $cpu_temp,
         cpu_temp_available: $cpu_temp_available,
         gpu_temp: $gpu_temp,
@@ -184,19 +155,5 @@ jq -cn \
         gpu_fan: $gpu_fan,
         gpu_fan_available: $gpu_fan_available,
         mid_fan: $mid_fan,
-        mid_fan_available: $mid_fan_available,
-        cpu_fan_curve_available: $cpu_fan_curve_available,
-        gpu_fan_curve_available: $gpu_fan_curve_available,
-        cpu_fan_curve_enabled: ($cpu_fan_curve | startswith("enabled: true,")),
-        gpu_fan_curve_enabled: ($gpu_fan_curve | startswith("enabled: true,")),
-        cpu_fan_curve: [
-            $cpu_fan_curve
-            | scan("([0-9]+)c:([0-9]+)%")
-            | {temperature: (.[0] | tonumber), percent: (.[1] | tonumber)}
-        ],
-        gpu_fan_curve: [
-            $gpu_fan_curve
-            | scan("([0-9]+)c:([0-9]+)%")
-            | {temperature: (.[0] | tonumber), percent: (.[1] | tonumber)}
-        ]
+        mid_fan_available: $mid_fan_available
     }'

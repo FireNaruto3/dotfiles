@@ -26,6 +26,8 @@ PanelWindow {
                 return "dGPU suspended"
             if (fan.temperatureState === "disabled")
                 return "dGPU disabled"
+            if (fan.temperatureState === "active")
+                return "dGPU active"
             return "Target unavailable"
         }
 
@@ -59,11 +61,6 @@ PanelWindow {
     aboveWindows: true
     focusable: false
     color: "transparent"
-
-    onVisibleChanged: {
-        if (visible)
-            powerData.refresh()
-    }
 
     Rectangle {
         anchors.fill: parent
