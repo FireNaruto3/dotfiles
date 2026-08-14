@@ -13,24 +13,9 @@ QtObject {
     property string errorMessage: ""
     readonly property string scriptPath: Qt.resolvedUrl("scripts/power-state.sh").toString().replace("file://", "")
     readonly property string fanScriptPath: Qt.resolvedUrl("scripts/fan-stats.sh").toString().replace("file://", "")
-    readonly property string gpuModeScriptPath: Qt.resolvedUrl("scripts/gpu-mode-switch.sh").toString().replace("file://", "")
-    readonly property string gpuActionScriptPath: Qt.resolvedUrl("scripts/gpu-transition-action.sh").toString().replace("file://", "")
     readonly property string displayScriptPath: Qt.resolvedUrl("scripts/display-control.sh").toString().replace("file://", "")
 
     readonly property string powerProfile: values.power_profile || "unknown"
-    readonly property string asusProfile: values.asus_profile || "Unknown"
-    readonly property string acProfile: values.ac_profile || "Unknown"
-    readonly property string batteryProfile: values.battery_profile || "Unknown"
-    readonly property string gpuMode: values.gpu_mode || "Unknown"
-    readonly property string gpuStatus: values.gpu_status || "unknown"
-    readonly property string pendingAction: values.pending_action || "Unknown"
-    readonly property string pendingMode: values.pending_mode || "Unknown"
-    readonly property bool gpuSwitchReady: values.gpu_switch_ready || false
-    readonly property string gpuSwitchError: values.gpu_switch_error || ""
-    readonly property bool gpuTransitionPending: values.gpu_transition_pending || false
-    readonly property bool gpuActionReady: values.gpu_action_ready || false
-    readonly property string gpuActionRequired: values.gpu_action_required || ""
-    readonly property string gpuRequestedMode: values.gpu_requested_mode || "Unknown"
     readonly property int keyboardBrightness: values.keyboard_brightness || 0
     readonly property int keyboardMax: values.keyboard_max || 0
     readonly property int chargeLimit: values.charge_limit || 0
@@ -117,16 +102,8 @@ QtObject {
         run(["powerprofilesctl", "set", profile])
     }
 
-    function setDefaultProfile(profile, onAc) {
-        run(["asusctl", "profile", "set", onAc ? "--ac" : "--battery", profile])
-    }
-
     function setChargeLimit(limit) {
         run(["asusctl", "battery", "limit", limit.toString()])
-    }
-
-    function setGpuMode(mode) {
-        run(["bash", gpuModeScriptPath, mode])
     }
 
     function setKeyboardBrightness(level) {
@@ -137,10 +114,6 @@ QtObject {
 
     function setDisplayRefresh(refresh) {
         run(["bash", displayScriptPath, "set-refresh", refresh.toString()])
-    }
-
-    function runGpuTransitionAction(action) {
-        run(["bash", gpuActionScriptPath, action])
     }
 
     property Process collector: Process {

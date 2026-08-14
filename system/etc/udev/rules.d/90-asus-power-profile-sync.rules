@@ -1,2 +1,0 @@
-SUBSYSTEM=="power_supply", ACTION=="add", TEST=="online", RUN+="/usr/bin/systemctl --no-block start asus-power-profile-sync.service"
-SUBSYSTEM=="power_supply", ACTION=="change", TEST=="online", RUN+="/usr/bin/systemctl --no-block start asus-power-profile-sync.service"

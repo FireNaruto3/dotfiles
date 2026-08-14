@@ -24,5 +24,5 @@
 
 - Validate Niri config: `niri validate -c niri/.config/niri/config.kdl`.
 - Syntax-check Quickshell helpers: `bash -n quickshell/.config/quickshell/scripts/*.sh`.
-- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight system/usr/lib/systemd/system-sleep/asus-power-profile-sync system/usr/libexec/asus-power-profile-sync`.
+- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight`.
 - There is no repository-wide build, test, lint, or CI command. Quickshell validation is runtime- and hardware-dependent; do not launch the lock shell as a casual syntax check because it attempts to acquire the session lock.

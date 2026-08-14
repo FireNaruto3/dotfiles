@@ -1,7 +1,7 @@
 # System Changes
 
 This document inventories custom system and hardware behavior on this laptop as
-of July 24, 2026. It distinguishes root-installed configuration from Niri and
+of August 13, 2026. It distinguishes root-installed configuration from Niri and
 Quickshell user-session behavior. The active desktop is Niri with Quickshell;
 the retained Sway and Waybar configurations are not included.
 
@@ -27,11 +27,7 @@ differs only by a missing final newline.
 | `system/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `0644` | Physical key and lid policy |
 | `system/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` | `/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` | `0644` | Suspend-then-hibernate timing |
 | `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `0755` | Keyboard-backlight restoration |
-| `system/usr/libexec/asus-power-profile-sync` | `/usr/libexec/asus-power-profile-sync` | `0755` | AC/battery profile selection |
-| `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Serialized profile synchronization |
-| `system/etc/udev/rules.d/90-asus-power-profile-sync.rules` | `/etc/udev/rules.d/90-asus-power-profile-sync.rules` | `0644` | Charger event integration |
-| `system/usr/lib/systemd/system-sleep/asus-power-profile-sync` | `/usr/lib/systemd/system-sleep/asus-power-profile-sync` | `0755` | Profile synchronization after resume |
-| `system/etc/supergfxd.conf` | `/etc/supergfxd.conf` | `0644` | Safe GPU-mode transition policy |
+| `system/etc/supergfxd.conf` | `/etc/supergfxd.conf` | `0644` | Supergfx daemon configuration |
 
 ## Sleep And Hibernate
 
@@ -89,10 +85,6 @@ Before every sleep, `asus-keyboard-backlight` saves
 0.5 seconds and restores the saved level because the firmware can reset it
 after hibernation. Save and restore errors are intentionally non-fatal.
 
-After every resume, `asus-power-profile-sync` force-checks the current power
-source and reapplies the configured ASUS AC or battery profile. This catches a
-charger change that happened while the machine was asleep.
-
 ## Idle And Lock Behavior
 
 Niri starts `swayidle` with the following user-session timeline:
@@ -124,55 +116,13 @@ The wlogout menu uses the same Quickshell lock helper, reboot and power-off
 commands, and user-wide logout. `Ctrl+Alt+Delete` is different: it invokes
 Niri's compositor quit action.
 
-## AC And Battery Power Profiles
+## Power Profiles
 
-### Profile ownership
-
-`asusd` is the automatic AC/battery policy authority. The standard
-`power-profiles-daemon` remains enabled for its D-Bus API, application holds,
-and manual profile selection, but its battery-aware automatic switching is
-disabled to prevent two daemons from racing to change the same platform
-profile.
-
-Current state:
-
-- `powerprofilesctl query-battery-aware`: `False`
-- Saved ASUS AC default: `Balanced`
-- Saved ASUS battery default: `Quiet`
-- Current profile while this inventory was taken: `Balanced`
-- ASUS platform profiles are linked to CPU energy-performance preferences.
-
-The profile mapping used by Quickshell is:
-
-| Quickshell label | `powerprofilesctl` profile | ASUS profile |
-|---|---|---|
-| Power Saver | `power-saver` | `Quiet` |
-| Balanced | `balanced` | `Balanced` |
-| Performance | `performance` | `Performance` |
-
-Selecting an active profile calls `powerprofilesctl set`. Selecting an AC or
-battery default calls `asusctl profile set --ac` or
-`asusctl profile set --battery`; this updates daemon-owned state under
-`/etc/asusd/`.
-
-### Charger and resume synchronization
-
-`90-asus-power-profile-sync.rules` starts
-`asus-power-profile-sync.service` for add/change events on power-supply devices
-that expose an `online` attribute. The helper:
-
-1. Serializes calls with `flock` under `/run/asus-power-profile-sync/`.
-2. Waits one second for charger state to settle.
-3. Treats any online `Mains`, `USB`, `USB_C`, or `USB_PD` source as AC.
-4. Reads the saved defaults from `asusctl profile get`.
-5. Applies the matching default with `asusctl profile set`.
-6. Avoids duplicate event-driven changes when the aggregate source is
-   unchanged.
-
-The resume hook uses force mode, so it reapplies the correct profile even when
-the recorded power source has not changed. The oneshot service is static and
-normally appears as `inactive (dead)` after successful execution; that state is
-expected. Logs confirm successful Quiet-on-battery and Balanced-on-AC changes.
+The standard `power-profiles-daemon` provides the active power-profile API.
+Quickshell exposes Power Saver, Balanced, and Performance and applies a selected
+profile with `powerprofilesctl set`. The panel does not configure separate AC
+or battery defaults, and this repository does not install a charger-event or
+resume synchronizer.
 
 ## ASUS Runtime Settings
 
@@ -181,8 +131,6 @@ reproducible from the tracked `system/` files alone:
 
 - Battery charge limit: 80%.
 - Disable NVIDIA powerd on battery: enabled.
-- AC profile: Balanced.
-- Battery profile: Quiet.
 - Quiet EPP: Power.
 - Balanced EPP: BalancePower.
 - Performance and Custom EPP: Performance.
@@ -209,7 +157,7 @@ Hybrid dGPU reports suspended without being woken. NVIDIA hwmon is preferred;
 `nvidia-smi` is restricted to dGPU MUX mode, where NVIDIA cannot
 runtime-suspend.
 
-## GPU Mode Management
+## Supergfx State
 
 `/etc/supergfxd.conf` currently defines:
 
@@ -221,45 +169,9 @@ runtime-suspend.
 - Hotplug handling: ASUS.
 
 The live Supergfx mode was `Integrated` when this inventory was taken, and
-`supergfxd.service` was active.
-
-Quickshell exposes three modes:
-
-| UI mode | Supergfx mode | Firmware expectation | Required action |
-|---|---|---|---|
-| Integrated | `Integrated` | dGPU disabled, iGPU display path | Logout when switching to/from Hybrid |
-| Hybrid | `Hybrid` | AMD display path with NVIDIA offload | Logout when switching to/from Integrated |
-| dGPU | `AsusMuxDgpu` | NVIDIA MUX display path | Reboot when entering or leaving |
-
-Before allowing a mode change, the helpers verify that `supergfxd` is active,
-`always_reboot` is false, no Supergfx or ASUS Armoury operation is pending, and
-the reported mode matches `dgpu_disable` and `gpu_mux_mode`. A confirmed
-request records a transition marker under
-`${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/`.
-
-Hybrid/Integrated requests are prepared without calling Supergfx while Niri is
-still using NVIDIA device files. After a second confirmation, the action helper
-starts `gpu-mode-apply-after-logout.sh` as a transient user service outside the
-graphical session. Niri is managed by `niri.service`, outside logind's session
-scope, and its startup helpers run in detached `app-niri-*.scope` units. The
-worker revalidates the request, stops the Niri service and those helper scopes,
-and verifies that no process holds an NVIDIA character or DRM device before it
-calls Supergfx. The normal `niri-session` wrapper then closes the current GDM
-session. This prevents Niri or SwayOSD from blocking NVIDIA module removal.
-
-The worker verifies both the reported mode and ASUS firmware state before
-marking the transition complete. If logind stops the transient user service
-after logout, the next power-state poll reconciles the applying marker against
-live Supergfx and firmware state, clearing it on success or reporting that the
-source mode was restored.
-
-dGPU MUX transitions retain Supergfx's reboot workflow. Logout and reboot are
-never automatic: both require separate confirmation. The marker is reconciled
-with live firmware and Supergfx state after the next login.
-
-`supergfxctl` is intentionally the only GPU-mode controller. GPU mode changes
-through ROG Control Center or `asusctl armoury` can queue conflicting writes to
-the same firmware attributes and are treated as an error by Quickshell.
+`supergfxd.service` was active. Quickshell does not expose GPU-mode controls or
+manage GPU transitions. Its fan telemetry uses `supergfxctl --get` only to
+avoid waking NVIDIA while collecting temperature data.
 
 ## NVIDIA And Backlight Driver State
 
@@ -315,12 +227,8 @@ laptop's hardware.
 | Service | Enablement | Expected runtime state |
 |---|---|---|
 | `asusd.service` | Static/D-Bus activated | Active |
-| `power-profiles-daemon.service` | Enabled | Active, battery-aware switching disabled |
+| `power-profiles-daemon.service` | Enabled | Active |
 | `supergfxd.service` | Enabled | Active |
-| `asus-power-profile-sync.service` | Static, event-driven oneshot | Inactive after each successful run |
-
-The profile synchronizer is started by udev and manually during installation;
-it does not need and does not provide a normal `[Install]` enablement target.
 
 ## Deployment And Maintenance
 
@@ -329,29 +237,15 @@ the ownership and mode listed above. Then apply the relevant operation:
 
 | Changed component | Required operation |
 |---|---|
-| systemd service unit | `sudo systemctl daemon-reload` |
-| udev rule | `sudo udevadm control --reload` |
-| Profile synchronizer | `sudo systemctl start asus-power-profile-sync.service` |
 | logind policy | `sudo systemctl reload systemd-logind.service` |
 | Supergfx configuration | `sudo systemctl restart supergfxd.service` |
-
-To keep `asusd` as the only automatic power-source policy authority without
-producing an error when already configured:
-
-```bash
-if powerprofilesctl query-battery-aware | grep -q ': True$'; then
-  sudo powerprofilesctl configure-battery-aware --disable
-fi
-```
 
 Useful diagnostics:
 
 ```bash
 systemd-analyze cat-config systemd/logind.conf
 systemd-analyze cat-config systemd/sleep.conf
-systemctl status asus-power-profile-sync.service asusd.service \
-  power-profiles-daemon.service supergfxd.service
-powerprofilesctl query-battery-aware
+systemctl status asusd.service power-profiles-daemon.service supergfxd.service
 powerprofilesctl get
 asusctl profile get
 supergfxctl --get
@@ -362,12 +256,8 @@ supergfxctl --get
 - `system/` is not a Stow package; editing the repository copy does not update
   the installed root-owned file until it is reinstalled.
 - Hibernation depends on system support outside this repository.
-- ASUS profile parsing depends on the current English `asusctl profile get`
-  output labels.
-- The GPU helper depends on ASUS WMI firmware attributes and Supergfx output.
 - The display helper intentionally fails instead of guessing when connector or
   backlight discovery is ambiguous.
 - GPU temperature is queried only when NVIDIA is already active, avoiding an
   accidental wake of a suspended Hybrid dGPU.
-- Logout from the lock screen or wlogout terminates all sessions for the user;
-  GPU-transition logout terminates only the current session.
+- Logout from the lock screen or wlogout terminates all sessions for the user.

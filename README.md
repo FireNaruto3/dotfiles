@@ -24,10 +24,10 @@ Screenshots will be added here.
 | `thunar`, `pavucontrol`, `blueman` | File, audio, and Bluetooth utilities |
 | `brightnessctl`, `wpctl`, `playerctl` | Brightness, audio, and media controls |
 | `jq`, `lm-sensors`, `upower` | System, temperature, and battery telemetry |
-| `powerprofilesctl`, `asusctl`, `supergfxctl` | ASUS laptop power and GPU controls |
+| `powerprofilesctl`, `asusctl`, `supergfxctl` | ASUS laptop power controls and GPU-aware telemetry |
 | JetBrains Mono Nerd Font, Papirus | Interface font and icon theme |
 
-The ASUS power panel is machine-specific and expects the Samsung ATNA40CU05-0 internal panel with 2880x1800 modes at 60 Hz and 120 Hz. Runtime helpers discover the panel connector, backlight, and system battery rather than relying on probe-order names such as `eDP-1`, `amdgpu_bl1`, or `BAT1`. Supergfx is the sole GPU-mode controller; ASUS fan curves are managed with `asusctl` rather than ROG Control Center.
+The ASUS power panel is machine-specific and expects the Samsung ATNA40CU05-0 internal panel with 2880x1800 modes at 60 Hz and 120 Hz. Runtime helpers discover the panel connector, backlight, and system battery rather than relying on probe-order names such as `eDP-1`, `amdgpu_bl1`, or `BAT1`. The panel provides manual active-profile control through `powerprofilesctl`; ASUS fan curves are managed with `asusctl` rather than ROG Control Center.
 
 ## Contents
 
@@ -52,40 +52,15 @@ The `sway/` and `waybar/` directories are retained as legacy alternatives; the a
 
 ## Power Behavior
 
-Lid close, the physical power or sleep key, the lock-screen **Sleep** action, and the idle timeout all suspend first and hibernate after 30 minutes. This policy applies on battery and AC power, while a docked lid close is ignored. System-sleep hooks preserve the ASUS keyboard-backlight level and reapply the configured ASUS AC or battery profile after suspend and hibernation.
-
-`asusd` is the power-source policy authority. The profile synchronizer watches barrel and USB-C power events, reads the AC and battery defaults configured through the Quickshell panel, and reapplies the appropriate profile after resume. Disable power-profiles-daemon's battery-aware switching to prevent both daemons from racing to set the same platform profile; power-profiles-daemon remains available for its standard API and manual profile controls.
+Lid close, the physical power or sleep key, the lock-screen **Sleep** action, and the idle timeout all suspend first and hibernate after 30 minutes. This policy applies on battery and AC power, while a docked lid close is ignored. A system-sleep hook preserves the ASUS keyboard-backlight level across suspend and hibernation.
 
 The lock screen uses a 12-hour clock with AM/PM, displays live battery percentage, and provides restart, sleep, logout, and power-off actions.
-
-### GPU Modes
-
-The power panel uses `supergfxctl` exclusively for GPU-mode changes. Do not queue GPU modes through ROG Control Center or `asusctl armoury`; those paths write the same ASUS firmware attributes independently and can conflict with `/etc/supergfxd.conf`.
-
-| Mode | Behavior |
-|------|----------|
-| Integrated | AMD iGPU only; best battery life, with NVIDIA and dGPU-connected outputs unavailable |
-| Hybrid | AMD drives the desktop while NVIDIA remains available for offloading and suspends when idle |
-| dGPU | ASUS MUX discrete mode for maximum performance and higher power use |
-
-Niri matches the internal panel by its EDID identity, while Quickshell resolves its current connector and supported refresh modes at runtime. Brightness control follows the backlight attached to the connected internal display and avoids periodic NVIDIA queries, so switching among Integrated, Hybrid, and dGPU modes cannot leave stale `cardN`, `eDP-N`, or `amdgpu_blN` references. The login default remains 60 Hz for lower display power use.
-
-Before enabling a mode button, Quickshell verifies that Supergfx is running, `always_reboot` is disabled, no Supergfx or ASUS GPU change is pending, and the saved mode matches `dgpu_disable` and `gpu_mux_mode`. Hybrid/Integrated requests are recorded without calling Supergfx while Niri is using NVIDIA. After explicit logout confirmation, a transient user service stops `niri.service` and its detached helper scopes, verifies that no process holds an NVIDIA device, and only then applies and verifies the mode. This prevents Niri or SwayOSD from blocking NVIDIA module removal and avoids Supergfx's short logout deadline. Any transition involving dGPU MUX mode requires an explicit reboot. Neither action happens automatically.
-
-A successful request records its source, target, required action, and phase under `${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/`. Quickshell reconciles that marker with the actual Supergfx and firmware state after login, even if logind stopped the transient worker, and reports a failed post-logout transition.
-
-If a selected mode does not boot the graphical session, switch back from a TTY:
-
-```bash
-supergfxctl --mode Hybrid
-systemctl reboot
-```
 
 ### Fan Curves
 
 The fan panel is monitor-only and polls the ASUS CPU, GPU, and MID fan RPM sensors once per second while visible. Every card continuously shows measured RPM, including a valid stopped state. CPU and GPU show their curve target as secondary information when an enabled custom curve and controlling temperature are available; otherwise they identify firmware control or unavailable telemetry. MID is RPM-only because this laptop exposes its fan speed but not its controlling temperature.
 
-NVIDIA temperature is read from hwmon only when the dGPU is already active; Integrated mode and a runtime-suspended Hybrid dGPU are never woken for telemetry. `nvidia-smi` is restricted to dGPU MUX mode, where NVIDIA cannot runtime-suspend. The cards are persistent rather than rebuilt on each telemetry sample, so polling cannot disrupt hover or click state. Use `asusctl` to manage custom curves:
+NVIDIA temperature is read from hwmon only when the dGPU is already active; Integrated mode and a runtime-suspended Hybrid dGPU are never woken for telemetry. `supergfxctl` is consulted only to determine that telemetry state, and `nvidia-smi` is restricted to dGPU MUX mode, where NVIDIA cannot runtime-suspend. The cards are persistent rather than rebuilt on each telemetry sample, so polling cannot disrupt hover or click state. Use `asusctl` to manage custom curves:
 
 ```bash
 # Inspect one profile.
@@ -239,32 +214,11 @@ sudo install -D -o root -g root -m 0755 \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   /usr/lib/systemd/system-sleep/asus-keyboard-backlight
 
-sudo install -D -o root -g root -m 0755 \
-  system/usr/libexec/asus-power-profile-sync \
-  /usr/libexec/asus-power-profile-sync
-
-sudo install -D -o root -g root -m 0644 \
-  system/etc/systemd/system/asus-power-profile-sync.service \
-  /etc/systemd/system/asus-power-profile-sync.service
-
-sudo install -D -o root -g root -m 0644 \
-  system/etc/udev/rules.d/90-asus-power-profile-sync.rules \
-  /etc/udev/rules.d/90-asus-power-profile-sync.rules
-
-sudo install -D -o root -g root -m 0755 \
-  system/usr/lib/systemd/system-sleep/asus-power-profile-sync \
-  /usr/lib/systemd/system-sleep/asus-power-profile-sync
-
 sudo install -D -o root -g root -m 0644 \
   system/etc/supergfxd.conf \
   /etc/supergfxd.conf
 
-if powerprofilesctl query-battery-aware | grep -q ': True$'; then
-  sudo powerprofilesctl configure-battery-aware --disable
-fi
 sudo systemctl daemon-reload
-sudo udevadm control --reload
-sudo systemctl start asus-power-profile-sync.service
 sudo systemctl reload systemd-logind.service
 sudo systemctl restart supergfxd.service
 ```
