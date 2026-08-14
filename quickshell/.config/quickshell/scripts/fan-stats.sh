@@ -27,7 +27,8 @@ done
 gpu_temp=0
 gpu_temp_available=false
 gpu_temp_state=unavailable
-gpu_mode=$(supergfxctl --get 2>/dev/null || printf 'Unknown')
+gpu_mode_command=${GPU_MODE_COMMAND:-$HOME/.local/bin/gpu-mode}
+gpu_mode=$("$gpu_mode_command" --get 2>/dev/null || printf 'Unknown')
 nvidia_device=
 
 for device in /sys/bus/pci/devices/*; do
@@ -52,7 +53,7 @@ elif [[ -n $nvidia_device ]]; then
         gpu_temp_state=suspended
     elif [[ $gpu_mode == Hybrid && $runtime_status == active ]]; then
         gpu_temp_state=active
-    elif [[ $gpu_mode == AsusMuxDgpu ]]; then
+    elif [[ $gpu_mode == Ultimate ]]; then
         for hwmon in "$nvidia_device"/hwmon/hwmon*; do
             [[ -d $hwmon ]] || continue
             for input_path in "$hwmon"/temp*_input; do

@@ -1,3 +1,4 @@
+import QtQuick
 import Quickshell
 import Quickshell.Io
 
@@ -31,6 +32,18 @@ ShellRoot {
             }
         }
         return Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    }
+
+    property bool lockStateInitialized: false
+    property bool previousCapsLock: false
+    property bool previousNumLock: false
+    property bool previousScrollLock: false
+
+    function showOsd(kind, action) {
+        osd.screen = focusedScreen()
+        osd.show(kind, action)
+        if (kind !== "media" && kind !== "lock")
+            systemSource.refresh()
     }
 
     function togglePowerControl(screen) {
@@ -69,6 +82,45 @@ ShellRoot {
 
     NiriData {
         id: niriSource
+    }
+
+    Osd {
+        id: osd
+
+        screen: null
+        systemData: systemSource
+    }
+
+    Connections {
+        target: systemSource
+
+        function onRefreshed(): void {
+            if (!root.lockStateInitialized) {
+                root.previousCapsLock = systemSource.capsLock
+                root.previousNumLock = systemSource.numLock
+                root.previousScrollLock = systemSource.scrollLock
+                root.lockStateInitialized = true
+                return
+            }
+
+            if (root.previousCapsLock !== systemSource.capsLock)
+                root.showOsd("lock", `Caps Lock ${systemSource.capsLock ? "On" : "Off"}`)
+            else if (root.previousNumLock !== systemSource.numLock)
+                root.showOsd("lock", `Num Lock ${systemSource.numLock ? "On" : "Off"}`)
+            else if (root.previousScrollLock !== systemSource.scrollLock)
+                root.showOsd("lock", `Scroll Lock ${systemSource.scrollLock ? "On" : "Off"}`)
+
+            root.previousCapsLock = systemSource.capsLock
+            root.previousNumLock = systemSource.numLock
+            root.previousScrollLock = systemSource.scrollLock
+        }
+
+        function onKeyboardBrightnessUpdated(changed: bool): void {
+            if (changed) {
+                osd.screen = root.focusedScreen()
+                osd.show("keyboard", "")
+            }
+        }
     }
 
     ClockDashboard {
@@ -114,6 +166,21 @@ ShellRoot {
         function toggleFan(): void {
             root.toggleFanControl(root.focusedScreen())
         }
+    }
+
+    IpcHandler {
+        target: "osd"
+
+        function showVolume(): void { root.showOsd("volume", "") }
+        function showBrightness(): void { root.showOsd("brightness", "") }
+        function showMicrophone(): void { root.showOsd("microphone", "") }
+        function showKeyboard(): void { root.showOsd("keyboard", "") }
+        function showPlayPause(): void { root.showOsd("media", "play-pause") }
+        function showPlay(): void { root.showOsd("media", "play") }
+        function showPause(): void { root.showOsd("media", "pause") }
+        function showStop(): void { root.showOsd("media", "stop") }
+        function showPrevious(): void { root.showOsd("media", "previous") }
+        function showNext(): void { root.showOsd("media", "next") }
     }
 
     Variants {

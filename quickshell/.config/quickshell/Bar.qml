@@ -7,7 +7,7 @@ PanelWindow {
 
     required property var systemData
     required property var niriData
-    readonly property string displayScriptPath: Qt.resolvedUrl("scripts/display-control.sh").toString().replace("file://", "")
+    readonly property string osdScriptPath: Qt.resolvedUrl("scripts/osd-control.sh").toString().replace("file://", "")
 
     signal openResources()
     signal toggleClockDashboard()
@@ -243,23 +243,21 @@ PanelWindow {
             }
 
             SystemButton {
-                text: bar.systemData.muted
-                    ? `${bar.volumeIcon()} muted`
-                    : `${bar.volumeIcon()} ${bar.systemData.volume}%`
-                tooltip: bar.systemData.muted ? "Audio muted" : `Volume: ${bar.systemData.volume}%`
+                text: bar.volumeIcon()
+                tooltip: bar.systemData.muted
+                    ? `Volume: ${bar.systemData.volume}% (muted)`
+                    : `Volume: ${bar.systemData.volume}%`
                 onClicked: Quickshell.execDetached(["pavucontrol"])
                 onWheel: delta => Quickshell.execDetached([
-                    "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@",
-                    delta > 0 ? "5%+" : "5%-"
+                    "bash", bar.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
                 ])
             }
 
             SystemButton {
-                text: `${bar.brightnessIcon()}  ${bar.systemData.brightness}%`
+                text: bar.brightnessIcon()
                 tooltip: `Brightness: ${bar.systemData.brightness}%`
                 onWheel: delta => Quickshell.execDetached([
-                    "bash", bar.displayScriptPath, "set-brightness",
-                    delta > 0 ? "+5%" : "5%-"
+                    "bash", bar.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
                 ])
             }
 

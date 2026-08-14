@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage: gpu-mode [--yes] <status|--get|integrated|hybrid|ultimate>
+
+Queue an ASUS firmware GPU-mode change and reboot. Mode changes are applied by
+asus-shutdown only after graphical sessions and GPU users have stopped.
+EOF
+}
+
+fail() {
+    printf 'gpu-mode: %s\n' "$1" >&2
+    exit 1
+}
+
+numeric_or_unknown() {
+    [[ ${1:-} =~ ^-?[0-9]+$ ]] && printf '%s' "$1" || printf '%s' '-2'
+}
+
+armoury_value() {
+    local property=$1
+    local output
+    local line
+
+    output=$(asusctl armoury get "$property" 2>/dev/null) \
+        || fail "unable to read ASUS firmware attribute $property"
+    while IFS= read -r line; do
+        if [[ $line =~ current:.*\((-?[0-9]+)\) ]]; then
+            printf '%s\n' "${BASH_REMATCH[1]}"
+            return
+        fi
+    done <<< "$output"
+    fail "unable to parse ASUS firmware attribute $property"
+}
+
+queued_value() {
+    local property=$1
+    local value
+
+    value=$(busctl get-property \
+        xyz.ljones.Asusd \
+        "/xyz/ljones/asus_armoury/$property" \
+        xyz.ljones.AsusArmoury \
+        QueuedGpuValue 2>/dev/null) \
+        || fail "unable to inspect the queued $property value"
+    numeric_or_unknown "${value##* }"
+}
+
+mode_from_values() {
+    local dgpu_disable=$1
+    local gpu_mux_mode=$2
+
+    if (( gpu_mux_mode == 0 && dgpu_disable == 0 )); then
+        printf 'Ultimate\n'
+    elif (( gpu_mux_mode == 1 && dgpu_disable == 1 )); then
+        printf 'Integrated\n'
+    elif (( gpu_mux_mode == 1 && dgpu_disable == 0 )); then
+        printf 'Hybrid\n'
+    else
+        printf 'Unknown\n'
+    fi
+}
+
+target_values() {
+    case $1 in
+        Integrated) printf '1 1\n' ;;
+        Hybrid) printf '0 1\n' ;;
+        Ultimate) printf '0 0\n' ;;
+        *) return 1 ;;
+    esac
+}
+
+read_current_state() {
+    current_dgpu_disable=$(armoury_value dgpu_disable)
+    current_gpu_mux_mode=$(armoury_value gpu_mux_mode)
+    current_mode=$(mode_from_values "$current_dgpu_disable" "$current_gpu_mux_mode")
+}
+
+read_state() {
+    read_current_state
+    queued_dgpu_disable=$(queued_value dgpu_disable)
+    queued_gpu_mux_mode=$(queued_value gpu_mux_mode)
+}
+
+queued_mode() {
+    if (( queued_dgpu_disable == -1 && queued_gpu_mux_mode == -1 )); then
+        printf 'None\n'
+    elif (( queued_dgpu_disable < 0 || queued_gpu_mux_mode < 0 )); then
+        printf 'Partial\n'
+    else
+        mode_from_values "$queued_dgpu_disable" "$queued_gpu_mux_mode"
+    fi
+}
+
+show_status() {
+    local pending
+
+    read_state
+    pending=$(queued_mode)
+    printf 'Current mode: %s\n' "$current_mode"
+    printf 'Firmware: dgpu_disable=%s, gpu_mux_mode=%s\n' \
+        "$current_dgpu_disable" "$current_gpu_mux_mode"
+    printf 'Queued mode: %s\n' "$pending"
+    printf 'Services: asusd=%s, asus-shutdown=%s, supergfxd=%s\n' \
+        "$(systemctl is-active asusd.service 2>/dev/null || printf 'inactive')" \
+        "$(systemctl is-active asus-shutdown.service 2>/dev/null || printf 'inactive')" \
+        "$(systemctl is-active supergfxd.service 2>/dev/null || printf 'inactive')"
+}
+
+restore_queue() {
+    printf 'Restoring the queued firmware values to the current mode...\n' >&2
+    asusctl armoury set dgpu_disable "$current_dgpu_disable" >/dev/null 2>&1 || true
+    asusctl armoury set gpu_mux_mode "$current_gpu_mux_mode" >/dev/null 2>&1 || true
+}
+
+assume_yes=false
+if [[ ${1:-} == --yes ]]; then
+    assume_yes=true
+    shift
+fi
+
+command=${1:-status}
+[[ $# -le 1 ]] || { usage >&2; exit 2; }
+
+case ${command,,} in
+    -h|--help|help)
+        usage
+        exit 0
+        ;;
+    --get|get)
+        read_current_state
+        printf '%s\n' "$current_mode"
+        exit 0
+        ;;
+    status)
+        show_status
+        exit 0
+        ;;
+    integrated) target=Integrated ;;
+    hybrid) target=Hybrid ;;
+    ultimate|asusmuxdgpu) target=Ultimate ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac
+
+for dependency in asusctl busctl systemctl flock; do
+    command -v "$dependency" >/dev/null || fail "$dependency is required"
+done
+
+systemctl is-active --quiet asusd.service \
+    || fail 'asusd.service is not active'
+systemctl is-active --quiet asus-shutdown.service \
+    || fail 'asus-shutdown.service is not active; refusing an unprotected firmware change'
+if systemctl is-active --quiet supergfxd.service; then
+    fail 'supergfxd.service is active; disable it before using ASUS firmware mode switching'
+fi
+
+lock_dir=${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}
+exec 9>"$lock_dir/gpu-mode.lock"
+flock -n 9 || fail 'another GPU mode request is already running'
+
+read_state
+[[ $current_mode != Unknown ]] \
+    || fail 'the current ASUS firmware state does not map to a supported GPU mode'
+
+pending=$(queued_mode)
+if [[ $pending != None ]]; then
+    fail "ASUS firmware already has a queued GPU mode ($pending); reboot or restart asusd to resolve it"
+fi
+
+if [[ $current_mode == "$target" ]]; then
+    printf '%s is already active.\n' "$target"
+    exit 0
+fi
+
+read -r target_dgpu_disable target_gpu_mux_mode < <(target_values "$target")
+printf 'GPU mode: %s -> %s\n' "$current_mode" "$target"
+printf 'Firmware changes: dgpu_disable=%s, gpu_mux_mode=%s\n' \
+    "$target_dgpu_disable" "$target_gpu_mux_mode"
+printf 'The settings will be applied during shutdown and require an immediate reboot.\n'
+
+if [[ $assume_yes != true ]]; then
+    [[ -t 0 ]] || fail 'confirmation requires a terminal; pass --yes for non-interactive use'
+    read -r -p 'Queue the change and reboot now? [y/N] ' answer
+    [[ $answer == [Yy] || $answer == [Yy][Ee][Ss] ]] || exit 0
+fi
+
+if ! asusctl armoury set dgpu_disable "$target_dgpu_disable"; then
+    fail 'unable to queue dgpu_disable'
+fi
+if ! asusctl armoury set gpu_mux_mode "$target_gpu_mux_mode"; then
+    restore_queue
+    fail 'unable to queue gpu_mux_mode; the pending change was neutralized'
+fi
+
+queued_dgpu_disable=$(queued_value dgpu_disable)
+queued_gpu_mux_mode=$(queued_value gpu_mux_mode)
+if (( queued_dgpu_disable != target_dgpu_disable \
+    || queued_gpu_mux_mode != target_gpu_mux_mode )); then
+    restore_queue
+    fail 'queued firmware verification failed; the pending change was neutralized'
+fi
+
+printf '%s mode is queued. Requesting reboot...\n' "$target"
+if ! systemctl reboot; then
+    restore_queue
+    fail 'the reboot request failed; the pending change was neutralized'
+fi

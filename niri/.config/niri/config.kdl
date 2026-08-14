@@ -177,7 +177,6 @@ layout {
 //DAEMON+PROCESS STARTUPS
 spawn-at-startup "quickshell"
 spawn-at-startup "mako"
-spawn-at-startup "swayosd-server"
 spawn-at-startup "awww-daemon"
 spawn-at-startup "waypaper" "--restore"
 spawn-at-startup "swayidle" "-w" \
@@ -260,28 +259,22 @@ binds {
     Mod+W { spawn "sh" "-c" "pkill -x waypaper || waypaper"; }
 
     //AUDIO and BRIGHTNESS
-    // "-l 1.0" limits the volume to 100%.
-    //XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0"; }
-    //XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-"; }
-    //XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
-    //XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
-    //XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+5%"; }
-    //XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "5%-"; }
-
-    XF86AudioRaiseVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "raise"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "lower"; }
-    XF86AudioMute        allow-when-locked=true { spawn "swayosd-client" "--output-volume" "mute-toggle"; }
-    XF86AudioMicMute     allow-when-locked=true { spawn "swayosd-client" "--input-volume" "mute-toggle"; }
-    XF86MonBrightnessUp   allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/display-control.sh brightness-osd raise"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/display-control.sh brightness-osd lower"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh volume raise"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh volume lower"; }
+    XF86AudioMute        allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh volume mute"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh microphone mute"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh brightness raise"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh brightness lower"; }
+    XF86KbdBrightnessUp   allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh keyboard raise"; }
+    XF86KbdBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh keyboard lower"; }
 
     //MEDIA
     // Example media keys mapping using playerctl, this will work with any MPRIS-enabled media player.
-    XF86AudioPlay        allow-when-locked=true { spawn-sh "playerctl play-pause"; }
-    XF86AudioPause       allow-when-locked=true { spawn-sh "playerctl play-pause"; }
-    XF86AudioStop        allow-when-locked=true { spawn-sh "playerctl stop"; }
-    XF86AudioPrev        allow-when-locked=true { spawn-sh "playerctl previous"; }
-    XF86AudioNext        allow-when-locked=true { spawn-sh "playerctl next"; }
+    XF86AudioPlay        allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh media play-pause"; }
+    XF86AudioPause       allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh media play-pause"; }
+    XF86AudioStop        allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh media stop"; }
+    XF86AudioPrev        allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh media previous"; }
+    XF86AudioNext        allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh media next"; }
 
 
     //SCREENSHOT
