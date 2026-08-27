@@ -5,9 +5,9 @@ Rectangle {
 
     property string text: ""
     property string tooltip: ""
-    property color foreground: "#c6d0f5"
+    property color foreground: "#99d1db"
     property color background: "#1a1b26"
-    property color hoverBackground: "#80669970"
+    property color hoverBackground: "#26343d40"
     property int horizontalPadding: 12
     property int maximumWidth: 0
 
@@ -17,8 +17,8 @@ Rectangle {
     implicitWidth: maximumWidth > 0
         ? Math.min(label.implicitWidth + horizontalPadding * 2, maximumWidth)
         : label.implicitWidth + horizontalPadding * 2
-    implicitHeight: 30
-    radius: 15
+    implicitHeight: 34
+    radius: 11
     color: mouse.containsMouse ? hoverBackground : background
 
     Behavior on color {
@@ -36,7 +36,8 @@ Rectangle {
         color: root.foreground
         elide: Text.ElideRight
         font.family: "JetBrains Mono Nerd Font"
-        font.pixelSize: 13
+        font.pixelSize: 12
+        font.bold: true
         verticalAlignment: Text.AlignVCenter
     }
 

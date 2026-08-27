@@ -5,17 +5,21 @@ Rectangle {
 
     property string text: ""
     property string tooltip: ""
-    property color foreground: "#c6d0f5"
-    property color hoverBackground: "#80669970"
-    property int horizontalPadding: 15
+    property color foreground: "#99d1db"
+    property color accent: "#99d1db"
+    property color hoverBackground: "#26343d40"
+    property color activeBackground: "#334f6b75"
+    property int horizontalPadding: 9
+    property bool active: false
     property bool tooltipSuppressed: false
 
     signal clicked(int button)
     signal wheel(int delta)
 
     implicitWidth: label.implicitWidth + horizontalPadding * 2
-    implicitHeight: 30
-    color: mouse.containsMouse ? hoverBackground : "transparent"
+    implicitHeight: 34
+    radius: 10
+    color: active ? activeBackground : (mouse.containsMouse ? hoverBackground : "transparent")
 
     Behavior on color {
         ColorAnimation { duration: 150 }
@@ -28,8 +32,14 @@ Rectangle {
         text: root.text
         color: root.foreground
         font.family: "JetBrains Mono Nerd Font"
-        font.pixelSize: 13
+        font.pixelSize: 12
+        font.bold: true
         verticalAlignment: Text.AlignVCenter
+        scale: mouse.containsMouse ? 1.14 : 1
+
+        Behavior on scale {
+            NumberAnimation { duration: 160; easing.type: Easing.OutBack }
+        }
     }
 
     MouseArea {

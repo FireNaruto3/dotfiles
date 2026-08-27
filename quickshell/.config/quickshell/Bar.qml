@@ -1,28 +1,77 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
+import Quickshell.Wayland
+import Quickshell.Widgets
 
 PanelWindow {
     id: bar
 
     required property var systemData
+    required property var powerData
     required property var niriData
+    property string activeView: "none"
+    property real drawerAnchorX: width / 2
+    property string displayedView: "none"
+    property real reveal: activeView === "none" ? 0 : 1
+    readonly property var currentWindow: niriData.focusedWindowFor(screen ? screen.name : "")
     readonly property string osdScriptPath: Qt.resolvedUrl("scripts/osd-control.sh").toString().replace("file://", "")
+    readonly property real drawerWidth: displayedView === "clock" ? 440 : 350
+    readonly property real drawerHeight: displayedView === "clock"
+        ? 478
+        : (displayedView === "fan" ? 176 : (drawerLoader.item ? drawerLoader.item.implicitHeight : 397))
 
     signal openResources()
-    signal toggleClockDashboard()
-    signal togglePowerControl()
-    signal toggleFanControl()
+    signal toggleDrawer(string view, real anchorX)
+    signal closeDrawer()
 
     anchors {
         top: true
         left: true
         right: true
     }
-
-    implicitHeight: 38
-    exclusiveZone: 38
+    implicitHeight: screen ? screen.height : 1080
+    exclusiveZone: 46
     color: "transparent"
+    aboveWindows: true
+    focusable: false
+
+    WlrLayershell.namespace: "jonathan-shell-bar"
+
+    mask: Region {
+        Region { item: barSurface }
+        Region { item: bar.activeView !== "none" ? dismissLayer : null }
+        Region { item: drawerContainer.visible ? drawerContainer : null }
+    }
+
+    onActiveViewChanged: {
+        if (activeView !== "none") {
+            closeCleanup.stop()
+            displayedView = activeView
+        } else {
+            closeCleanup.restart()
+        }
+    }
+
+    Behavior on reveal {
+        NumberAnimation {
+            duration: bar.activeView === "none" ? 260 : 420
+            easing.type: bar.activeView === "none" ? Easing.InBack : Easing.OutBack
+            easing.overshoot: bar.activeView === "none" ? 0.6 : 0.45
+        }
+    }
+
+    Timer {
+        id: closeCleanup
+        interval: 280
+        onTriggered: bar.displayedView = "none"
+    }
+
+    ShellTheme { id: theme }
+
+    function anchorFor(item) {
+        return item.mapToItem(bar.contentItem, item.width / 2, 0).x
+    }
 
     function volumeIcon() {
         if (systemData.muted)
@@ -53,16 +102,6 @@ PanelWindow {
         return icons[Math.max(0, Math.min(5, Math.floor(systemData.battery / 20)))]
     }
 
-    function batteryColor() {
-        if (systemData.batteryState === "Charging")
-            return "#a6d189"
-        if (systemData.battery <= 15)
-            return "#e78284"
-        if (systemData.battery <= 30)
-            return "#e5c890"
-        return "#99d1db"
-    }
-
     function focusWorkspace(workspace) {
         Quickshell.execDetached([
             "niri", "msg", "action", "focus-workspace",
@@ -70,216 +109,349 @@ PanelWindow {
         ])
     }
 
-    SystemClock {
-        id: clock
-        precision: SystemClock.Seconds
+    Item {
+        id: dismissLayer
+        anchors.fill: parent
+        z: 0
+        visible: bar.activeView !== "none"
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: bar.closeDrawer()
+        }
     }
 
-    Row {
-        id: leftModules
+    Item {
+        id: drawerContainer
+        z: 5
+        x: Math.max(12, Math.min(bar.width - width - 12, bar.drawerAnchorX - width / 2))
+        y: 46
+        width: bar.drawerWidth
+        height: bar.drawerHeight * Math.max(0, bar.reveal)
+        visible: bar.displayedView !== "none" && bar.reveal > 0.005
+        opacity: Math.min(1, bar.reveal * 1.25)
 
-        anchors.left: parent.left
-        anchors.leftMargin: 7
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: 5
+        Behavior on x {
+            NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
+        }
 
         Rectangle {
-            id: workspaces
+            x: Math.max(20, Math.min(parent.width - width - 20, bar.drawerAnchorX - drawerContainer.x - width / 2))
+            y: -10
+            width: 58
+            height: 20
+            radius: 10
+            color: "#f0131819"
+            border.width: 1
+            border.color: theme.border
+        }
 
-            implicitWidth: workspaceRow.implicitWidth + 8
-            implicitHeight: 30
-            radius: 15
-            color: "#1a1b26"
+        Item {
+            anchors.fill: parent
+            clip: true
+
+            Loader {
+                id: drawerLoader
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+                height: bar.drawerHeight
+                sourceComponent: bar.displayedView === "clock"
+                    ? clockDrawer
+                    : (bar.displayedView === "power" ? powerDrawer : (bar.displayedView === "fan" ? fanDrawer : null))
+            }
+        }
+    }
+
+    Component {
+        id: clockDrawer
+        ClockDashboard { systemData: bar.systemData }
+    }
+
+    Component {
+        id: powerDrawer
+        PowerControl {
+            systemData: bar.systemData
+            powerData: bar.powerData
+        }
+    }
+
+    Component {
+        id: fanDrawer
+        FanControl { powerData: bar.powerData }
+    }
+
+    Rectangle {
+        id: barSurface
+        z: 10
+        x: 12
+        y: 0
+        width: parent.width - 24
+        height: 46
+        radius: 18
+        color: theme.background
+        border.width: 1
+        border.color: theme.border
+
+        Rectangle {
+            id: leftCard
+            anchors {
+                right: parent.right
+                rightMargin: 18
+                verticalCenter: parent.verticalCenter
+            }
+            implicitWidth: leftModules.implicitWidth + 8
+            implicitHeight: 36
+            radius: 12
+            color: "#12ffffff"
+            border.width: 1
+            border.color: "#1affffff"
+            clip: true
 
             Row {
-                id: workspaceRow
-
+                id: leftModules
                 anchors.centerIn: parent
 
-                Repeater {
-                    model: bar.niriData.workspacesFor(bar.screen.name)
+                SystemButton {
+                    text: "󰒋"
+                    tooltip: "Toggle Resources"
+                    onClicked: bar.openResources()
+                }
 
-                    Rectangle {
-                        required property var modelData
+                SystemButton {
+                    text: bar.systemData.bluetooth === "connected" ? "󰂱" : (bar.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
+                    foreground: theme.accent
+                    tooltip: bar.systemData.bluetooth === "connected"
+                        ? `Bluetooth: ${bar.systemData.bluetoothDevice}`
+                        : `Bluetooth ${bar.systemData.bluetooth}`
+                    onClicked: Quickshell.execDetached(["blueman-manager"])
+                }
 
-                        implicitWidth: 22
-                        implicitHeight: 26
-                        radius: 13
-                        color: workspaceMouse.containsMouse
-                            ? "#1a99d1db"
-                            : (modelData.is_active ? "#12c6d0f5" : "transparent")
+                SystemButton {
+                    text: bar.systemData.network === "wifi" ? "󰤢" : (bar.systemData.network === "ethernet" ? "󰈀" : "󰤠")
+                    foreground: theme.accent
+                    tooltip: bar.systemData.network === "wifi"
+                        ? `${bar.systemData.ssid} (${bar.systemData.signal}%)`
+                        : bar.systemData.network
+                    onClicked: Quickshell.execDetached(["ghostty", "-e", "nmtui"])
+                }
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: "●"
-                            color: modelData.is_urgent
-                                ? "#e78284"
-                                : (modelData.is_focused
-                                    ? "#bd93f9"
-                                    : (modelData.is_active ? "#c6d0f5" : "#44475a"))
-                            font.pixelSize: 8
-                        }
+                SystemButton {
+                    text: bar.volumeIcon()
+                    tooltip: bar.systemData.muted
+                        ? `Volume: ${bar.systemData.volume}% (muted)`
+                        : `Volume: ${bar.systemData.volume}%`
+                    foreground: theme.accent
+                    onClicked: Quickshell.execDetached(["pavucontrol"])
+                    onWheel: delta => Quickshell.execDetached([
+                        "bash", bar.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
+                    ])
+                }
 
-                        MouseArea {
-                            id: workspaceMouse
+                SystemButton {
+                    text: bar.brightnessIcon()
+                    tooltip: `Brightness: ${bar.systemData.brightness}%`
+                    onWheel: delta => Quickshell.execDetached([
+                        "bash", bar.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
+                    ])
+                }
 
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: bar.focusWorkspace(modelData)
-                        }
-                    }
+                SystemButton {
+                    id: fanButton
+                    text: "󰈐"
+                    active: bar.activeView === "fan"
+                    foreground: theme.accent
+                    tooltip: "Fan monitor"
+                    onClicked: bar.toggleDrawer("fan", bar.anchorFor(fanButton))
+                }
+
+                SystemButton {
+                    id: batteryButton
+                    text: `${bar.batteryIcon()} ${bar.systemData.battery}%`
+                    active: bar.activeView === "power"
+                    foreground: theme.accent
+                    tooltip: `${bar.systemData.batteryState}\n${bar.systemData.batteryTime}\n${bar.systemData.batteryPower.toFixed(1)} W`
+                    onClicked: bar.toggleDrawer("power", bar.anchorFor(batteryButton))
+                }
+
+                SystemButton {
+                    text: "󰐥"
+                    foreground: theme.accent
+                    tooltip: "Power menu"
+                    onClicked: Quickshell.execDetached(["wlogout", "--buttons-per-row", "2"])
+                }
+            }
+        }
+
+        Rectangle {
+            id: activeWindowCard
+            anchors.centerIn: parent
+            visible: bar.currentWindow !== null
+            width: Math.min(220, Math.max(46, activeWindowRow.implicitWidth + 20))
+            height: 36
+            radius: 12
+            color: activeWindowMouse.containsMouse ? theme.cardHover : "#12ffffff"
+            border.width: 1
+            border.color: activeWindowMouse.containsMouse ? theme.border : "#1affffff"
+            clip: true
+
+            Behavior on width {
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
+
+            Row {
+                id: activeWindowRow
+                anchors.centerIn: parent
+                spacing: 8
+
+                IconImage {
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitSize: 18
+                    source: Quickshell.iconPath(bar.currentWindow ? bar.currentWindow.app_id : "", true)
+                        || Quickshell.iconPath("application-x-executable", true)
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(170, implicitWidth)
+                    text: bar.currentWindow ? (bar.currentWindow.title || bar.currentWindow.app_id || "") : ""
+                    color: theme.accent
+                    font.family: theme.fontFamily
+                    font.pixelSize: 12
+                    font.bold: true
+                    elide: Text.ElideRight
                 }
             }
 
             MouseArea {
+                id: activeWindowMouse
                 anchors.fill: parent
-                acceptedButtons: Qt.NoButton
-                onWheel: event => {
-                    Quickshell.execDetached([
-                        "niri", "msg", "action",
-                        event.angleDelta.y > 0
-                            ? "focus-workspace-up"
-                            : "focus-workspace-down"
-                    ])
-                    event.accepted = true
+                hoverEnabled: true
+            }
+
+            HoverTooltip {
+                target: activeWindowCard
+                shown: activeWindowMouse.containsMouse
+                text: bar.currentWindow ? (bar.currentWindow.title || "") : ""
+            }
+        }
+
+        Rectangle {
+            id: rightCard
+            anchors {
+                left: parent.left
+                leftMargin: 18
+                verticalCenter: parent.verticalCenter
+            }
+            implicitWidth: rightModules.implicitWidth + 8
+            implicitHeight: 36
+            radius: 12
+            color: "#12ffffff"
+            border.width: 1
+            border.color: "#1affffff"
+            clip: true
+
+            Row {
+                id: rightModules
+                anchors.centerIn: parent
+
+                Item {
+                    id: workspaceArea
+                    width: workspaceRow.implicitWidth
+                    height: 34
+
+                    Row {
+                        id: workspaceRow
+                        anchors.centerIn: parent
+
+                        Repeater {
+                            model: bar.niriData.workspacesFor(bar.screen.name)
+
+                            Item {
+                                required property var modelData
+                                width: modelData.is_active ? 30 : 20
+                                height: 34
+
+                                Behavior on width {
+                                    NumberAnimation { duration: 180; easing.type: Easing.OutBack }
+                                }
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: parent.modelData.is_active ? 24 : 8
+                                    height: 8
+                                    radius: 4
+                                    color: theme.accent
+                                    opacity: parent.modelData.is_active ? 1 : 0.65
+
+                                    Behavior on width {
+                                        NumberAnimation { duration: 180; easing.type: Easing.OutBack }
+                                    }
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: bar.focusWorkspace(parent.modelData)
+                                }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        onWheel: event => {
+                            Quickshell.execDetached([
+                                "niri", "msg", "action",
+                                event.angleDelta.y > 0 ? "focus-workspace-up" : "focus-workspace-down"
+                            ])
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                Rectangle {
+                    y: 8
+                    width: 1
+                    height: 18
+                    color: theme.border
+                    visible: workspaceArea.width > 0
+                }
+
+                Row {
+                    visible: trayRepeater.count > 0
+
+                    Repeater {
+                        id: trayRepeater
+                        model: SystemTray.items.values.filter(item => item.status !== Status.Passive)
+
+                        TrayItem {
+                            required property var modelData
+                            hostWindow: bar
+                            trayItem: modelData
+                        }
+                    }
+                }
+
+                SystemButton {
+                    id: clockButton
+                    text: Qt.formatDateTime(clock.date, "hh:mm AP  ·  MMM dd")
+                    active: bar.activeView === "clock"
+                    foreground: theme.accent
+                    horizontalPadding: 11
+                    tooltip: Qt.formatDateTime(clock.date, "dddd, MMMM dd")
+                    onClicked: bar.toggleDrawer("clock", bar.anchorFor(clockButton))
                 }
             }
         }
-
-        Pill {
-            maximumWidth: 190
-            visible: bar.niriData.focusedWindow !== null
-            text: bar.niriData.focusedWindow
-                ? (bar.niriData.focusedWindow.title || bar.niriData.focusedWindow.app_id || "")
-                : ""
-            tooltip: text
-        }
     }
 
-    Pill {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.verticalCenter: parent.verticalCenter
-        foreground: "#99d1db"
-        text: Qt.formatDateTime(clock.date, "hh:mm:ss AP  -  MMMM dd, dddd")
-        onClicked: bar.toggleClockDashboard()
-    }
-
-    Rectangle {
-        id: trayGroup
-
-        anchors.right: rightGroup.left
-        anchors.rightMargin: 5
-        anchors.verticalCenter: parent.verticalCenter
-        visible: trayRepeater.count > 0
-        implicitWidth: trayRow.implicitWidth + 8
-        implicitHeight: 30
-        radius: 15
-        color: "#1a1b26"
-        clip: true
-
-        Row {
-            id: trayRow
-
-            anchors.centerIn: parent
-
-            Repeater {
-                id: trayRepeater
-
-                model: SystemTray.items.values.filter(item => item.status !== Status.Passive)
-
-                TrayItem {
-                    required property var modelData
-
-                    hostWindow: bar
-                    trayItem: modelData
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        id: rightGroup
-
-        anchors.right: parent.right
-        anchors.rightMargin: 7
-        anchors.verticalCenter: parent.verticalCenter
-        implicitWidth: rightModules.implicitWidth
-        implicitHeight: 30
-        radius: 15
-        color: "#1a1b26"
-        clip: true
-
-        Row {
-            id: rightModules
-
-            SystemButton {
-                text: "󰒋"
-                tooltip: "Toggle Resources"
-                onClicked: bar.openResources()
-            }
-
-            SystemButton {
-                text: bar.systemData.bluetooth === "connected"
-                    ? "󰂱"
-                    : (bar.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
-                foreground: bar.systemData.bluetooth === "connected"
-                    ? "#99d1db"
-                    : (bar.systemData.bluetooth === "on" ? "#2196f3" : "#888888")
-                tooltip: bar.systemData.bluetooth === "connected"
-                    ? `Bluetooth: ${bar.systemData.bluetoothDevice}`
-                    : `Bluetooth ${bar.systemData.bluetooth}`
-                onClicked: Quickshell.execDetached(["blueman-manager"])
-            }
-
-            SystemButton {
-                text: bar.systemData.network === "wifi"
-                    ? "󰤢"
-                    : (bar.systemData.network === "ethernet" ? "󰈀" : "󰤠")
-                foreground: bar.systemData.network === "disconnected" ? "#e78284" : "#c6d0f5"
-                tooltip: bar.systemData.network === "wifi"
-                    ? `${bar.systemData.ssid} (${bar.systemData.signal}%)`
-                    : bar.systemData.network
-                onClicked: Quickshell.execDetached(["ghostty", "-e", "nmtui"])
-            }
-
-            SystemButton {
-                text: bar.volumeIcon()
-                tooltip: bar.systemData.muted
-                    ? `Volume: ${bar.systemData.volume}% (muted)`
-                    : `Volume: ${bar.systemData.volume}%`
-                onClicked: Quickshell.execDetached(["pavucontrol"])
-                onWheel: delta => Quickshell.execDetached([
-                    "bash", bar.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
-                ])
-            }
-
-            SystemButton {
-                text: bar.brightnessIcon()
-                tooltip: `Brightness: ${bar.systemData.brightness}%`
-                onWheel: delta => Quickshell.execDetached([
-                    "bash", bar.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
-                ])
-            }
-
-            SystemButton {
-                text: "󰈐"
-                tooltip: "Fan monitor"
-                onClicked: bar.toggleFanControl()
-            }
-
-            SystemButton {
-                text: `${bar.batteryIcon()} ${bar.systemData.battery}%`
-                foreground: bar.batteryColor()
-                tooltip: `${bar.systemData.batteryState}\n${bar.systemData.batteryTime}\n${bar.systemData.batteryPower.toFixed(1)} W`
-                onClicked: bar.togglePowerControl()
-            }
-
-            SystemButton {
-                text: "󰐥"
-                foreground: "#babbf1"
-                tooltip: "Power menu"
-                onClicked: Quickshell.execDetached(["wlogout", "--buttons-per-row", "2"])
-            }
-        }
+    SystemClock {
+        id: clock
+        precision: SystemClock.Seconds
     }
 }

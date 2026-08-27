@@ -8,8 +8,9 @@ Rectangle {
     required property var hostWindow
 
     implicitWidth: 28
-    implicitHeight: 30
-    color: mouse.containsMouse ? "#80669970" : "transparent"
+    implicitHeight: 34
+    radius: 10
+    color: mouse.containsMouse ? "#26343d40" : "transparent"
 
     function showMenu() {
         if (!trayItem.hasMenu)
@@ -27,6 +28,11 @@ Rectangle {
         anchors.centerIn: parent
         implicitSize: 18
         source: root.trayItem.icon
+        scale: mouse.containsMouse ? 1.12 : 1
+
+        Behavior on scale {
+            NumberAnimation { duration: 160; easing.type: Easing.OutBack }
+        }
     }
 
     MouseArea {
