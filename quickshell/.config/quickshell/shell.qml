@@ -12,15 +12,23 @@ ShellRoot {
         ])
     }
 
-    function toggleClockDashboard(screen) {
-        powerControl.visible = false
-        fanControl.visible = false
-        if (clockDashboard.visible && clockDashboard.screen === screen) {
-            clockDashboard.visible = false
-        } else {
-            clockDashboard.screen = screen
-            clockDashboard.visible = true
+    property string activePanel: "none"
+    property var panelScreen: null
+    property real panelAnchorX: 0
+
+    function togglePanel(view, screen, anchorX) {
+        if (activePanel === view && panelScreen === screen) {
+            closePanel()
+            return
         }
+
+        panelScreen = screen
+        panelAnchorX = anchorX
+        activePanel = view
+    }
+
+    function closePanel() {
+        activePanel = "none"
     }
 
     function focusedScreen() {
@@ -46,38 +54,14 @@ ShellRoot {
             systemSource.refresh()
     }
 
-    function togglePowerControl(screen) {
-        clockDashboard.visible = false
-        fanControl.visible = false
-
-        if (powerControl.visible && powerControl.screen === screen) {
-            powerControl.visible = false
-        } else {
-            powerControl.screen = screen
-            powerControl.visible = true
-        }
-    }
-
-    function toggleFanControl(screen) {
-        clockDashboard.visible = false
-        powerControl.visible = false
-
-        if (fanControl.visible && fanControl.screen === screen) {
-            fanControl.visible = false
-        } else {
-            fanControl.screen = screen
-            fanControl.visible = true
-        }
-    }
-
     SystemData {
         id: systemSource
     }
 
     PowerData {
         id: powerSource
-        powerMonitoring: powerControl.visible
-        fanMonitoring: fanControl.visible
+        powerMonitoring: root.activePanel === "power"
+        fanMonitoring: root.activePanel === "fan"
     }
 
     NiriData {
@@ -123,36 +107,12 @@ ShellRoot {
         }
     }
 
-    ClockDashboard {
-        id: clockDashboard
-
-        screen: null
-        systemData: systemSource
-        visible: false
-    }
-
-    PowerControl {
-        id: powerControl
-
-        screen: null
-        systemData: systemSource
-        powerData: powerSource
-        visible: false
-    }
-
-    FanControl {
-        id: fanControl
-
-        screen: null
-        powerData: powerSource
-        visible: false
-    }
-
     IpcHandler {
         target: "panels"
 
         function toggleClock(): void {
-            root.toggleClockDashboard(root.focusedScreen())
+            const screen = root.focusedScreen()
+            root.togglePanel("clock", screen, screen ? screen.width / 2 : 0)
         }
 
         function toggleSystem(): void {
@@ -160,11 +120,13 @@ ShellRoot {
         }
 
         function togglePower(): void {
-            root.togglePowerControl(root.focusedScreen())
+            const screen = root.focusedScreen()
+            root.togglePanel("power", screen, screen ? screen.width - 180 : 0)
         }
 
         function toggleFan(): void {
-            root.toggleFanControl(root.focusedScreen())
+            const screen = root.focusedScreen()
+            root.togglePanel("fan", screen, screen ? screen.width - 180 : 0)
         }
     }
 
@@ -191,11 +153,13 @@ ShellRoot {
 
             screen: modelData
             systemData: systemSource
+            powerData: powerSource
             niriData: niriSource
+            activeView: root.panelScreen === modelData ? root.activePanel : "none"
+            drawerAnchorX: root.panelScreen === modelData ? root.panelAnchorX : width / 2
             onOpenResources: root.openResources()
-            onToggleClockDashboard: root.toggleClockDashboard(modelData)
-            onTogglePowerControl: root.togglePowerControl(modelData)
-            onToggleFanControl: root.toggleFanControl(modelData)
+            onToggleDrawer: (view, anchorX) => root.togglePanel(view, modelData, anchorX)
+            onCloseDrawer: root.closePanel()
         }
     }
 }

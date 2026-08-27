@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-PanelWindow {
+Item {
     id: window
 
     required property var powerData
@@ -45,22 +45,8 @@ PanelWindow {
         return fan.rpm > 0 ? "#99d1db" : "#596468"
     }
 
-    anchors {
-        top: true
-        right: true
-    }
-    margins {
-        top: -4
-        right: 7
-    }
-
     implicitWidth: 350
     implicitHeight: 176
-    exclusiveZone: 0
-    exclusionMode: ExclusionMode.Ignore
-    aboveWindows: true
-    focusable: false
-    color: "transparent"
 
     Rectangle {
         anchors.fill: parent

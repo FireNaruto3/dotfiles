@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-PanelWindow {
+Item {
     id: window
 
     required property var systemData
@@ -25,23 +25,9 @@ PanelWindow {
         { label: "120 Hz", refresh: 120 }
     ]
 
-    anchors {
-        top: true
-        right: true
-    }
-    margins {
-        top: -4
-        right: 7
-    }
-
     implicitWidth: 350
     implicitHeight: 397
         + (powerData.errorMessage.length > 0 ? 56 : 0)
-    exclusiveZone: 0
-    exclusionMode: ExclusionMode.Ignore
-    aboveWindows: true
-    focusable: false
-    color: "transparent"
 
     onVisibleChanged: {
         if (visible)

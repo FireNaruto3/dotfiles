@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
 
-PanelWindow {
+Item {
     id: window
 
     required property var systemData
@@ -24,15 +24,8 @@ PanelWindow {
         "July", "August", "September", "October", "November", "December"
     ]
 
-    anchors.top: true
-    margins.top: 0
     implicitWidth: 440
     implicitHeight: 478
-    exclusiveZone: 0
-    exclusionMode: ExclusionMode.Ignore
-    aboveWindows: true
-    focusable: false
-    color: "transparent"
 
     function changeMonth(offset) {
         const next = new Date(displayedYear, displayedMonth + offset, 1)

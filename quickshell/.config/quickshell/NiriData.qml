@@ -14,6 +14,16 @@ QtObject {
             .sort((left, right) => left.idx - right.idx)
     }
 
+    function focusedWindowFor(output) {
+        const activeWorkspace = workspaces.find(workspace =>
+            workspace.output === output && workspace.is_active)
+        if (!activeWorkspace)
+            return null
+        return activeWorkspace.active_window_id === null
+            ? null
+            : (windowsById[activeWorkspace.active_window_id] || null)
+    }
+
     function handleLine(line) {
         if (!line.trim())
             return
@@ -91,6 +101,14 @@ QtObject {
             const update = event.WorkspaceUrgencyChanged
             workspaces = workspaces.map(workspace => workspace.id === update.id
                 ? Object.assign({}, workspace, { is_urgent: update.urgent })
+                : workspace)
+            return
+        }
+
+        if (event.WorkspaceActiveWindowChanged) {
+            const update = event.WorkspaceActiveWindowChanged
+            workspaces = workspaces.map(workspace => workspace.id === update.workspace_id
+                ? Object.assign({}, workspace, { active_window_id: update.active_window_id })
                 : workspace)
         }
     }
