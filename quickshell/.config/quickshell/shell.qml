@@ -14,21 +14,39 @@ ShellRoot {
 
     property string activePanel: "none"
     property var panelScreen: null
-    property real panelAnchorX: 0
+    property real panelAnchor: 0
+    property bool verticalBar: true
 
-    function togglePanel(view, screen, anchorX) {
+    function togglePanel(view, screen, anchor) {
         if (activePanel === view && panelScreen === screen) {
             closePanel()
             return
         }
 
         panelScreen = screen
-        panelAnchorX = anchorX
+        panelAnchor = anchor
         activePanel = view
     }
 
     function closePanel() {
         activePanel = "none"
+    }
+
+    function toggleBarOrientation() {
+        closePanel()
+        verticalBar = !verticalBar
+    }
+
+    function defaultPanelAnchor(view, screen) {
+        if (!screen)
+            return 0
+        if (!verticalBar)
+            return screen.width - 180
+        if (view === "clock")
+            return screen.height - 70
+        if (view === "power")
+            return screen.height - 104
+        return screen.height / 2
     }
 
     function focusedScreen() {
@@ -66,6 +84,14 @@ ShellRoot {
 
     NiriData {
         id: niriSource
+    }
+
+    Process {
+        command: [
+            "sh", "-c",
+            "pkill -TERM -f \"^$HOME/.local/bin/flameshot-v14$\" 2>/dev/null || true; sleep 0.25; exec \"$HOME/.local/bin/flameshot-v14\""
+        ]
+        running: true
     }
 
     Osd {
@@ -112,21 +138,25 @@ ShellRoot {
 
         function toggleClock(): void {
             const screen = root.focusedScreen()
-            root.togglePanel("clock", screen, screen ? screen.width / 2 : 0)
+            root.togglePanel("clock", screen, root.defaultPanelAnchor("clock", screen))
         }
 
         function toggleSystem(): void {
             root.openResources()
         }
 
+        function toggleOrientation(): void {
+            root.toggleBarOrientation()
+        }
+
         function togglePower(): void {
             const screen = root.focusedScreen()
-            root.togglePanel("power", screen, screen ? screen.width - 180 : 0)
+            root.togglePanel("power", screen, root.defaultPanelAnchor("power", screen))
         }
 
         function toggleFan(): void {
             const screen = root.focusedScreen()
-            root.togglePanel("fan", screen, screen ? screen.width - 180 : 0)
+            root.togglePanel("fan", screen, root.defaultPanelAnchor("fan", screen))
         }
     }
 
@@ -155,11 +185,13 @@ ShellRoot {
             systemData: systemSource
             powerData: powerSource
             niriData: niriSource
+            vertical: root.verticalBar
             activeView: root.panelScreen === modelData ? root.activePanel : "none"
-            drawerAnchorX: root.panelScreen === modelData ? root.panelAnchorX : width / 2
+            drawerAnchor: root.panelScreen === modelData ? root.panelAnchor : (vertical ? height / 2 : width / 2)
             onOpenResources: root.openResources()
-            onToggleDrawer: (view, anchorX) => root.togglePanel(view, modelData, anchorX)
+            onToggleDrawer: (view, anchor) => root.togglePanel(view, modelData, anchor)
             onCloseDrawer: root.closePanel()
+            onToggleOrientation: root.toggleBarOrientation()
         }
     }
 }

@@ -6,6 +6,8 @@ Item {
 
     required property var powerData
 
+    ShellTheme { id: theme }
+
     function fanRpmValue(fan) {
         if (!fan.rpmAvailable)
             return "Unavailable"
@@ -41,8 +43,8 @@ Item {
 
     function fanRpmColor(fan) {
         if (!fan.rpmAvailable)
-            return "#e78284"
-        return fan.rpm > 0 ? "#99d1db" : "#596468"
+            return theme.error
+        return fan.rpm > 0 ? theme.accent : theme.textMuted
     }
 
     implicitWidth: 350
@@ -51,9 +53,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 8
-        color: "#f0131819"
+        color: theme.background
         border.width: 1
-        border.color: "#29b4dcdc"
+        border.color: theme.border
 
         Column {
             anchors.fill: parent
@@ -67,8 +69,8 @@ Item {
                 Text {
                     width: parent.width / 2
                     text: "󰈐  Fan Monitor"
-                    color: "#d8e0e3"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.text
+                    font.family: theme.fontFamily
                     font.pixelSize: 15
                     font.bold: true
                 }
@@ -77,13 +79,13 @@ Item {
                     width: parent.width / 2
                     horizontalAlignment: Text.AlignRight
                     text: window.powerData.fanProfile
-                    color: "#a9f3d1"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.accent
+                    font.family: theme.fontFamily
                     font.pixelSize: 11
                 }
             }
 
-            Rectangle { width: parent.width; height: 1; color: "#2ec8e6e6" }
+            Rectangle { width: parent.width; height: 1; color: theme.border }
 
             Row {
                 width: parent.width
@@ -127,7 +129,7 @@ Item {
                         width: (window.width - 44) / 3
                         height: 92
                         radius: 7
-                        color: "#b31a1b26"
+                        color: theme.card
 
                         Column {
                             anchors.centerIn: parent
@@ -136,8 +138,8 @@ Item {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: fanCard.fanLabel
-                                color: "#758083"
-                                font.family: "JetBrains Mono Nerd Font"
+                                color: theme.textMuted
+                                font.family: theme.fontFamily
                                 font.pixelSize: 10
                                 font.bold: true
                                 font.letterSpacing: 2
@@ -147,7 +149,7 @@ Item {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: window.fanRpmValue(fanCard)
                                 color: window.fanRpmColor(fanCard)
-                                font.family: "JetBrains Mono Nerd Font"
+                                font.family: theme.fontFamily
                                 font.pixelSize: 11
                                 font.bold: true
                             }
@@ -155,8 +157,8 @@ Item {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: window.fanCurveDetail(fanCard)
-                                color: "#8c999d"
-                                font.family: "JetBrains Mono Nerd Font"
+                                color: theme.textMuted
+                                font.family: theme.fontFamily
                                 font.pixelSize: 9
                             }
                         }

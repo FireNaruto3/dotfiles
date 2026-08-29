@@ -12,6 +12,8 @@ Rectangle {
     property int horizontalPadding: 9
     property bool active: false
     property bool tooltipSuppressed: false
+    property bool tooltipRight: true
+    property int fontPixelSize: 12
 
     signal clicked(int button)
     signal wheel(int delta)
@@ -28,13 +30,18 @@ Rectangle {
     Text {
         id: label
 
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.leftMargin: -1
+        anchors.rightMargin: 1
         text: root.text
         color: root.foreground
         font.family: "JetBrains Mono Nerd Font"
-        font.pixelSize: 12
+        font.pixelSize: root.fontPixelSize
         font.bold: true
+        horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        lineHeight: 0.9
+        lineHeightMode: Text.ProportionalHeight
         scale: mouse.containsMouse ? 1.14 : 1
 
         Behavior on scale {
@@ -63,5 +70,6 @@ Rectangle {
         target: root
         shown: mouse.containsMouse && !root.tooltipSuppressed && root.tooltip.length > 0
         text: root.tooltip
+        openRight: root.tooltipRight
     }
 }

@@ -7,6 +7,8 @@ Item {
 
     required property var systemData
 
+    ShellTheme { id: theme }
+
     readonly property var activePlayer: {
         const players = Mpris.players.values
         for (let index = 0; index < players.length; ++index) {
@@ -41,9 +43,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 6
-        color: "#f0131819"
+        color: theme.background
         border.width: 1
-        border.color: "#29b4dcdc"
+        border.color: theme.border
 
         Column {
             anchors.fill: parent
@@ -54,7 +56,7 @@ Item {
                 width: parent.width
                 height: 112
                 radius: 5
-                color: "#b31a1b26"
+                color: theme.card
 
                 Rectangle {
                     id: albumArt
@@ -64,7 +66,7 @@ Item {
                     width: 88
                     height: 88
                     radius: 4
-                    color: "#293f4749"
+                    color: theme.cardHover
                     clip: true
 
                     Image {
@@ -80,8 +82,8 @@ Item {
                         anchors.centerIn: parent
                         visible: !window.activePlayer || coverImage.status !== Image.Ready
                         text: "󰎈"
-                        color: "#758083"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.textMuted
+                        font.family: theme.fontFamily
                         font.pixelSize: 34
                     }
                 }
@@ -95,9 +97,9 @@ Item {
                     text: window.activePlayer
                         ? (window.activePlayer.trackTitle || "Unknown title")
                         : "Nothing playing"
-                    color: "#c9d3d6"
+                    color: theme.text
                     elide: Text.ElideRight
-                    font.family: "JetBrains Mono Nerd Font"
+                    font.family: theme.fontFamily
                     font.pixelSize: 14
                     font.bold: true
                 }
@@ -111,9 +113,9 @@ Item {
                     text: window.activePlayer
                         ? (window.activePlayer.trackArtist || window.activePlayer.identity || "Unknown artist")
                         : "Start a media player to see it here"
-                    color: "#758083"
+                    color: theme.textMuted
                     elide: Text.ElideRight
-                    font.family: "JetBrains Mono Nerd Font"
+                    font.family: theme.fontFamily
                     font.pixelSize: 12
                 }
 
@@ -132,7 +134,7 @@ Item {
                             width: 38
                             height: 30
                             radius: 15
-                            color: mediaMouse.containsMouse ? "#80669970" : "#293f4749"
+                            color: mediaMouse.containsMouse ? theme.cardActive : theme.cardHover
 
                             Text {
                                 anchors.centerIn: parent
@@ -141,8 +143,8 @@ Item {
                                     : (modelData === "next"
                                         ? "󰒭"
                                         : (window.activePlayer && window.activePlayer.isPlaying ? "󰏤" : "󰐊"))
-                                color: "#c6d0f5"
-                                font.family: "JetBrains Mono Nerd Font"
+                                color: theme.accent
+                                font.family: theme.fontFamily
                                 font.pixelSize: 16
                             }
 
@@ -174,15 +176,15 @@ Item {
                     width: (parent.width - 10) / 2
                     height: 62
                     radius: 5
-                    color: dndMouse.containsMouse ? "#80669970" : "#b31a1b26"
+                    color: dndMouse.containsMouse ? theme.cardActive : theme.card
 
                     Text {
                         anchors.left: parent.left
                         anchors.leftMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         text: window.systemData.dnd ? "󰂛" : "󰂚"
-                        color: window.systemData.dnd ? "#e5c890" : "#99d1db"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: window.systemData.dnd ? theme.warning : theme.accent
+                        font.family: theme.fontFamily
                         font.pixelSize: 22
                     }
 
@@ -193,16 +195,16 @@ Item {
 
                         Text {
                             text: "Do Not Disturb"
-                            color: "#c9d3d6"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: theme.text
+                            font.family: theme.fontFamily
                             font.pixelSize: 12
                             font.bold: true
                         }
 
                         Text {
                             text: window.systemData.dnd ? "Enabled" : "Disabled"
-                            color: "#758083"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: theme.textMuted
+                            font.family: theme.fontFamily
                             font.pixelSize: 11
                         }
                     }
@@ -222,15 +224,15 @@ Item {
                     width: (parent.width - 10) / 2
                     height: 62
                     radius: 5
-                    color: "#b31a1b26"
+                    color: theme.card
 
                     Text {
                         anchors.left: parent.left
                         anchors.leftMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         text: "󰅐"
-                        color: "#a9f3d1"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.accent
+                        font.family: theme.fontFamily
                         font.pixelSize: 22
                     }
 
@@ -241,16 +243,16 @@ Item {
 
                         Text {
                             text: "System Uptime"
-                            color: "#c9d3d6"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: theme.text
+                            font.family: theme.fontFamily
                             font.pixelSize: 12
                             font.bold: true
                         }
 
                         Text {
                             text: window.systemData.uptime
-                            color: "#758083"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: theme.textMuted
+                            font.family: theme.fontFamily
                             font.pixelSize: 11
                         }
                     }
@@ -261,7 +263,7 @@ Item {
                 width: parent.width
                 height: 252
                 radius: 5
-                color: "#b31a1b26"
+                color: theme.card
 
                 Row {
                     anchors.left: parent.left
@@ -272,8 +274,8 @@ Item {
                     Text {
                         width: 32
                         text: "󰅁"
-                        color: previousMouse.containsMouse ? "#99d1db" : "#758083"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: previousMouse.containsMouse ? theme.accent : theme.textMuted
+                        font.family: theme.fontFamily
                         font.pixelSize: 17
 
                         MouseArea {
@@ -288,8 +290,8 @@ Item {
                         width: parent.width - 64
                         horizontalAlignment: Text.AlignHCenter
                         text: `${window.monthNames[window.displayedMonth]} ${window.displayedYear}`
-                        color: "#c9d3d6"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.text
+                        font.family: theme.fontFamily
                         font.pixelSize: 14
                         font.bold: true
                     }
@@ -298,8 +300,8 @@ Item {
                         width: 32
                         horizontalAlignment: Text.AlignRight
                         text: "󰅂"
-                        color: nextMouse.containsMouse ? "#99d1db" : "#758083"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: nextMouse.containsMouse ? theme.accent : theme.textMuted
+                        font.family: theme.fontFamily
                         font.pixelSize: 17
 
                         MouseArea {
@@ -331,8 +333,8 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                             text: modelData
-                            color: "#758083"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: theme.textMuted
+                            font.family: theme.fontFamily
                             font.pixelSize: 10
                             font.bold: true
                         }
@@ -354,13 +356,13 @@ Item {
                             width: 55
                             height: 25
                             radius: 12
-                            color: today ? "#334f6b75" : "transparent"
+                            color: today ? theme.cardActive : "transparent"
 
                             Text {
                                 anchors.centerIn: parent
                                 text: parent.validDay ? parent.day : ""
-                                color: parent.today ? "#a9f3d1" : "#c9d3d6"
-                                font.family: "JetBrains Mono Nerd Font"
+                                color: parent.today ? theme.accent : theme.text
+                                font.family: theme.fontFamily
                                 font.pixelSize: 11
                                 font.bold: parent.today
                             }
