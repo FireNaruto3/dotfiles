@@ -5,7 +5,15 @@ QtObject {
     id: root
 
     property var values: ({})
+    property var resourceValues: ({})
+    property real previousCpuIdle: -1
+    property real previousCpuTotal: -1
     readonly property string scriptPath: Qt.resolvedUrl("scripts/system-stats.sh").toString().replace("file://", "")
+    readonly property string resourceScriptPath: Qt.resolvedUrl("scripts/resource-stats.sh").toString().replace("file://", "")
+    readonly property int cpuUsage: resourceValues.cpu || 0
+    readonly property int memoryPercent: resourceValues.memory_percent || 0
+    readonly property real memoryUsed: resourceValues.memory_used || 0
+    readonly property real memoryTotal: resourceValues.memory_total || 0
     readonly property string bluetooth: values.bluetooth || "off"
     readonly property string bluetoothDevice: values.bluetooth_device || ""
     readonly property string network: values.network || "disconnected"
@@ -70,6 +78,40 @@ QtObject {
         onTriggered: {
             if (!collector.running)
                 root.refresh()
+        }
+    }
+
+    property Process resourceCollector: Process {
+        id: resourceCollector
+
+        command: ["bash", root.resourceScriptPath]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const data = JSON.parse(text.trim())
+                    const totalDelta = data.cpu_total - root.previousCpuTotal
+                    const idleDelta = data.cpu_idle - root.previousCpuIdle
+                    const cpu = root.previousCpuTotal >= 0 && totalDelta > 0
+                        ? Math.round(100 * Math.max(0, totalDelta - idleDelta) / totalDelta)
+                        : 0
+                    root.previousCpuIdle = data.cpu_idle
+                    root.previousCpuTotal = data.cpu_total
+                    root.resourceValues = Object.assign({}, data, { cpu: cpu })
+                } catch (error) {
+                    console.warn("Unable to parse resource data:", error, text)
+                }
+            }
+        }
+    }
+
+    property Timer resourceRefreshTimer: Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!resourceCollector.running)
+                resourceCollector.running = true
         }
     }
 

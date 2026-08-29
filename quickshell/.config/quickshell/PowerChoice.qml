@@ -6,16 +6,18 @@ Rectangle {
     required property string label
     property bool selected: false
 
+    ShellTheme { id: theme }
+
     signal clicked()
 
     implicitWidth: 96
     implicitHeight: 34
     radius: 8
     color: !enabled
-        ? "#1f2327"
-        : (selected ? "#334f6b75" : (mouse.containsMouse ? "#80669970" : "#293f4749"))
+        ? theme.card
+        : (selected ? theme.cardActive : (mouse.containsMouse ? theme.cardHover : theme.card))
     border.width: selected ? 1 : 0
-    border.color: "#6699d1db"
+    border.color: theme.border
     opacity: enabled ? 1 : 0.42
 
     Behavior on color { ColorAnimation { duration: 130 } }
@@ -23,8 +25,8 @@ Rectangle {
     Text {
         anchors.centerIn: parent
         text: root.label
-        color: root.selected ? "#a9f3d1" : "#c9d3d6"
-        font.family: "JetBrains Mono Nerd Font"
+        color: root.selected ? theme.accent : theme.text
+        font.family: theme.fontFamily
         font.pixelSize: 11
         font.bold: root.selected
     }

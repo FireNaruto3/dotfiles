@@ -7,12 +7,13 @@ PopupWindow {
     required property Item target
     property string text: ""
     property bool shown: false
+    property bool openRight: true
 
     anchor.item: target
-    anchor.edges: Edges.Bottom
-    anchor.gravity: Edges.Bottom
+    anchor.edges: openRight ? Edges.Right : Edges.Bottom
+    anchor.gravity: openRight ? Edges.Right : Edges.Bottom
     visible: shown && text !== ""
-    implicitWidth: tooltipText.implicitWidth + 24
+    implicitWidth: Math.min(360, tooltipText.implicitWidth + 24)
     implicitHeight: tooltipText.implicitHeight + 14
     color: "transparent"
 
@@ -27,10 +28,13 @@ PopupWindow {
             id: tooltipText
 
             anchors.centerIn: parent
+            width: parent.width - 24
             text: root.text
             color: "#dddddd"
             font.family: "JetBrains Mono Nerd Font"
             font.pixelSize: 12
+            wrapMode: Text.Wrap
+            horizontalAlignment: Text.AlignHCenter
         }
     }
 }

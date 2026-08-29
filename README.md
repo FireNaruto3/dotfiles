@@ -1,6 +1,6 @@
 # Jonathan's Dotfiles
 
-A dark, minimal Wayland rice built around Niri and Quickshell. The interface uses a blue-gray palette with cyan, lavender, green, and yellow accents, JetBrains Mono Nerd Font, and Papirus icons.
+A dark, minimal Wayland rice built around Niri and Quickshell. The interface uses a blue-gray palette with a consistent cyan accent, semantic status colors, JetBrains Mono Nerd Font, and Papirus icons.
 
 ## Screenshots
 
@@ -11,10 +11,13 @@ Screenshots will be added here.
 | Package | Purpose |
 |---------|---------|
 | `niri` | Scrollable-tiling Wayland compositor |
-| `quickshell` | Top bar, hardware-key OSD, dashboards, lock screen, and power controls |
+| `quickshell` | Segmented vertical rail, hardware-key OSD, dashboards, lock screen, and power controls |
 | `ghostty` | Terminal emulator |
 | `rofi` | Application launcher |
+| `wl-clipboard` + `cliphist` | Wayland clipboard access and searchable clipboard history |
+| Flameshot 14 | Screenshot capture and annotation with a system-tray launcher |
 | `mako` | Notifications and do-not-disturb mode |
+| `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk` | Niri screen capture and desktop portal backends |
 | `swayidle` | Idle dimming, locking, display power, and suspend handling |
 | `gtklock` | Fallback locker when Quickshell cannot acquire session lock |
 | `waypaper` + `awww` | Wallpaper selection and restoration |
@@ -34,7 +37,7 @@ The ASUS power panel is machine-specific and expects the Samsung ATNA40CU05-0 in
 | Config | Description |
 |--------|-------------|
 | Niri | Scrollable tiling, window rules, startup services, and keybindings |
-| Quickshell | Workspaces, hardware-key OSD, focused window, clock, media, resource-monitor launcher, battery-aware lock screen, and power/fan panels |
+| Quickshell | Segmented vertical rail, separate system tray, clipboard-history launcher, workspaces, hardware-key OSD, focused application, clock, media, live CPU/RAM indicators, resource-monitor launcher, battery-aware lock screen, and right-opening power/fan drawers |
 | Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
 | Ghostty | Box theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
@@ -121,7 +124,8 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Super+Alt+L` | Lock the session |
 | `Mod+Q` | Close the focused window |
 | `Mod+O` | Toggle the Niri overview |
-| `F6` | Take a screenshot |
+| `F6` | Capture and annotate a screenshot with Flameshot |
+| `Mod+Ctrl+V` | Open clipboard history in Rofi |
 
 ### Focus and Movement
 
@@ -220,7 +224,7 @@ The repository uses a GNU Stow package layout. Clone it into `~/dotfiles`, then 
 ```bash
 git clone git@github.com:FireNaruto3/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-stow niri quickshell ghostty nvim rofi mako wlogout \
+stow niri quickshell flameshot ghostty nvim rofi mako wlogout \
   fastfetch starship tmux zsh waypaper gtklock autostart opencode scripts
 ```
 
@@ -229,6 +233,11 @@ Keep the repository at `~/dotfiles`: wallpaper files and the Fastfetch logo are 
 The active Quickshell fan telemetry calls `~/.local/bin/gpu-mode` to select a
 GPU-safe temperature path, so stow the `scripts` package whenever using the
 Quickshell package.
+
+Flameshot 14 is launched from `~/.local/bin/flameshot-v14`; Ubuntu's packaged
+13.3 release crops captures on the laptop's 1.75-scale display. Stow the
+`flameshot` package so its tracked configuration is available to the tray
+launcher and `F6` capture binding.
 
 System-wide files are tracked under `system/` and installed as root-owned copies rather than user-writable symlinks:
 

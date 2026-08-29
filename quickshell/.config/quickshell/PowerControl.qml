@@ -6,6 +6,9 @@ Item {
 
     required property var systemData
     required property var powerData
+
+    ShellTheme { id: theme }
+
     property int chargeLimitPreview: -1
     property int keyboardPreview: -1
     readonly property int displayedChargeLimit: chargeLimitPreview >= 0
@@ -39,9 +42,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 8
-        color: "#f0131819"
+        color: theme.background
         border.width: 1
-        border.color: "#29b4dcdc"
+        border.color: theme.border
 
         Column {
             anchors.fill: parent
@@ -56,8 +59,8 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "󰁹"
-                    color: "#99d1db"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.accent
+                    font.family: theme.fontFamily
                     font.pixelSize: 28
                 }
 
@@ -68,27 +71,27 @@ Item {
 
                     Text {
                         text: `${window.systemData.battery}% · ${window.systemData.batteryState}`
-                        color: "#d8e0e3"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.text
+                        font.family: theme.fontFamily
                         font.pixelSize: 15
                         font.bold: true
                     }
 
                     Text {
                         text: `${window.systemData.batteryTime} · ${window.systemData.batteryPower.toFixed(1)} W`
-                        color: "#758083"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.textMuted
+                        font.family: theme.fontFamily
                         font.pixelSize: 11
                     }
                 }
             }
 
-            Rectangle { width: parent.width; height: 1; color: "#2ec8e6e6" }
+            Rectangle { width: parent.width; height: 1; color: theme.border }
 
             Text {
                 text: "DISPLAY REFRESH RATE"
-                color: "#758083"
-                font.family: "JetBrains Mono Nerd Font"
+                color: theme.textMuted
+                font.family: theme.fontFamily
                 font.pixelSize: 10
                 font.bold: true
             }
@@ -115,8 +118,8 @@ Item {
 
             Text {
                 text: "ACTIVE POWER PROFILE"
-                color: "#758083"
-                font.family: "JetBrains Mono Nerd Font"
+                color: theme.textMuted
+                font.family: theme.fontFamily
                 font.pixelSize: 10
                 font.bold: true
             }
@@ -148,8 +151,8 @@ Item {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     text: "CHARGE LIMIT"
-                    color: "#758083"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.textMuted
+                    font.family: theme.fontFamily
                     font.pixelSize: 10
                     font.bold: true
                 }
@@ -160,8 +163,8 @@ Item {
                     text: window.powerData.chargeLimit === 0
                         ? "Unavailable"
                         : `${window.displayedChargeLimit}%`
-                    color: window.powerData.chargeLimit === 0 ? "#758083" : "#a9f3d1"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: window.powerData.chargeLimit === 0 ? theme.textMuted : theme.accent
+                    font.family: theme.fontFamily
                     font.pixelSize: 10
                 }
 
@@ -174,14 +177,14 @@ Item {
                     anchors.bottomMargin: 14
                     height: 6
                     radius: 3
-                    color: "#293f4749"
+                    color: theme.cardHover
                     opacity: window.powerData.chargeLimit > 0 ? 1 : 0.4
 
                     Rectangle {
                         width: chargeLimitHandle.x + chargeLimitHandle.width / 2
                         height: parent.height
                         radius: parent.radius
-                        color: "#63758d"
+                        color: theme.cardActive
                     }
 
                     Repeater {
@@ -196,7 +199,7 @@ Item {
                             width: 3
                             height: 10
                             radius: 1
-                            color: "#8c999d"
+                            color: theme.textMuted
                         }
                     }
 
@@ -209,7 +212,9 @@ Item {
                         width: 18
                         height: 18
                         radius: 9
-                        color: chargeLimitMouse.pressed ? "#a8c7f0" : "#99d1db"
+                        color: chargeLimitMouse.pressed ? theme.text : theme.accent
+                        border.width: 2
+                        border.color: theme.background
                     }
 
                     MouseArea {
@@ -248,8 +253,8 @@ Item {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     text: "KEYBOARD BACKLIGHT"
-                    color: "#758083"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.textMuted
+                    font.family: theme.fontFamily
                     font.pixelSize: 10
                     font.bold: true
                 }
@@ -262,8 +267,8 @@ Item {
                         : (window.displayedKeyboardBrightness === 0
                             ? "Off"
                             : `${window.displayedKeyboardBrightness} / ${window.powerData.keyboardMax}`)
-                    color: window.displayedKeyboardBrightness === 0 ? "#758083" : "#a9f3d1"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: window.displayedKeyboardBrightness === 0 ? theme.textMuted : theme.accent
+                    font.family: theme.fontFamily
                     font.pixelSize: 10
                 }
 
@@ -276,14 +281,14 @@ Item {
                     anchors.bottomMargin: 14
                     height: 6
                     radius: 3
-                    color: "#293f4749"
+                    color: theme.cardHover
                     opacity: window.powerData.keyboardMax > 0 ? 1 : 0.4
 
                     Rectangle {
                         width: keyboardHandle.x + keyboardHandle.width / 2
                         height: parent.height
                         radius: parent.radius
-                        color: "#63758d"
+                        color: theme.cardActive
                     }
 
                     Repeater {
@@ -299,7 +304,7 @@ Item {
                             width: 3
                             height: 10
                             radius: 1
-                            color: "#8c999d"
+                            color: theme.textMuted
                         }
                     }
 
@@ -312,7 +317,9 @@ Item {
                         width: 18
                         height: 18
                         radius: 9
-                        color: keyboardMouse.pressed ? "#a8c7f0" : "#99d1db"
+                        color: keyboardMouse.pressed ? theme.text : theme.accent
+                        border.width: 2
+                        border.color: theme.background
                     }
 
                     MouseArea {
@@ -347,11 +354,11 @@ Item {
                 width: parent.width
                 visible: window.powerData.errorMessage.length > 0
                 text: window.powerData.errorMessage
-                color: "#e78284"
+                color: theme.error
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
-                font.family: "JetBrains Mono Nerd Font"
+                font.family: theme.fontFamily
                 font.pixelSize: 10
             }
         }

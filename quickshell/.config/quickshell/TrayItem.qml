@@ -1,4 +1,6 @@
 import QtQuick
+import Quickshell
+import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 
 Rectangle {
@@ -6,6 +8,26 @@ Rectangle {
 
     required property var trayItem
     required property var hostWindow
+    property bool vertical: true
+    property bool shown: false
+
+    function refreshShown() {
+        shown = trayItem.status !== Status.Passive || trayItem.id === "software-update-available"
+    }
+
+    Component.onCompleted: refreshShown()
+
+    Connections {
+        target: root.trayItem
+
+        function onReady() {
+            root.refreshShown()
+        }
+
+        function onStatusChanged() {
+            root.refreshShown()
+        }
+    }
 
     implicitWidth: 28
     implicitHeight: 34
@@ -16,7 +38,9 @@ Rectangle {
         if (!trayItem.hasMenu)
             return
 
-        const position = root.mapToItem(null, 0, root.height)
+        const position = root.vertical
+            ? root.mapToItem(null, root.width, 0)
+            : root.mapToItem(null, 0, root.height)
         trayItem.display(hostWindow, position.x, position.y)
     }
 
@@ -27,7 +51,11 @@ Rectangle {
     IconImage {
         anchors.centerIn: parent
         implicitSize: 18
-        source: root.trayItem.icon
+        source: !root.visible
+            ? ""
+            : (root.trayItem.id === "software-update-available"
+                ? Quickshell.iconPath("software-update-available", true)
+                : root.trayItem.icon)
         scale: mouse.containsMouse ? 1.12 : 1
 
         Behavior on scale {
@@ -42,7 +70,11 @@ Rectangle {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
         onClicked: event => {
-            if (event.button === Qt.RightButton || root.trayItem.onlyMenu)
+            if (root.trayItem.id === "software-update-available")
+                Quickshell.execDetached(["update-manager"])
+            else if (root.trayItem.title === "warp-taskbar")
+                Quickshell.execDetached(["warp-taskbar"])
+            else if (event.button === Qt.RightButton || root.trayItem.onlyMenu)
                 root.showMenu()
             else if (event.button === Qt.MiddleButton)
                 root.trayItem.secondaryActivate()
@@ -59,5 +91,6 @@ Rectangle {
         target: root
         shown: mouse.containsMouse
         text: root.trayItem.tooltipTitle || root.trayItem.title || root.trayItem.id
+        openRight: root.vertical
     }
 }
