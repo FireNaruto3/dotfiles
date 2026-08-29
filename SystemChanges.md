@@ -23,11 +23,10 @@ The following repository copies are installed as root-owned files.
 | Repository source | Installed path | Mode | Purpose |
 |---|---|---:|---|
 | `system/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `0644` | Physical key and lid policy |
-| `system/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` | `/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` | `0644` | Suspend-then-hibernate timing |
 | `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `0755` | Keyboard-backlight restoration |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
 
-## Sleep And Hibernate
+## Sleep And Secure Boot
 
 ### Physical controls and lid
 
@@ -35,53 +34,33 @@ The following repository copies are installed as root-owned files.
 
 | Event | Action |
 |---|---|
-| Physical power key | Suspend, then hibernate |
-| Physical sleep key | Suspend, then hibernate |
-| Lid close on battery | Suspend, then hibernate |
-| Lid close on external power | Suspend, then hibernate |
+| Physical power key | Suspend |
+| Physical sleep key | Suspend |
+| Lid close on battery | Suspend |
+| Lid close on external power | Suspend |
 | Lid close while docked | Ignore |
 
 Niri uses `disable-power-key-handling`, leaving the physical power key under
 logind control rather than handling it a second time in the compositor.
 
-### Hibernate timing
+### Secure Boot constraint
 
-`system/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` enables hibernation
-and suspend-then-hibernate with these settings:
+Secure Boot is enabled and the kernel runs in integrity lockdown mode. The
+kernel disables disk hibernation in this state: `/sys/power/disk` reports
+`disabled`, while logind reports hibernation and suspend-then-hibernate as
+unavailable. `AllowHibernation=yes` cannot override this kernel restriction.
 
-- The laptop initially suspends.
-- It transitions from suspend to hibernation after 30 minutes.
-- The hibernation transition is allowed while connected to AC power.
-- The machine currently has a 20 GiB `/swap.img` swap file enabled.
-
-Hibernation uses systemd's dynamic `HibernateLocation` EFI variable. Systemd
-discovers the active `/swap.img`, records its backing device and physical
-offset before hibernating, and lets the initrd consume that EFI metadata on the
-next boot. Static `resume=` and `resume_offset=` kernel parameters are
-intentionally absent. On an ordinary boot without a hibernation image, both
-`/sys/power/resume` and `/sys/power/resume_offset` should be zero.
-
-A static-resume configuration was tested and removed on July 24, 2026. Dracut
-resolved the correct backing partition and attempted resume during initrd, but
-after finding no image the kernel reset `/sys/power/resume` to `0:0` while
-leaving the nonzero offset in `/sys/power/resume_offset`. Systemd 259 classifies
-that state as `SLEEP_RESUME_MISCONFIGURED`, making hibernation unavailable.
-Dynamic EFI resume avoids that invalid normal-boot state and matches the setup
-that successfully hibernated on July 15, 2026.
-
-Direct hibernation was validated again on kernel `7.0.0-28-generic` on July 24,
-2026. The kernel logged hibernation entry and exit in the same boot, systemd
-reported success, and the NVIDIA and ASUS resume hooks completed. After a
-successful hibernate/resume cycle, `/sys/power/resume` contains `259:7` and
-`/sys/power/resume_offset` contains `59015168`; systemd populated these values
-dynamically from the active swap file.
+The active policy therefore uses ordinary suspend everywhere. The former
+`90-hibernate-delay.conf` drop-in is removed, and no static `resume=` or
+`resume_offset=` kernel parameters are installed. This preserves the Secure
+Boot trust model instead of weakening lockdown to restore hibernation.
 
 ### Sleep hooks
 
 Before every sleep, `asus-keyboard-backlight` saves
 `leds:asus::kbd_backlight` through `systemd-backlight`. After resume it waits
-0.5 seconds and restores the saved level because the firmware can reset it
-after hibernation. Save and restore errors are intentionally non-fatal.
+0.5 seconds and restores the saved level. Save and restore errors are
+intentionally non-fatal.
 
 ## Idle And Lock Behavior
 
@@ -94,7 +73,7 @@ Niri starts `swayidle` with the following user-session timeline:
 | 300 seconds | Lock with the Quickshell lock helper |
 | 400 seconds | Power off displays |
 | Activity after display-off | Power displays back on |
-| 500 seconds | Run `systemctl suspend-then-hibernate` |
+| 500 seconds | Run `systemctl suspend` |
 | Before any sleep | Lock before the system enters sleep |
 
 The lock helper starts the separate `LockShell.qml` Quickshell instance and
@@ -106,7 +85,7 @@ The lock screen requires confirmation before these system actions:
 | Action | Command |
 |---|---|
 | Restart | `systemctl reboot` |
-| Sleep | `systemctl suspend-then-hibernate` |
+| Sleep | `systemctl suspend` |
 | Power off | `systemctl poweroff` |
 | Log out | `loginctl terminate-user "$USER"` |
 
@@ -248,6 +227,7 @@ the ownership and mode listed above. Then apply the relevant operation:
 | Changed component | Required operation |
 |---|---|
 | logind policy | `sudo systemctl reload systemd-logind.service` |
+| Removed hibernation policy | Delete `/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` |
 | ASUS NVIDIA module policy | Regenerate the initramfs when applicable, then reboot before relying on changed module options |
 
 `systemctl daemon-reload` does not apply modprobe changes. Use the
@@ -259,6 +239,8 @@ Useful diagnostics:
 ```bash
 systemd-analyze cat-config systemd/logind.conf
 systemd-analyze cat-config systemd/sleep.conf
+busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanSuspend
+busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanHibernate
 systemctl status asusd.service asus-shutdown.service power-profiles-daemon.service
 systemctl is-enabled supergfxd.service
 systemctl is-active supergfxd.service
@@ -272,7 +254,7 @@ modprobe --showconfig | grep -E '^(blacklist nouveau|options (nvidia-drm|nvidia-
 
 - `system/` is not a Stow package; editing the repository copy does not update
   the installed root-owned file until it is reinstalled.
-- Hibernation depends on system support outside this repository.
+- Hibernation remains disabled while Secure Boot enforces kernel lockdown.
 - The display helper intentionally fails instead of guessing when connector or
   backlight discovery is ambiguous.
 - GPU temperature is queried only in dGPU MUX mode; Hybrid telemetry reads only

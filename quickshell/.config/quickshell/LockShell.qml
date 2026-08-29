@@ -40,7 +40,7 @@ ShellRoot {
     function runPowerAction(action) {
         const commands = {
             restart: ["systemctl", "reboot"],
-            suspend: ["systemctl", "suspend-then-hibernate"],
+            suspend: ["systemctl", "suspend"],
             poweroff: ["systemctl", "poweroff"],
             logout: ["loginctl", "terminate-user", Quickshell.env("USER")]
         }

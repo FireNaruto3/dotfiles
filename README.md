@@ -56,7 +56,12 @@ alternatives; the active desktop uses Niri and Quickshell's built-in OSD.
 
 ## Power Behavior
 
-Lid close, the physical power or sleep key, the lock-screen **Sleep** action, and the idle timeout all suspend first and hibernate after 30 minutes. This policy applies on battery and AC power, while a docked lid close is ignored. A system-sleep hook preserves the ASUS keyboard-backlight level across suspend and hibernation.
+Lid close, the physical power or sleep key, the lock-screen **Sleep** action,
+and the idle timeout all suspend normally. This policy applies on battery and
+AC power, while a docked lid close is ignored. Hibernation is intentionally not
+used because Secure Boot places the kernel in integrity lockdown mode, where
+this system reports hibernation as unavailable. A system-sleep hook preserves
+the ASUS keyboard-backlight level across suspend and resume.
 
 The lock screen uses a 12-hour clock with AM/PM, displays live battery percentage, and provides restart, sleep, logout, and power-off actions.
 
@@ -246,10 +251,6 @@ sudo install -D -o root -g root -m 0644 \
   system/etc/systemd/logind.conf.d/90-sleep-policy.conf \
   /etc/systemd/logind.conf.d/90-sleep-policy.conf
 
-sudo install -D -o root -g root -m 0644 \
-  system/etc/systemd/sleep.conf.d/90-hibernate-delay.conf \
-  /etc/systemd/sleep.conf.d/90-hibernate-delay.conf
-
 sudo install -D -o root -g root -m 0755 \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   /usr/lib/systemd/system-sleep/asus-keyboard-backlight
@@ -257,6 +258,9 @@ sudo install -D -o root -g root -m 0755 \
 sudo install -D -o root -g root -m 0644 \
   system/etc/modprobe.d/asus-nvidia.conf \
   /etc/modprobe.d/asus-nvidia.conf
+
+# Remove the previous suspend-then-hibernate policy, if installed.
+sudo rm -f /etc/systemd/sleep.conf.d/90-hibernate-delay.conf
 
 sudo systemctl daemon-reload
 sudo systemctl reload systemd-logind.service
@@ -294,10 +298,9 @@ fi
 
 Alternatively, reinstall the NVIDIA package that owns the ICD file.
 
-Hibernation uses systemd's dynamic `HibernateLocation` EFI variable with the
-active `/swap.img`; no static `resume=` or `resume_offset=` kernel parameters
-are installed. On an ordinary boot without a hibernation image,
-`/sys/power/resume` and `/sys/power/resume_offset` should both be zero.
+Secure Boot remains enabled. The kernel's integrity lockdown disables
+hibernation, so no hibernation sleep policy or static `resume=` configuration
+is installed.
 
 Wallpapers remain in `~/dotfiles/wallpapers` because the desktop and lock-screen configs reference that directory. Wallpaper paths use the current user's home directory and do not need account-specific changes.
 
