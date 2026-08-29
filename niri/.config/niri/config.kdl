@@ -184,7 +184,7 @@ spawn-at-startup "swayidle" "-w" \
     "timeout" "270" "$HOME/.config/quickshell/scripts/display-control.sh save-brightness && $HOME/.config/quickshell/scripts/display-control.sh set-brightness 10%" "resume" "$HOME/.config/quickshell/scripts/display-control.sh restore-brightness" \
     "timeout" "300" "$HOME/.config/quickshell/scripts/lock.sh" \
     "timeout" "400" "niri msg action power-off-monitors" "resume" "niri msg action power-on-monitors" \
-    "timeout" "500" "systemctl suspend-then-hibernate" \
+    "timeout" "500" "systemctl suspend" \
     "before-sleep" "$HOME/.config/quickshell/scripts/lock.sh"
   
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:

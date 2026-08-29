@@ -12,13 +12,13 @@
 - `quickshell/.config/quickshell/shell.qml` is the normal shell entrypoint. `LockShell.qml` is a separate Quickshell instance started by `scripts/lock.sh`.
 - Keep the lock acquisition handshake intact: `lock.sh` starts `LockShell.qml`, polls the `lock isSecure` IPC method, and falls back to `gtklock` if the Wayland session-lock protocol is not secured within roughly 10 seconds. Niri keybindings, `swayidle`, and wlogout call `~/.config/quickshell/scripts/lock.sh`.
 - Quickshell data objects consume JSON emitted by `scripts/*-stats.sh` and `power-state.sh`. When changing a JSON key or type, update its corresponding QML properties in `SystemData.qml` or `PowerData.qml` in the same change.
-- Fan stats run only while the fan panel is visible. The bar launches the external Resources application instead of polling CPU/GPU resource stats itself.
+- Fan stats run only while the fan panel is visible. The bar polls lightweight CPU and RAM usage for its indicators; detailed monitoring remains in the external Resources application.
 - Keep `README.md` synchronized when changing documented packages, power behavior, installation steps, or Niri keybindings.
 
 ## Machine-Specific Assumptions
 
 - Several settings are deliberately machine-specific: the Samsung ATNA40CU05-0 panel with 2880x1800 modes and ASUS utilities/devices. Connector, backlight, DRM card, and system-battery names are discovered at runtime because their numeric suffixes change with GPU probe order. Search all Niri, Quickshell, and systemd references before changing one of these assumptions.
-- `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` must remain executable when installed; it saves/restores `leds:asus::kbd_backlight` around sleep because firmware resets it after hibernation.
+- `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` must remain executable when installed; it saves/restores `leds:asus::kbd_backlight` around suspend and resume.
 
 ## Focused Checks
 
