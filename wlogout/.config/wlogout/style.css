@@ -1,11 +1,11 @@
 * {
     background-image: none;
-    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-family: "JetBrains Mono Nerd Font", monospace;
 }
 
 window {
-    background-color: rgba(20, 29, 43, 0.85);
-    animation: fadeIn 0.05s ease-in;
+    background-color: rgba(19, 24, 25, 0.90);
+    animation: fadeIn 0.12s ease-in;
 }
 
 @keyframes fadeIn {
@@ -14,33 +14,46 @@ window {
 }
 
 button {
-    background-color: rgba(164, 177, 205, 0.08);
-    color: #9fef00;
-    border: 1px solid rgba(159, 239, 0, 0.3);
+    background-color: #1a1b26;
+    color: #c6d0f5;
+    border: 1px solid rgba(153, 209, 219, 0.20);
     background-repeat: no-repeat;
     background-position: center 35%;
-    background-size: 25%;
-    border-radius: 16px;
-    margin: 10px;
-    padding: 60px 40px 20px;
+    background-size: 24%;
+    border-radius: 12px;
+    margin: 8px;
+    padding: 60px 40px 18px;
     min-width: 140px;
-    transition: background-color 0s, border-color 0s;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.24);
+    transition: 150ms ease-in-out;
 }
 
 button label {
-    font-size: 13px;
-    color: #9fef00;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
+    font-size: 12px;
+    font-weight: bold;
+    color: #c6d0f5;
 }
 
 button:hover {
-    background-color: rgba(159, 239, 0, 0.12);
-    border-color: #9fef00;
+    background-color: rgba(61, 82, 91, 0.72);
+    color: #99d1db;
+    border-color: rgba(153, 209, 219, 0.65);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.32);
 }
 
 button:hover label {
-    opacity: 0;
+    color: #99d1db;
+}
+
+button:focus {
+    background-color: rgba(79, 107, 117, 0.55);
+    color: #99d1db;
+    border-color: #99d1db;
+    box-shadow: 0 0 0 2px rgba(153, 209, 219, 0.12);
+}
+
+button:focus label {
+    color: #99d1db;
 }
 
 #lock {

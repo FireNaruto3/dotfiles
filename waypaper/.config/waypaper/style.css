@@ -1,11 +1,11 @@
-@define-color surface #101419;
+@define-color surface #131819;
 @define-color surface_alt #1a1b26;
-@define-color surface_hover #293847;
-@define-color border rgba(180, 220, 220, 0.18);
+@define-color surface_hover #26343d;
+@define-color surface_active #334f57;
+@define-color border rgba(153, 209, 219, 0.20);
 @define-color foreground #c6d0f5;
-@define-color muted #737994;
+@define-color muted #758083;
 @define-color accent #99d1db;
-@define-color accent_alt #bd93f9;
 
 * {
   font-family: "JetBrains Mono Nerd Font", "JetBrains Mono", monospace;
@@ -17,14 +17,14 @@ window,
 window.background,
 scrolledwindow,
 scrolledwindow > viewport {
-  background-color: rgba(16, 20, 25, 0.97);
+  background-color: rgba(19, 24, 25, 0.97);
 }
 
 button {
   min-height: 28px;
   padding: 7px 12px;
   border: 1px solid @border;
-  border-radius: 12px;
+  border-radius: 8px;
   background-color: @surface_alt;
   background-image: none;
   box-shadow: none;
@@ -33,21 +33,21 @@ button {
 }
 
 button:hover {
-  border-color: rgba(153, 209, 219, 0.55);
+  border-color: rgba(153, 209, 219, 0.60);
   background-color: @surface_hover;
   background-image: none;
-  box-shadow: 0 0 8px rgba(153, 209, 219, 0.16);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
 button:active,
 button:checked {
   border-color: @accent;
-  background-color: rgba(153, 209, 219, 0.20);
+  background-color: @surface_active;
 }
 
 button:disabled {
   color: @muted;
-  border-color: rgba(115, 121, 148, 0.12);
+  border-color: rgba(117, 128, 131, 0.12);
   background-color: rgba(26, 27, 38, 0.55);
 }
 
@@ -58,13 +58,13 @@ button:hover > image {
 }
 
 scrolledwindow {
-  border: 1px solid rgba(180, 220, 220, 0.10);
-  border-radius: 14px;
+  border: 1px solid @border;
+  border-radius: 12px;
 }
 
 scrolledwindow grid {
   padding: 8px;
-  background-color: rgba(11, 14, 18, 0.62);
+  background-color: rgba(19, 24, 25, 0.72);
 }
 
 grid > button.image-button,
@@ -72,25 +72,25 @@ scrolledwindow grid > button {
   margin: 7px;
   padding: 6px;
   border: 2px solid transparent;
-  border-radius: 14px;
-  background-color: rgba(26, 27, 38, 0.82);
+  border-radius: 12px;
+  background-color: @surface_alt;
   background-image: none;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.24);
 }
 
 grid > button.image-button:hover,
 scrolledwindow grid > button:hover {
-  border-color: rgba(153, 209, 219, 0.48);
-  background-color: rgba(41, 56, 71, 0.90);
+  border-color: rgba(153, 209, 219, 0.55);
+  background-color: @surface_hover;
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.34);
 }
 
 grid > button.highlighted-button,
 scrolledwindow grid > button.highlighted-button {
-  border-color: @accent_alt;
-  background-color: rgba(189, 147, 249, 0.16);
+  border-color: @accent;
+  background-color: @surface_active;
   background-image: none;
-  box-shadow: 0 0 12px rgba(189, 147, 249, 0.28);
+  box-shadow: 0 0 12px rgba(153, 209, 219, 0.22);
 }
 
 .highlighted-button > image,
@@ -103,7 +103,7 @@ combobox button.combo {
   min-height: 28px;
   padding: 6px 10px;
   border: 1px solid @border;
-  border-radius: 10px;
+  border-radius: 8px;
   background-color: @surface_alt;
   background-image: none;
   box-shadow: none;
@@ -140,7 +140,7 @@ scrollbar slider {
   min-height: 28px;
   border: 0;
   border-radius: 7px;
-  background-color: rgba(115, 121, 148, 0.48);
+  background-color: rgba(117, 128, 131, 0.48);
 }
 
 scrollbar slider:hover {
@@ -150,7 +150,7 @@ scrollbar slider:hover {
 tooltip,
 tooltip.background {
   border: 1px solid @border;
-  border-radius: 10px;
+  border-radius: 8px;
   background-color: @surface_alt;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
