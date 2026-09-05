@@ -127,6 +127,18 @@ PanelWindow {
         return icons[Math.max(0, Math.min(5, Math.floor(systemData.battery / 20)))]
     }
 
+    function batteryColor() {
+        if (systemData.batteryState === "Charging" || systemData.batteryState === "Full")
+            return theme.success
+        if (systemData.batteryState === "Discharging" || systemData.batteryState === "Pending discharge") {
+            if (systemData.battery <= 15)
+                return theme.error
+            if (systemData.battery <= 30)
+                return theme.warning
+        }
+        return theme.accent
+    }
+
     function focusWorkspace(workspace) {
         Quickshell.execDetached([
             "niri", "msg", "action", "focus-workspace",
@@ -548,6 +560,7 @@ PanelWindow {
                     width: 34
                     height: 48
                     text: `${bar.batteryIcon()}\n${bar.systemData.battery}%`
+                    foreground: bar.batteryColor()
                     active: bar.activeView === "power"
                     tooltip: `${bar.systemData.batteryState}\n${bar.systemData.batteryTime}\n${bar.systemData.batteryPower.toFixed(1)} W`
                     onClicked: bar.toggleDrawer("power", bar.anchorFor(batteryButton))

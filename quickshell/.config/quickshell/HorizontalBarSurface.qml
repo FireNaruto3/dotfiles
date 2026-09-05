@@ -335,6 +335,7 @@ Item {
                 SystemButton {
                     id: batteryButton
                     text: `${root.panel.batteryIcon()} ${root.panel.systemData.battery}%`
+                    foreground: root.panel.batteryColor()
                     active: root.panel.activeView === "power"
                     tooltip: `${root.panel.systemData.batteryState}\n${root.panel.systemData.batteryTime}\n${root.panel.systemData.batteryPower.toFixed(1)} W`
                     tooltipRight: false
