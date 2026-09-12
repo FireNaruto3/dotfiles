@@ -569,7 +569,7 @@ PanelWindow {
                 SystemButton {
                     id: clockButton
                     width: 34
-                    text: "󰥔"
+                    text: Qt.formatDateTime(clock.date, "hh\nmm")
                     active: bar.activeView === "clock"
                     tooltip: Qt.formatDateTime(clock.date, "hh:mm:ss AP\ndddd, MMMM dd")
                     onClicked: bar.toggleDrawer("clock", bar.anchorFor(clockButton))
