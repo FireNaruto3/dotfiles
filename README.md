@@ -1,10 +1,6 @@
-# Jonathan's Dotfiles
+# FireNaruto3's Dotfiles
 
 A dark, minimal Wayland rice built around Niri and Quickshell. The interface uses a blue-gray palette with a consistent cyan accent, semantic status colors, JetBrains Mono Nerd Font, and Papirus icons.
-
-## Screenshots
-
-Screenshots will be added here.
 
 ## Requirements
 
