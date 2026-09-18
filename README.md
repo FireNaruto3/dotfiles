@@ -1,4 +1,4 @@
-# Jonathan's Dotfiles
+# FireNaruto3's Dotfiles
 
 A dark Wayland desktop built around Niri and Quickshell. The interface uses a
 blue-gray palette with a cyan accent, semantic status colors, JetBrains Mono
