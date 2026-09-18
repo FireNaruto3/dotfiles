@@ -8,7 +8,7 @@ ShellRoot {
     function openResources() {
         Quickshell.execDetached([
             "sh", "-c",
-            "pkill -TERM -x -u \"$(id -u)\" resources || exec resources"
+            "pkill -TERM -x -u \"$(id -u)\" resources || exec niri msg action spawn -- resources"
         ])
     }
 

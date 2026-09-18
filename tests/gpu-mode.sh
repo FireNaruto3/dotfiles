@@ -77,8 +77,10 @@ set_current 0 1
 assert_eq Hybrid "$("$script" --get)"
 
 status=$("$script" status)
-[[ $status == *'Current mode: Hybrid'* ]]
+[[ $status == *'Configured mode: Hybrid'* ]]
+[[ $status == *'dGPU runtime power:'* ]]
 [[ $status == *'Queued mode: None'* ]]
+[[ $status == *'Services: asusd=active, asus-shutdown=active, supergfxd=inactive'* ]]
 
 "$script" --yes integrated >/dev/null
 assert_eq 1 "$(<"$state_dir/queued-dgpu_disable")"

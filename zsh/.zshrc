@@ -113,6 +113,9 @@ ZSH_HIGHLIGHT_STYLES[comment]='fg=8'
 # opencode
 export PATH="$HOME/.opencode/bin:$PATH"
 
+#Racket
+export PATH="$HOME/racket/bin:$PATH"
+
 # Starship prompt (must come after oh-my-zsh.sh source above)
 eval "$(starship init zsh)"
 

@@ -454,6 +454,7 @@ PanelWindow {
                 SystemButton {
                     width: 34
                     text: bar.systemData.network === "wifi" ? "󰤢" : (bar.systemData.network === "ethernet" ? "󰈀" : "󰤠")
+                    contentOffsetX: bar.systemData.network === "wifi" ? -2 : 0
                     tooltip: bar.systemData.network === "wifi"
                         ? `${bar.systemData.ssid} (${bar.systemData.signal}%)`
                         : bar.systemData.network
@@ -513,6 +514,7 @@ PanelWindow {
                     id: fanButton
                     width: 34
                     text: "󰈐"
+                    contentOffsetX: -1
                     active: bar.activeView === "fan"
                     tooltip: "Fan monitor"
                     onClicked: bar.toggleDrawer("fan", bar.anchorFor(fanButton))
@@ -521,7 +523,9 @@ PanelWindow {
                 SystemButton {
                     width: 34
                     height: 46
-                    text: `\n${bar.systemData.cpuUsage}%`
+                    text: ""
+                    secondaryText: `${bar.systemData.cpuUsage}%`
+                    contentOffsetX: -2
                     tooltip: `CPU usage: ${bar.systemData.cpuUsage}%`
                     onClicked: bar.openResources()
                 }
@@ -529,7 +533,9 @@ PanelWindow {
                 SystemButton {
                     width: 34
                     height: 46
-                    text: `\n${bar.systemData.memoryPercent}%`
+                    text: ""
+                    secondaryText: `${bar.systemData.memoryPercent}%`
+                    contentOffsetX: -2.5
                     tooltip: `RAM: ${bar.systemData.memoryUsed.toFixed(1)} / ${bar.systemData.memoryTotal.toFixed(1)} GB`
                     onClicked: bar.openResources()
                 }
