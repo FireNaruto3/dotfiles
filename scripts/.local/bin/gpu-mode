@@ -95,19 +95,51 @@ queued_mode() {
     fi
 }
 
+dgpu_runtime_state() {
+    local device
+    local device_class
+    local runtime_status
+    local vendor
+
+    for device in /sys/bus/pci/devices/*; do
+        [[ -r $device/vendor && -r $device/class ]] || continue
+        read -r vendor < "$device/vendor"
+        read -r device_class < "$device/class"
+        [[ $vendor == 0x10de && $device_class == 0x03* ]] || continue
+
+        if [[ -r $device/power/runtime_status ]]; then
+            read -r runtime_status < "$device/power/runtime_status"
+            printf '%s\n' "$runtime_status"
+        else
+            printf 'unknown\n'
+        fi
+        return
+    done
+
+    printf 'not present\n'
+}
+
+service_state() {
+    local state
+
+    state=$(systemctl is-active "$1" 2>/dev/null) || true
+    printf '%s\n' "${state:-inactive}"
+}
+
 show_status() {
     local pending
 
     read_state
     pending=$(queued_mode)
-    printf 'Current mode: %s\n' "$current_mode"
+    printf 'Configured mode: %s\n' "$current_mode"
+    printf 'dGPU runtime power: %s\n' "$(dgpu_runtime_state)"
     printf 'Firmware: dgpu_disable=%s, gpu_mux_mode=%s\n' \
         "$current_dgpu_disable" "$current_gpu_mux_mode"
     printf 'Queued mode: %s\n' "$pending"
     printf 'Services: asusd=%s, asus-shutdown=%s, supergfxd=%s\n' \
-        "$(systemctl is-active asusd.service 2>/dev/null || printf 'inactive')" \
-        "$(systemctl is-active asus-shutdown.service 2>/dev/null || printf 'inactive')" \
-        "$(systemctl is-active supergfxd.service 2>/dev/null || printf 'inactive')"
+        "$(service_state asusd.service)" \
+        "$(service_state asus-shutdown.service)" \
+        "$(service_state supergfxd.service)"
 }
 
 restore_queue() {

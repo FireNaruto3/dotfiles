@@ -4,6 +4,7 @@ Rectangle {
     id: root
 
     property string text: ""
+    property string secondaryText: ""
     property string tooltip: ""
     property color foreground: "#99d1db"
     property color accent: "#99d1db"
@@ -14,6 +15,7 @@ Rectangle {
     property bool tooltipSuppressed: false
     property bool tooltipRight: true
     property int fontPixelSize: 12
+    property real contentOffsetX: 0
 
     signal clicked(int button)
     signal wheel(int delta)
@@ -31,8 +33,9 @@ Rectangle {
         id: label
 
         anchors.fill: parent
-        anchors.leftMargin: -1
-        anchors.rightMargin: 1
+        anchors.leftMargin: root.contentOffsetX
+        anchors.rightMargin: -root.contentOffsetX
+        visible: root.secondaryText.length === 0
         text: root.text
         color: root.foreground
         font.family: "JetBrains Mono Nerd Font"
@@ -43,6 +46,39 @@ Rectangle {
         lineHeight: 0.9
         lineHeightMode: Text.ProportionalHeight
         scale: mouse.containsMouse ? 1.14 : 1
+
+        Behavior on scale {
+            NumberAnimation { duration: 160; easing.type: Easing.OutBack }
+        }
+    }
+
+    Column {
+        anchors.centerIn: parent
+        width: parent.width
+        spacing: -2
+        visible: root.secondaryText.length > 0
+        scale: mouse.containsMouse ? 1.14 : 1
+
+        Text {
+            width: parent.width
+            text: root.text
+            color: root.foreground
+            font.family: "JetBrains Mono Nerd Font"
+            font.pixelSize: root.fontPixelSize
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            transform: Translate { x: root.contentOffsetX }
+        }
+
+        Text {
+            width: parent.width
+            text: root.secondaryText
+            color: root.foreground
+            font.family: "JetBrains Mono Nerd Font"
+            font.pixelSize: root.fontPixelSize
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+        }
 
         Behavior on scale {
             NumberAnimation { duration: 160; easing.type: Easing.OutBack }
