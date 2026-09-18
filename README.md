@@ -350,12 +350,10 @@ sudo install -D -o root -g root -m 0644 \
   system/etc/modprobe.d/asus-nvidia.conf \
   /etc/modprobe.d/asus-nvidia.conf
 
-# Preserve and disable the previous suspend-then-hibernate policy, if installed.
-if [ -e /etc/systemd/sleep.conf.d/90-hibernate-delay.conf ] && \
-   [ ! -e /etc/systemd/sleep.conf.d/90-hibernate-delay.conf.disabled ]; then
-  sudo mv /etc/systemd/sleep.conf.d/90-hibernate-delay.conf \
-    /etc/systemd/sleep.conf.d/90-hibernate-delay.conf.disabled
-fi
+# Remove the obsolete suspend-then-hibernate policy and any disabled backup.
+sudo rm -f \
+  /etc/systemd/sleep.conf.d/90-hibernate-delay.conf \
+  /etc/systemd/sleep.conf.d/90-hibernate-delay.conf.disabled
 
 sudo systemctl reload systemd-logind.service
 ```
