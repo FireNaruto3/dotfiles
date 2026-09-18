@@ -7,7 +7,13 @@ Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 
 ## Screenshots
 
-![Niri desktop with the Quickshell vertical rail](screenshots/desktop.webp)
+### Bar Layouts
+
+| Vertical rail | Horizontal bar |
+|:-------------:|:--------------:|
+| ![Niri desktop with the Quickshell vertical rail](screenshots/desktop.webp) | ![Niri desktop with the Quickshell horizontal bar](screenshots/horizontal-bar.webp) |
+
+### Drawers
 
 | Clock dashboard | Power drawer |
 |:----------------:|:------------:|
