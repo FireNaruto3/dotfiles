@@ -14,12 +14,4 @@ while [ "$attempt" -lt 100 ]; do
     sleep 0.1
 done
 
-# Keep a proven locker available if Quickshell cannot acquire the protocol.
-if command -v gtklock >/dev/null 2>&1; then
-    exec gtklock -d \
-        -s "$HOME/.config/gtklock/style.css" \
-        -x "$HOME/.config/gtklock/layout.xml" \
-        -b "$HOME/dotfiles/wallpapers/Karina5.jpg"
-fi
-
 exit 1

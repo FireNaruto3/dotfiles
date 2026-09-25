@@ -3,14 +3,14 @@
 ## Layout and Deployment
 
 - This is a GNU Stow tree: each top-level package mirrors paths under `$HOME` (for example, `niri/.config/niri/config.kdl` becomes `~/.config/niri/config.kdl`). Edit the repository copy, not an unrelated file under `~/.config`.
-- Niri and Quickshell are the active desktop. `sway/` and `waybar/` are retained legacy alternatives; do not update them for active-desktop changes unless explicitly requested.
+- Niri and Quickshell are the active desktop. `waybar/` and `swayosd/` are retained legacy alternatives; do not update them for active-desktop changes unless explicitly requested.
 - `system/` is not a Stow package. Its files are copied to `/etc` or `/usr` as root-owned files using the commands and modes in `README.md`; sleep-policy changes require reinstallation and `systemctl reload systemd-logind.service`.
 - Wallpapers intentionally remain at `~/dotfiles/wallpapers`; use `$HOME`, `~`, or paths relative to the referring config rather than account-specific absolute paths.
 
 ## Coupled Behavior
 
 - `quickshell/.config/quickshell/shell.qml` is the normal shell entrypoint. `LockShell.qml` is a separate Quickshell instance started by `scripts/lock.sh`.
-- Keep the lock acquisition handshake intact: `lock.sh` starts `LockShell.qml`, polls the `lock isSecure` IPC method, and falls back to `gtklock` if the Wayland session-lock protocol is not secured within roughly 10 seconds. Niri keybindings, `swayidle`, and wlogout call `~/.config/quickshell/scripts/lock.sh`.
+- Keep the lock acquisition handshake intact: `lock.sh` starts `LockShell.qml`, polls the `lock isSecure` IPC method, and returns an error if the Wayland session-lock protocol is not secured within roughly 10 seconds. Niri keybindings, `swayidle`, and wlogout call `~/.config/quickshell/scripts/lock.sh`.
 - Quickshell data objects consume JSON emitted by `scripts/*-stats.sh` and `power-state.sh`. When changing a JSON key or type, update its corresponding QML properties in `SystemData.qml` or `PowerData.qml` in the same change.
 - Fan stats run only while the fan panel is visible. The bar polls lightweight CPU and RAM usage for its indicators; detailed monitoring remains in the external Resources application.
 - Keep `README.md` synchronized when changing documented packages, power behavior, installation steps, or Niri keybindings.
