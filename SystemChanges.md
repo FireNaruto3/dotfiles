@@ -3,13 +3,13 @@
 This document inventories custom system and hardware behavior on this laptop as
 of August 14, 2026. It distinguishes root-installed configuration from Niri and
 Quickshell user-session behavior. The active desktop is Niri with Quickshell;
-the retained Sway and Waybar configurations are not included.
+the retained Waybar and SwayOSD configurations are not included.
 
 ## Configuration Ownership
 
 - Files under `system/` are source copies for root-owned files under `/etc` and
   `/usr`. They are not deployed with GNU Stow.
-- Files under `niri/`, `quickshell/`, `gtklock/`, `wlogout/`, and
+- Files under `niri/`, `quickshell/`, `wlogout/`, and
   other Stow packages are user-session configuration linked under `$HOME`.
 - Files under `/etc/asusd/` are runtime configuration owned and updated by
   `asusd`. They are documented here but are not tracked in this repository.
@@ -77,8 +77,8 @@ Niri starts `swayidle` with the following user-session timeline:
 | Before any sleep | Lock before the system enters sleep |
 
 The lock helper starts the separate `LockShell.qml` Quickshell instance and
-polls its `lock isSecure` IPC method for roughly 10 seconds. If the Wayland
-session-lock protocol is not secured, it falls back to `gtklock`.
+polls its `lock isSecure` IPC method for roughly 10 seconds. It returns an error
+if the Wayland session-lock protocol is not secured within that time.
 
 The lock screen requires confirmation before these system actions:
 

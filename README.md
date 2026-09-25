@@ -33,7 +33,6 @@ Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 | `mako` | Notifications and do-not-disturb mode |
 | `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, GNOME Keyring | Preferred portal backend, GTK Access/Notification fallback, and Secret portal |
 | `swayidle` | Idle dimming, locking, display power, and suspend handling |
-| `gtklock` plus playerctl, powerbar, and userinfo modules | Fallback locker when Quickshell cannot acquire session lock |
 | `waypaper` + `awww` | Wallpaper selection and restoration |
 | `wlogout` | Session and power menu |
 | `resources` | System resource monitor launched from the bar |
@@ -71,7 +70,6 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Mako | Compact notifications with urgency-colored borders |
 | Waypaper | Wallpaper picker using the `awww` backend |
 | Wlogout | Styled logout and power actions |
-| GTKlock | Fallback lock-screen configuration |
 | Flameshot | Flameshot 14 configuration; the executable is installed separately |
 | Autostart | Machine-specific NetBird UI launcher and Blueman applet suppression |
 | Neovim | Lua configuration using `lazy.nvim`, Snacks, Oil, Neogit, and Gitsigns |
@@ -82,9 +80,8 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Scripts | Reboot-only ASUS graphics-mode switching command |
 | OpenCode | Model selection and global engineering instructions |
 
-The `sway/` compositor config, Niri-oriented `waybar/` config, and `swayosd/`
-config are retained legacy alternatives. The active session uses Niri and
-Quickshell's bar and OSD.
+The `waybar/` and `swayosd/` configs are retained legacy alternatives. The
+active session uses Niri and Quickshell's bar and OSD.
 
 ### Quickshell Interface
 
@@ -129,14 +126,13 @@ The idle sequence is:
 
 The lock helper also runs before every sleep. It starts a separate
 `LockShell.qml` instance, waits for the Wayland session lock to report secure,
-and falls back to GTKlock after about ten seconds if acquisition fails.
+and returns an error after about ten seconds if acquisition fails.
 
 The Quickshell lock screen uses PAM's `login` service, a 12-hour clock with
 AM/PM, live battery state, password visibility and reveal-delay settings, and
 a wallpaper picker. Restart, sleep, logout, and power-off require confirmation;
 logout terminates all sessions for the current user. The selected lock
-wallpaper is independent of Waypaper and persists in Quickshell state. GTKlock
-uses `Karina5.jpg` when it is needed as the fallback.
+wallpaper is independent of Waypaper and persists in Quickshell state.
 
 ### Fan Curves
 
@@ -311,7 +307,7 @@ The repository uses a GNU Stow package layout. Clone it into `~/dotfiles`, then 
 git clone git@github.com:FireNaruto3/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 stow niri quickshell flameshot ghostty nvim rofi mako wlogout \
-  fastfetch git starship tmux zsh waypaper gtklock autostart opencode scripts
+  fastfetch git starship tmux zsh waypaper autostart opencode scripts
 ```
 
 The `autostart` package is machine-specific because it enables NetBird UI. The
