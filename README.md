@@ -11,6 +11,9 @@ linking anything into `$HOME` or installing the root-owned files. In particular,
 the display, ASUS, NVIDIA, NetBird, Git, OpenCode, and Waypaper stylesheet
 settings may not suit another machine.
 
+For the runtime process and data flow, see [How Everything Works](HowEverythingWorks.md).
+For the root-installed policy inventory, see [System Changes](SystemChanges.md).
+
 ## Screenshots
 
 ### Bar Layouts
