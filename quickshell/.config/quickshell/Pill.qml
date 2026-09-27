@@ -3,11 +3,13 @@ import QtQuick
 Rectangle {
     id: root
 
+    ShellTheme { id: theme }
+
     property string text: ""
     property string tooltip: ""
-    property color foreground: "#99d1db"
-    property color background: "#1a1b26"
-    property color hoverBackground: "#26343d40"
+    property color foreground: theme.accent
+    property color background: theme.card
+    property color hoverBackground: theme.cardHover
     property int horizontalPadding: 12
     property int maximumWidth: 0
 

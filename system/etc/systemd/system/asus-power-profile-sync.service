@@ -1,0 +1,16 @@
+[Unit]
+Description=Configure ASUS profiles for AC and battery power
+Documentation=https://asus-linux.org/manual/asusctl-manual/
+Wants=asusd.service
+After=asusd.service
+ConditionPathExists=/usr/bin/asusctl
+
+[Service]
+Type=oneshot
+# asusd stores both choices and applies them on power-source events. Using its
+# native event handling avoids racing udev change events with ad-hoc scripts.
+ExecStart=/usr/bin/asusctl profile set --ac Balanced
+ExecStart=/usr/bin/asusctl profile set --battery Quiet
+
+[Install]
+WantedBy=multi-user.target

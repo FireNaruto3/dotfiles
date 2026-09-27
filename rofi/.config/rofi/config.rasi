@@ -1,9 +1,6 @@
-* {
-    bg:     #1e1f29;
-    fg:     #f8f8f2;
-    accent: #24c54f;
-    dim:    #6272a4;
+@import "~/.cache/matugen/rofi.rasi"
 
+* {
     /* override rofi built-in variable defaults so nothing falls back to solarized */
     background-color:            @bg;
     text-color:                  @fg;
@@ -14,10 +11,10 @@
     selected-normal-background:  @accent;
     selected-normal-foreground:  @bg;
     urgent-background:           @bg;
-    urgent-foreground:           #ff5555;
+    urgent-foreground:           @error;
     alternate-urgent-background: @bg;
-    alternate-urgent-foreground: #ff5555;
-    selected-urgent-background:  #ff5555;
+    alternate-urgent-foreground: @error;
+    selected-urgent-background:  @error;
     selected-urgent-foreground:  @fg;
     active-background:           @bg;
     active-foreground:           @accent;
@@ -44,7 +41,7 @@ mainbox {
 }
 
 inputbar {
-    background-color: #282a36;
+    background-color: @bg-alt;
     border-radius:    4px;
     padding:          8px 12px;
     children:         [prompt, entry];

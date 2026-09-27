@@ -28,11 +28,14 @@ QtObject {
     readonly property bool capsLock: values.caps_lock || false
     readonly property bool numLock: values.num_lock || false
     readonly property bool scrollLock: values.scroll_lock || false
-    readonly property int battery: values.battery || 0
+    readonly property bool batteryAvailable: values.battery !== undefined && values.battery !== null
+    readonly property real battery: batteryAvailable ? Number(values.battery) : Number.NaN
     readonly property string batteryState: values.battery_state || "Unknown"
-    readonly property real batteryPower: values.battery_power || 0
-    readonly property string batteryTime: values.battery_time || ""
-    readonly property int batteryHealth: values.battery_health || 0
+    readonly property bool batteryPowerAvailable: values.battery_power !== undefined && values.battery_power !== null
+    readonly property real batteryPower: batteryPowerAvailable ? Number(values.battery_power) : Number.NaN
+    readonly property string batteryTime: values.battery_time || "Unavailable"
+    readonly property bool batteryHealthAvailable: values.battery_health !== undefined && values.battery_health !== null
+    readonly property real batteryHealth: batteryHealthAvailable ? Number(values.battery_health) : Number.NaN
     readonly property string uptime: values.uptime || "-"
     readonly property bool dnd: values.dnd || false
     property bool refreshPending: false
@@ -72,7 +75,8 @@ QtObject {
     }
 
     property Timer refreshTimer: Timer {
-        interval: 1000
+        // This collector also queries desktop services; keep it off the fast path.
+        interval: 5000
         running: true
         repeat: true
         onTriggered: {
@@ -106,7 +110,7 @@ QtObject {
     }
 
     property Timer resourceRefreshTimer: Timer {
-        interval: 1000
+        interval: 2000
         running: true
         repeat: true
         onTriggered: {

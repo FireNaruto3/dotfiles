@@ -18,7 +18,7 @@ printf '%s\0' "${files[@]}" \
         split("\u0000")
         | map(select(length > 0))
         | map({
-            source: ("file://" + .),
+            source: ("file://" + (split("/") | map(@uri) | join("/"))),
             name: (split("/")[-1] | sub("\\.[^.]+$"; ""))
         })
     '

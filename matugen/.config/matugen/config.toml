@@ -1,0 +1,29 @@
+[config]
+version_check = false
+fallback_color = "#99d1db"
+prefer = "saturation"
+caching = true
+
+[config.custom_colors]
+success = "#a6d189"
+warning = "#e5c890"
+
+[templates.quickshell]
+input_path = "templates/quickshell.json"
+output_path = "~/.cache/matugen/quickshell.json"
+
+[templates.niri]
+input_path = "templates/niri.kdl"
+output_path = "~/.cache/matugen/niri.kdl"
+
+[templates.mako]
+input_path = "templates/mako"
+output_path = "~/.cache/matugen/mako"
+
+[templates.rofi]
+input_path = "templates/rofi.rasi"
+output_path = "~/.cache/matugen/rofi.rasi"
+
+[templates.ghostty]
+input_path = "templates/ghostty"
+output_path = "~/.config/ghostty/themes/Matugen"

@@ -1,0 +1,49 @@
+#!/bin/sh
+
+tag=quickshell-secure-suspend
+
+report_failure() {
+    message=$1
+    logger -p authpriv.err -t "$tag" -- "$message"
+
+    if [ -n "${user:-}" ] && [ -n "${uid:-}" ]; then
+        runuser -u "$user" -- env \
+            XDG_RUNTIME_DIR="/run/user/$uid" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+            notify-send -u critical "Suspend blocked" "$message" >/dev/null 2>&1 || :
+    fi
+
+    printf '%s: %s\n' "$tag" "$message" >&2
+}
+
+session_info=$(
+    loginctl list-sessions --no-legend 2>/dev/null |
+    while read -r session uid user rest; do
+        [ "$(loginctl show-session "$session" -p Active --value 2>/dev/null)" = "yes" ] || continue
+        [ "$(loginctl show-session "$session" -p Remote --value 2>/dev/null)" = "no" ] || continue
+        [ "$(loginctl show-session "$session" -p Type --value 2>/dev/null)" = "wayland" ] || continue
+        printf '%s %s %s\n' "$session" "$uid" "$user"
+        break
+    done
+)
+
+if [ -z "$session_info" ]; then
+    report_failure "No active local Wayland session is available to secure before suspend."
+    exit 1
+fi
+
+set -- $session_info
+session=$1
+uid=$2
+user=$3
+
+if timeout --foreground --signal=TERM --kill-after=1s 10s \
+    runuser -u "$user" -- env \
+        XDG_RUNTIME_DIR="/run/user/$uid" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+        systemctl --user start quickshell-secure-lock.service; then
+    exit 0
+fi
+
+report_failure "Session $session did not acquire a secure Wayland lock within 10 seconds; suspend was aborted."
+exit 1

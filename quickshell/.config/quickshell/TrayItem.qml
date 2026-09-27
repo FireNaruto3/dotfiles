@@ -6,6 +6,8 @@ import Quickshell.Widgets
 Rectangle {
     id: root
 
+    ShellTheme { id: theme }
+
     required property var trayItem
     required property var hostWindow
     property bool vertical: true
@@ -32,7 +34,7 @@ Rectangle {
     implicitWidth: 28
     implicitHeight: 34
     radius: 10
-    color: mouse.containsMouse ? "#26343d40" : "transparent"
+    color: mouse.containsMouse ? theme.cardHover : "transparent"
 
     function showMenu() {
         if (!trayItem.hasMenu)

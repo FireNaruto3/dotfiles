@@ -3,7 +3,7 @@
 ## Layout and Deployment
 
 - This is a GNU Stow tree: each top-level package mirrors paths under `$HOME` (for example, `niri/.config/niri/config.kdl` becomes `~/.config/niri/config.kdl`). Edit the repository copy, not an unrelated file under `~/.config`.
-- Niri and Quickshell are the active desktop. `waybar/` and `swayosd/` are retained legacy alternatives; do not update them for active-desktop changes unless explicitly requested.
+- Niri and Quickshell are the active desktop and provide the bar and OSD. Do not reintroduce retired Waybar or SwayOSD packages without an explicit request.
 - `system/` is not a Stow package. Its files are copied to `/etc` or `/usr` as root-owned files using the commands and modes in `README.md`; sleep-policy changes require reinstallation and `systemctl reload systemd-logind.service`.
 - Wallpapers intentionally remain at `~/dotfiles/wallpapers`; use `$HOME`, `~`, or paths relative to the referring config rather than account-specific absolute paths.
 
@@ -14,6 +14,7 @@
 - Quickshell data objects consume JSON emitted by `scripts/*-stats.sh` and `power-state.sh`. When changing a JSON key or type, update its corresponding QML properties in `SystemData.qml` or `PowerData.qml` in the same change.
 - Fan stats run only while the fan panel is visible. The bar polls lightweight CPU and RAM usage for its indicators; detailed monitoring remains in the external Resources application.
 - Keep `README.md` synchronized when changing documented packages, power behavior, installation steps, or Niri keybindings.
+- Keep publication metadata (`LICENSE`, `SECURITY.md`, and `.github/workflows/checks.yml`) synchronized with repository scope. The MIT grant covers code and configuration, not `wallpapers/` or `screenshots/`.
 
 ## Machine-Specific Assumptions
 
@@ -24,5 +25,5 @@
 
 - Validate Niri config: `niri validate -c niri/.config/niri/config.kdl`.
 - Syntax-check Quickshell helpers: `bash -n quickshell/.config/quickshell/scripts/*.sh`.
-- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight`.
-- There is no repository-wide build, test, lint, or CI command. Quickshell validation is runtime- and hardware-dependent; do not launch the lock shell as a casual syntax check because it attempts to acquire the session lock.
+- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight system/usr/libexec/quickshell-secure-suspend`.
+- GitHub Actions runs shell syntax, ShellCheck, whitespace, JSON, and publication checks. Quickshell validation remains runtime- and hardware-dependent; do not launch the lock shell as a casual syntax check because it attempts to acquire the session lock.

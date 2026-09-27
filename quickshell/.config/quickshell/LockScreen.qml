@@ -9,21 +9,47 @@ WlSessionLockSurface {
     property string authMessage: ""
     property string passwordText: ""
     property bool hidePassword: true
-    property int revealDelay: 800
+    property bool capsLock: false
     property string pendingPowerAction: ""
+    property string powerPasswordText: ""
+    property string powerMessage: ""
+    property bool powerAuthenticating: false
+    property bool powerBusy: false
     property url backgroundSource: ""
     property var wallpaperModel: null
     property bool settingsExpanded: false
-    required property var systemData
+    property bool batteryAvailable: false
+    property int batteryPercentage: 0
+    property string batteryState: "unknown"
+    required property var theme
 
     signal authenticate(string response)
     signal passwordEdited(string text)
     signal hidePasswordChangedByUser(bool hidden)
-    signal revealDelayChangedByUser(int delay)
     signal wallpaperSelected(url source)
-    signal powerActionRequested(string action)
+    signal powerStateReset()
+    signal powerActionRequested(string action, string response)
 
-    color: "#34383e"
+    color: withAlpha(theme.background, 1)
+
+    onAuthMessageChanged: {
+        if (authMessage === "Incorrect password")
+            failureAnimation.restart()
+    }
+
+    onPowerBusyChanged: {
+        if (!powerBusy && powerMessage.length === 0) {
+            pendingPowerAction = ""
+            powerPasswordText = ""
+        }
+    }
+
+    onPowerAuthenticatingChanged: {
+        if (!powerAuthenticating) {
+            powerPasswordText = ""
+            powerPasswordInput.clear()
+        }
+    }
 
     SystemClock {
         id: clock
@@ -31,29 +57,44 @@ WlSessionLockSurface {
     }
 
     function batteryIcon() {
-        if (systemData.batteryState === "Charging")
+        if (batteryState === "charging" || batteryState === "pending-charge")
             return "󰂄"
-        if (systemData.batteryState === "Full")
+        if (batteryState === "fully-charged")
             return "󰁹"
         const icons = ["󰂎", "󰁺", "󰁼", "󰁿", "󰂁", "󰁹"]
-        return icons[Math.max(0, Math.min(5, Math.floor(systemData.battery / 20)))]
+        return icons[Math.max(0, Math.min(5, Math.floor(batteryPercentage / 20)))]
     }
 
     function batteryColor() {
-        if (systemData.batteryState === "Charging")
-            return "#a6d189"
-        if (systemData.battery <= 15)
-            return "#e78284"
-        if (systemData.battery <= 30)
-            return "#e5c890"
-        return "#a8c7f0"
+        if (batteryState === "charging" || batteryState === "pending-charge"
+                || batteryState === "fully-charged")
+            return theme.success
+        if (batteryPercentage <= 15)
+            return theme.error
+        if (batteryPercentage <= 30)
+            return theme.warning
+        return theme.accent
+    }
+
+    function withAlpha(value, alpha) {
+        return Qt.rgba(value.r, value.g, value.b, alpha)
+    }
+
+    SequentialAnimation {
+        id: failureAnimation
+
+        NumberAnimation { target: authShake; property: "x"; from: 0; to: -10; duration: 45 }
+        NumberAnimation { target: authShake; property: "x"; from: -10; to: 10; duration: 70 }
+        NumberAnimation { target: authShake; property: "x"; from: 10; to: -6; duration: 60 }
+        NumberAnimation { target: authShake; property: "x"; from: -6; to: 6; duration: 55 }
+        NumberAnimation { target: authShake; property: "x"; from: 6; to: 0; duration: 45 }
     }
 
     Rectangle {
         id: background
 
         anchors.fill: parent
-        color: "#34383e"
+        color: surface.withAlpha(theme.background, 1)
         clip: true
 
         Image {
@@ -61,11 +102,16 @@ WlSessionLockSurface {
             source: surface.backgroundSource
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
+            sourceSize: {
+                const edge = Math.ceil(Math.max(surface.width, surface.height)
+                    * Math.max(1, surface.screen.devicePixelRatio))
+                return Qt.size(edge, edge)
+            }
         }
 
         Rectangle {
             anchors.fill: parent
-            color: "#5934383e"
+            color: surface.withAlpha(theme.background, 0.38)
         }
 
         Rectangle {
@@ -76,15 +122,16 @@ WlSessionLockSurface {
             width: 92
             height: 38
             radius: 19
-            color: "#cc202226"
+            color: surface.withAlpha(theme.card, 0.82)
             border.width: 1
-            border.color: "#26ffffff"
+            border.color: surface.withAlpha(theme.border, 0.65)
+            visible: surface.batteryAvailable
 
             Text {
                 anchors.centerIn: parent
-                text: `${surface.batteryIcon()} ${surface.systemData.battery}%`
+                text: `${surface.batteryIcon()} ${surface.batteryPercentage}%`
                 color: surface.batteryColor()
-                font.family: "JetBrains Mono Nerd Font"
+                font.family: theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
             }
@@ -102,7 +149,7 @@ WlSessionLockSurface {
                 radius: width / 2
                 color: "transparent"
                 border.width: Math.max(1, width * 0.0012)
-                border.color: "#0dffffff"
+                border.color: surface.withAlpha(theme.text, 0.05)
             }
         }
 
@@ -113,7 +160,7 @@ WlSessionLockSurface {
             radius: width / 2
             color: "transparent"
             border.width: Math.max(parent.width, parent.height) * 0.17
-            border.color: "#16303439"
+            border.color: surface.withAlpha(theme.background, 0.18)
         }
 
         Column {
@@ -126,38 +173,45 @@ WlSessionLockSurface {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDateTime(clock.date, "hh:mm AP")
-                color: "#f0eef2"
-                font.family: "JetBrains Mono Nerd Font"
-                font.pixelSize: Math.max(74, Math.min(surface.width, surface.height) * 0.13)
+                color: theme.text
+                font.family: theme.fontFamily
+                font.pixelSize: Math.max(52, Math.min(220,
+                    Math.min(surface.width, surface.height) * 0.13))
                 font.weight: Font.DemiBold
                 style: Text.Raised
-                styleColor: "#40000000"
+                styleColor: surface.withAlpha(theme.background, 0.65)
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDateTime(clock.date, "dddd, MMMM d")
-                color: "#a8c7f0"
-                font.family: "JetBrains Mono Nerd Font"
-                font.pixelSize: Math.max(15, Math.min(surface.width, surface.height) * 0.021)
+                color: theme.accent
+                font.family: theme.fontFamily
+                font.pixelSize: Math.max(14, Math.min(30,
+                    Math.min(surface.width, surface.height) * 0.021))
                 font.weight: Font.DemiBold
                 style: Text.Raised
-                styleColor: "#40000000"
+                styleColor: surface.withAlpha(theme.background, 0.65)
             }
 
             Item {
-                width: 430
-                height: 74
+                width: Math.max(220, Math.min(430, surface.width - 48))
+                height: 98
                 anchors.horizontalCenter: parent.horizontalCenter
+                transform: Translate { id: authShake }
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 430
+                    width: parent.width
                     height: 52
                     radius: 26
-                    color: "#cc202226"
+                    color: surface.withAlpha(theme.card, 0.84)
                     border.width: 1
-                    border.color: passwordInput.activeFocus ? "#669bc7ff" : "#26ffffff"
+                    border.color: surface.authMessage.length > 0
+                        ? surface.withAlpha(theme.error, 0.85)
+                        : (passwordInput.activeFocus
+                            ? surface.withAlpha(theme.accent, 0.85)
+                            : surface.withAlpha(theme.border, 0.65))
                     opacity: passwordInput.text.length > 0 || surface.authenticating || surface.authMessage.length > 0 ? 1 : 0
 
                     Behavior on opacity { NumberAnimation { duration: 180 } }
@@ -169,14 +223,14 @@ WlSessionLockSurface {
                         anchors.leftMargin: 24
                         anchors.rightMargin: 54
                         verticalAlignment: TextInput.AlignVCenter
-                        color: "#f0eef2"
-                        selectionColor: "#668ab4e8"
-                        selectedTextColor: "#ffffff"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.text
+                        selectionColor: surface.withAlpha(theme.accent, 0.45)
+                        selectedTextColor: theme.text
+                        font.family: theme.fontFamily
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
                         echoMode: surface.hidePassword ? TextInput.Password : TextInput.Normal
-                        passwordMaskDelay: surface.revealDelay
+                        passwordMaskDelay: 0
                         maximumLength: 256
                         enabled: !surface.authenticating
                         focus: true
@@ -204,14 +258,30 @@ WlSessionLockSurface {
                         }
                     }
 
-                    Text {
+                    Item {
                         anchors.right: parent.right
-                        anchors.rightMargin: 20
                         anchors.verticalCenter: parent.verticalCenter
-                        text: surface.authenticating ? "..." : "↵"
-                        color: "#8fa1b7"
-                        font.family: "JetBrains Mono Nerd Font"
-                        font.pixelSize: 17
+                        width: 52
+                        height: parent.height
+
+                        Text {
+                            id: submitIcon
+
+                            anchors.centerIn: parent
+                            text: surface.authenticating ? "󰔟" : "↵"
+                            color: theme.textMuted
+                            font.family: theme.fontFamily
+                            font.pixelSize: 17
+                        }
+
+                        RotationAnimator {
+                            target: submitIcon
+                            from: 0
+                            to: 360
+                            duration: 850
+                            loops: Animation.Infinite
+                            running: surface.authenticating
+                        }
                     }
                 }
 
@@ -219,9 +289,11 @@ WlSessionLockSurface {
                     anchors.top: parent.verticalCenter
                     anchors.topMargin: 34
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: surface.authMessage
-                    color: "#ef9a9a"
-                    font.family: "JetBrains Mono Nerd Font"
+                    text: surface.authMessage.length > 0
+                        ? surface.authMessage
+                        : (surface.capsLock ? "󰪛 CAPS LOCK IS ON" : "")
+                    color: surface.authMessage.length > 0 ? theme.error : theme.warning
+                    font.family: theme.fontFamily
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                     opacity: text.length > 0 ? 1 : 0
@@ -236,12 +308,16 @@ WlSessionLockSurface {
             anchors.bottom: parent.bottom
             anchors.rightMargin: Math.max(24, parent.width * 0.022)
             anchors.bottomMargin: Math.max(24, parent.height * 0.055)
-            width: surface.settingsExpanded ? 276 : 48
-            height: surface.settingsExpanded ? 540 : 48
+            width: surface.settingsExpanded
+                ? Math.max(220, Math.min(276, surface.width - 48))
+                : 48
+            height: surface.settingsExpanded
+                ? Math.max(300, Math.min(476, surface.height - 48))
+                : 48
             radius: surface.settingsExpanded ? 18 : 24
-            color: "#e81b1d21"
+            color: surface.withAlpha(theme.card, 0.93)
             border.width: 1
-            border.color: "#303b4149"
+            border.color: surface.withAlpha(theme.border, 0.72)
             clip: true
 
             Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
@@ -259,8 +335,8 @@ WlSessionLockSurface {
 
                 Text {
                     text: "SETTINGS"
-                    color: "#aeb8c6"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.textMuted
+                    font.family: theme.fontFamily
                     font.pixelSize: 11
                     font.weight: Font.Bold
                 }
@@ -273,8 +349,8 @@ WlSessionLockSurface {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Hide password"
-                        color: "#d7dce4"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.text
+                        font.family: theme.fontFamily
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
                     }
@@ -287,7 +363,7 @@ WlSessionLockSurface {
                         width: 40
                         height: 22
                         radius: 11
-                        color: surface.hidePassword ? "#a8c7f0" : "#434850"
+                        color: surface.hidePassword ? theme.accent : theme.cardActive
 
                         Rectangle {
                             x: surface.hidePassword ? parent.width - width - 3 : 3
@@ -295,7 +371,7 @@ WlSessionLockSurface {
                             width: 16
                             height: 16
                             radius: 8
-                            color: "#15171a"
+                            color: theme.background
 
                             Behavior on x { NumberAnimation { duration: 140 } }
                         }
@@ -309,145 +385,79 @@ WlSessionLockSurface {
 
                 Item {
                     width: parent.width
-                    height: 64
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        text: "Reveal delay"
-                        color: "#7f858e"
-                        font.family: "JetBrains Mono Nerd Font"
-                        font.pixelSize: 11
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        text: `${surface.revealDelay} ms`
-                        color: "#7f858e"
-                        font.family: "JetBrains Mono Nerd Font"
-                        font.pixelSize: 11
-                    }
-
-                    Rectangle {
-                        id: sliderTrack
-
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 15
-                        height: 6
-                        radius: 3
-                        color: "#292c31"
-
-                        Rectangle {
-                            width: sliderHandle.x + sliderHandle.width / 2
-                            height: parent.height
-                            radius: parent.radius
-                            color: "#63758d"
-                        }
-
-                        Rectangle {
-                            id: sliderHandle
-
-                            x: Math.max(0, Math.min(parent.width - width,
-                                (surface.revealDelay - 200) / 1800 * (parent.width - width)))
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 16
-                            height: 16
-                            radius: 8
-                            color: sliderMouse.pressed ? "#a8c7f0" : "#777083"
-                        }
-
-                        MouseArea {
-                            id: sliderMouse
-
-                            anchors.fill: parent
-
-                            function setDelay(mouseX) {
-                                const ratio = Math.max(0, Math.min(1, mouseX / width))
-                                surface.revealDelayChangedByUser(Math.round((200 + ratio * 1800) / 100) * 100)
-                            }
-
-                            onPressed: event => setDelay(event.x)
-                            onPositionChanged: event => {
-                                if (pressed)
-                                    setDelay(event.x)
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    width: parent.width
                     height: 98
 
                     Text {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         text: "Wallpaper"
-                        color: "#aeb8c6"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.textMuted
+                        font.family: theme.fontFamily
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                     }
 
-                    ListView {
+                    Loader {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         height: 70
-                        orientation: ListView.Horizontal
-                        spacing: 8
-                        clip: true
-                        model: surface.wallpaperModel
+                        active: surface.settingsExpanded
 
-                        delegate: Rectangle {
-                            id: wallpaperTile
-
-                            required property var modelData
-
-                            width: 88
-                            height: 62
-                            radius: 8
-                            color: "#292d33"
-                            border.width: modelData.source === String(surface.backgroundSource) ? 2 : 1
-                            border.color: modelData.source === String(surface.backgroundSource)
-                                ? "#a8c7f0"
-                                : "#303740"
+                        sourceComponent: ListView {
+                            orientation: ListView.Horizontal
+                            spacing: 8
                             clip: true
+                            model: surface.wallpaperModel || []
 
-                            Image {
-                                anchors.fill: parent
-                                anchors.margins: 3
-                                source: wallpaperTile.modelData.source
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
+                            delegate: Rectangle {
+                                id: wallpaperTile
 
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 18
-                                color: "#b314171b"
+                                required property var modelData
 
-                                Text {
+                                width: 88
+                                height: 62
+                                radius: 8
+                                color: theme.cardHover
+                                border.width: modelData.source === String(surface.backgroundSource) ? 2 : 1
+                                border.color: modelData.source === String(surface.backgroundSource)
+                                    ? theme.accent
+                                    : theme.border
+                                clip: true
+
+                                Image {
                                     anchors.fill: parent
-                                    anchors.leftMargin: 5
-                                    anchors.rightMargin: 5
-                                    text: wallpaperTile.modelData.name
-                                    color: "#e0e4ea"
-                                    elide: Text.ElideRight
-                                    verticalAlignment: Text.AlignVCenter
-                                    font.family: "JetBrains Mono Nerd Font"
-                                    font.pixelSize: 9
+                                    anchors.margins: 3
+                                    source: wallpaperTile.modelData.source
+                                    sourceSize: Qt.size(192, 192)
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
                                 }
-                            }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: surface.wallpaperSelected(wallpaperTile.modelData.source)
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    height: 18
+                                    color: surface.withAlpha(theme.background, 0.78)
+
+                                    Text {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 5
+                                        anchors.rightMargin: 5
+                                        text: wallpaperTile.modelData.name
+                                        color: theme.text
+                                        elide: Text.ElideRight
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.family: theme.fontFamily
+                                        font.pixelSize: 9
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: surface.wallpaperSelected(wallpaperTile.modelData.source)
+                                }
                             }
                         }
                     }
@@ -456,7 +466,7 @@ WlSessionLockSurface {
                 Rectangle {
                     width: parent.width
                     height: 1
-                    color: "#30343a"
+                    color: theme.border
                 }
 
                 Repeater {
@@ -474,7 +484,9 @@ WlSessionLockSurface {
                         height: 58
                         radius: 10
                         color: actionMouse.containsMouse
-                            ? (modelData.destructive ? "#302724" : "#282b30")
+                            ? (modelData.destructive
+                                ? surface.withAlpha(theme.error, 0.16)
+                                : theme.cardHover)
                             : "transparent"
 
                         Text {
@@ -482,8 +494,8 @@ WlSessionLockSurface {
                             anchors.leftMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.icon
-                            color: modelData.destructive ? "#d58d8a" : "#91a3be"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: modelData.destructive ? theme.error : theme.accent
+                            font.family: theme.fontFamily
                             font.pixelSize: 17
                         }
 
@@ -492,8 +504,8 @@ WlSessionLockSurface {
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.label
-                            color: modelData.destructive ? "#d58d8a" : "#9da9be"
-                            font.family: "JetBrains Mono Nerd Font"
+                            color: modelData.destructive ? theme.error : theme.textMuted
+                            font.family: theme.fontFamily
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
                         }
@@ -503,7 +515,12 @@ WlSessionLockSurface {
 
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: surface.pendingPowerAction = modelData.action
+                            onClicked: {
+                                surface.powerStateReset()
+                                surface.powerPasswordText = ""
+                                powerPasswordInput.clear()
+                                surface.pendingPowerAction = modelData.action
+                            }
                         }
                     }
                 }
@@ -514,14 +531,14 @@ WlSessionLockSurface {
                 anchors.bottom: parent.bottom
                 width: 48
                 height: 48
-                color: settingsMouse.containsMouse ? "#282c31" : "transparent"
+                color: settingsMouse.containsMouse ? theme.cardHover : "transparent"
                 radius: 24
 
                 Text {
                     anchors.centerIn: parent
                     text: "󰒓"
-                    color: "#c6d0df"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.text
+                    font.family: theme.fontFamily
                     font.pixelSize: 18
                 }
 
@@ -537,19 +554,21 @@ WlSessionLockSurface {
 
         Rectangle {
             anchors.fill: parent
-            color: "#99000000"
+            color: surface.withAlpha(theme.background, 0.72)
             visible: surface.pendingPowerAction.length > 0
 
             MouseArea { anchors.fill: parent }
 
             Rectangle {
+                id: confirmationDialog
+
                 anchors.centerIn: parent
-                width: 360
-                height: 178
+                width: Math.max(280, Math.min(360, surface.width - 48))
+                height: surface.pendingPowerAction === "suspend" ? 178 : 260
                 radius: 18
-                color: "#f21b1d21"
+                color: surface.withAlpha(theme.card, 0.96)
                 border.width: 1
-                border.color: "#40464f"
+                border.color: theme.border
 
                 Column {
                     anchors.fill: parent
@@ -558,6 +577,7 @@ WlSessionLockSurface {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width
                         text: surface.pendingPowerAction === "poweroff"
                             ? "Power off this computer?"
                             : (surface.pendingPowerAction === "restart"
@@ -565,24 +585,80 @@ WlSessionLockSurface {
                                 : (surface.pendingPowerAction === "logout"
                                     ? "Log out of this session?"
                                     : "Suspend this computer?"))
-                        color: "#e2e5ea"
-                        font.family: "JetBrains Mono Nerd Font"
+                        color: theme.text
+                        horizontalAlignment: Text.AlignHCenter
+                        font.family: theme.fontFamily
                         font.pixelSize: 15
                         font.weight: Font.Bold
                     }
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: surface.pendingPowerAction === "logout"
-                            ? "All applications in this session will close."
-                            : "Your session will remain locked."
-                        color: "#858d98"
-                        font.family: "JetBrains Mono Nerd Font"
+                        width: parent.width
+                        text: surface.pendingPowerAction === "poweroff"
+                            ? "The computer will shut down."
+                            : (surface.pendingPowerAction === "restart"
+                                ? "The computer will restart."
+                                : (surface.pendingPowerAction === "logout"
+                                    ? "All applications in this session will close."
+                                    : "Your session will remain locked."))
+                        color: theme.textMuted
+                        horizontalAlignment: Text.AlignHCenter
+                        font.family: theme.fontFamily
                         font.pixelSize: 11
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: surface.pendingPowerAction === "suspend" ? 0 : 42
+                        radius: 10
+                        color: surface.withAlpha(theme.background, 0.62)
+                        border.width: 1
+                        border.color: powerPasswordInput.activeFocus ? theme.accent : theme.border
+                        visible: height > 0
+
+                        TextInput {
+                            id: powerPasswordInput
+
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: theme.text
+                            selectionColor: surface.withAlpha(theme.accent, 0.45)
+                            selectedTextColor: theme.text
+                            font.family: theme.fontFamily
+                            font.pixelSize: 13
+                            echoMode: TextInput.Password
+                            passwordMaskDelay: 0
+                            maximumLength: 256
+                            enabled: !surface.powerBusy
+
+                            onTextChanged: surface.powerPasswordText = text
+                            onAccepted: {
+                                if (text.length > 0)
+                                    surface.powerActionRequested(surface.pendingPowerAction, text)
+                            }
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        height: surface.pendingPowerAction === "suspend" ? 0 : 16
+                        visible: height > 0
+                        text: surface.powerMessage.length > 0
+                            ? surface.powerMessage
+                            : (surface.powerAuthenticating ? "Authenticating..." : "Password required")
+                        color: surface.powerMessage.length > 0 ? theme.error : theme.textMuted
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        font.family: theme.fontFamily
+                        font.pixelSize: 10
                     }
 
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width
                         spacing: 12
 
                         Repeater {
@@ -591,18 +667,24 @@ WlSessionLockSurface {
                             Rectangle {
                                 required property string modelData
 
-                                width: 132
+                                width: (parent.width - parent.spacing) / 2
                                 height: 40
                                 radius: 10
                                 color: confirmMouse.containsMouse
-                                    ? (modelData === "Confirm" ? "#9e5555" : "#343941")
-                                    : (modelData === "Confirm" ? "#773f3f" : "#292d33")
+                                    ? (modelData === "Confirm"
+                                        ? surface.withAlpha(theme.error, 0.78)
+                                        : theme.cardActive)
+                                    : (modelData === "Confirm"
+                                        ? surface.withAlpha(theme.error, 0.55)
+                                        : theme.cardHover)
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: modelData
-                                    color: "#e2e5ea"
-                                    font.family: "JetBrains Mono Nerd Font"
+                                    text: modelData === "Confirm" && surface.powerBusy
+                                        ? "Working..."
+                                        : modelData
+                                    color: theme.text
+                                    font.family: theme.fontFamily
                                     font.pixelSize: 12
                                     font.weight: Font.DemiBold
                                 }
@@ -612,10 +694,18 @@ WlSessionLockSurface {
 
                                     anchors.fill: parent
                                     hoverEnabled: true
+                                    enabled: !surface.powerBusy
                                     onClicked: {
-                                        if (modelData === "Confirm")
-                                            surface.powerActionRequested(surface.pendingPowerAction)
-                                        surface.pendingPowerAction = ""
+                                        if (modelData === "Confirm") {
+                                            surface.powerActionRequested(
+                                                surface.pendingPowerAction,
+                                                surface.powerPasswordText)
+                                        } else {
+                                            surface.pendingPowerAction = ""
+                                            surface.powerPasswordText = ""
+                                            powerPasswordInput.clear()
+                                            surface.powerStateReset()
+                                        }
                                     }
                                 }
                             }

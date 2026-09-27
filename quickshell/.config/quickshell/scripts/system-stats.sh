@@ -73,7 +73,7 @@ keyboard_brightness=${keyboard_brightness:-0}
 keyboard_max=${keyboard_max:-3}
 
 battery_info=$(upower -i /org/freedesktop/UPower/devices/DisplayDevice 2>/dev/null || true)
-battery=$(awk -F': *' '/percentage:/ {gsub(/%/, "", $2); print $2; exit}' <<< "$battery_info")
+battery=$(awk -F': *' '/percentage:/ {gsub(/%/, "", $2); if ($2 ~ /^[0-9]+([.][0-9]+)?$/) print $2; exit}' <<< "$battery_info")
 battery_state=$(awk -F': *' '/state:/ {print $2; exit}' <<< "$battery_info")
 case $battery_state in
   charging) battery_state=Charging ;;
@@ -83,13 +83,17 @@ case $battery_state in
   pending-discharge) battery_state='Pending discharge' ;;
   *) battery_state=Unknown ;;
 esac
-battery_power=$(awk -F': *' '/energy-rate:/ {print $2 + 0; exit}' <<< "$battery_info")
+battery_power=$(awk -F': *' '/energy-rate:/ {if ($2 ~ /^[0-9]+([.][0-9]+)? W$/) print $2 + 0; exit}' <<< "$battery_info")
 battery_time=$(awk -F': *' '/time to empty:|time to full:/ {print $2; exit}' <<< "$battery_info")
-battery=${battery:-0}
-battery_power=${battery_power:-0}
+battery=${battery:-null}
+battery_power=${battery_power:-null}
 battery_time=${battery_time:-}
 
-battery_path=
+power_total=0
+power_count=0
+health_total=0
+health_count=0
+shopt -s nullglob
 for supply in /sys/class/power_supply/*; do
   [[ -r $supply/type ]] || continue
   read -r supply_type < "$supply/type"
@@ -102,23 +106,45 @@ for supply in /sys/class/power_supply/*; do
     read -r supply_scope < "$supply/scope"
     [[ $supply_scope == System ]] || continue
   fi
-  battery_path=$supply
-  break
-done
+  supply_power=
+  if [[ -r $supply/power_now ]]; then
+    supply_power=$(awk '$1 >= 0 {printf "%.6f", $1 / 1000000}' "$supply/power_now")
+  elif [[ -r $supply/voltage_now && -r $supply/current_now ]]; then
+    supply_power=$(awk 'NR == FNR {voltage=$1; next} $1 >= 0 {printf "%.6f", voltage * $1 / 1000000000000}' \
+      "$supply/voltage_now" "$supply/current_now")
+  fi
+  if [[ -n $supply_power ]]; then
+    power_total=$(awk -v total="$power_total" -v value="$supply_power" 'BEGIN {printf "%.6f", total + value}')
+    ((power_count += 1))
+  fi
 
-if [[ -n $battery_path && -r $battery_path/power_now ]]; then
-  battery_power=$(awk '{printf "%.1f", $1/1000000}' "$battery_path/power_now")
-elif [[ -n $battery_path && -r $battery_path/voltage_now && -r $battery_path/current_now ]]; then
-  battery_power=$(awk 'NR==FNR {voltage=$1; next} {printf "%.1f", voltage*$1/1000000000000}' \
-    "$battery_path/voltage_now" \
-    "$battery_path/current_now")
+  full_path=
+  design_path=
+  if [[ -r $supply/energy_full && -r $supply/energy_full_design ]]; then
+    full_path=$supply/energy_full
+    design_path=$supply/energy_full_design
+  elif [[ -r $supply/charge_full && -r $supply/charge_full_design ]]; then
+    full_path=$supply/charge_full
+    design_path=$supply/charge_full_design
+  fi
+  if [[ -n $full_path ]]; then
+    supply_health=$(awk 'NR == FNR {full=$1; next} $1 > 0 {printf "%.6f", full / $1 * 100}' \
+      "$full_path" "$design_path")
+    if [[ -n $supply_health ]]; then
+      health_total=$(awk -v total="$health_total" -v value="$supply_health" 'BEGIN {printf "%.6f", total + value}')
+      ((health_count += 1))
+    fi
+  fi
+done
+shopt -u nullglob
+
+if ((power_count > 0)); then
+  battery_power=$(awk -v total="$power_total" 'BEGIN {printf "%.1f", total}')
 fi
-if [[ -n $battery_path && -r $battery_path/charge_full_design && -r $battery_path/charge_full ]]; then
-  battery_health=$(awk 'NR==FNR {full=$1; next} {printf "%.0f", full/$1*100}' \
-    "$battery_path/charge_full" \
-    "$battery_path/charge_full_design")
+if ((health_count > 0)); then
+  battery_health=$(awk -v total="$health_total" -v count="$health_count" 'BEGIN {printf "%.0f", total / count}')
 else
-  battery_health=0
+  battery_health=null
 fi
 
 uptime_seconds=$(awk '{printf "%.0f", $1}' /proc/uptime)

@@ -50,7 +50,7 @@ PanelWindow {
     aboveWindows: true
     focusable: false
 
-    WlrLayershell.namespace: "jonathan-shell-rail"
+    WlrLayershell.namespace: "quickshell-desktop-bar"
 
     mask: Region {
         Region { item: barInputRegion }
@@ -190,7 +190,7 @@ PanelWindow {
             width: bar.vertical ? 20 : 58
             height: bar.vertical ? 58 : 20
             radius: 10
-            color: "#f0131819"
+            color: theme.background
             border.width: 1
             border.color: theme.border
         }

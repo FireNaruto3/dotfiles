@@ -1,0 +1,7 @@
+[Unit]
+Description=Acquire the Quickshell Wayland session lock
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/quickshell/scripts/lock.sh
+TimeoutStartSec=9s

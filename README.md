@@ -5,6 +5,12 @@ blue-gray palette with a cyan accent, semantic status colors, JetBrains Mono
 Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 2880x1800 Samsung OLED panel.
 
+This is a personal, machine-specific configuration, not a turnkey Ubuntu
+distribution. Read the commands and review package-specific settings before
+linking anything into `$HOME` or installing the root-owned files. In particular,
+the display, ASUS, NVIDIA, NetBird, Git, and OpenCode settings may not suit
+another machine.
+
 ## Screenshots
 
 ### Bar Layouts
@@ -21,6 +27,26 @@ Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 
 ## Requirements
 
+### Tested Baseline And Pins
+
+| Component | Tested or pinned version |
+|-----------|--------------------------|
+| Ubuntu | 26.04.1 LTS |
+| Niri | 26.04 (`v26.04-36-g49fc6117` tested) |
+| Quickshell | 0.3.1 tested |
+| GNU Stow | 2.4.1 tested |
+| Matugen | 4.2.0 pinned for installation |
+| Neovim | 0.13 development build tested; lazy.nvim itself requires Neovim 0.8+ |
+| lazy.nvim | `85c7ff3711b730b4030d03144f6db6375044ae82` (11.17.5), pinned in bootstrap and lockfile |
+| Flameshot | 14, installed as `~/.local/bin/flameshot-v14` |
+| OpenCode | 1.18.32 tested |
+
+These are reproducibility notes, not claims that every version is packaged by
+Ubuntu. Niri, Quickshell, Matugen, awww, Resources, ASUS Linux utilities,
+OpenCode, and Flameshot 14 may require their upstream repositories or release
+artifacts. Verify signatures or checksums and follow each upstream project's
+Ubuntu instructions.
+
 | Package | Purpose |
 |---------|---------|
 | `git`, GNU Stow | Clone and deploy the repository |
@@ -34,6 +60,7 @@ Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 | `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, GNOME Keyring | Preferred portal backend, GTK Access/Notification fallback, and Secret portal |
 | `swayidle` | Idle dimming, locking, display power, and suspend handling |
 | `waypaper` + `awww` | Wallpaper selection and restoration |
+| `matugen` | Wallpaper-derived colors for the active desktop applications |
 | `wlogout` | Session and power menu |
 | `resources` | System resource monitor launched from the bar |
 | `thunar`, `pavucontrol`, `blueman` | File, audio, and Bluetooth utilities |
@@ -47,7 +74,25 @@ Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 | Zsh, Oh My Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell and prompt configured by the recommended Stow set |
 | Neovim, Tmux, OpenCode | Editor, terminal multiplexer, and coding agent configured by the recommended Stow set |
 
-The optional `autostart` package expects NetBird UI to be installed.
+The optional `autostart` package expects NetBird UI to be installed. Before
+deploying, use this Ubuntu checklist:
+
+- Update the system and install Git, GNU Stow, the Wayland utilities, desktop
+  applications, fonts, portals, and command-line dependencies listed above.
+- Install the tested Niri and Quickshell versions, or review upstream changes
+  before using newer versions.
+- Confirm `niri`, `qs`, `stow`, `git`, `bash`, `sh`, `jq`, `brightnessctl`,
+  `wpctl`, `playerctl`, `upower`, and `flock` are on `PATH`.
+- Confirm the GNOME and GTK portal backends and GNOME Keyring are installed.
+- Install Matugen 4.2.0 with
+  `cargo install matugen --version 4.2.0 --locked` and install awww before
+  starting the session.
+- Install compatible `asusctl`/`asusd` only on supported ASUS hardware. Do not
+  install the repository's module or sleep policy on unrelated systems.
+- Install Flameshot 14 at the configured path, or change the Niri and
+  Quickshell references together.
+- Review optional packages (`autostart`, `git`, and `opencode`) before stowing
+  them because they have machine-wide or account-wide effects.
 
 The ASUS controls are machine-specific. Niri matches the Samsung
 ATNA40CU05-0 panel by EDID and starts it at `2880x1800@60.001`, scale 1.75,
@@ -65,10 +110,10 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
 | Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/power/fan drawers |
 | Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
-| Ghostty | Box theme with transparency and blur |
+| Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
-| Waypaper | Wallpaper picker using the `awww` backend |
+| Waypaper + Matugen | Wallpaper picker and coordinated wallpaper-derived desktop palette |
 | Wlogout | Styled logout and power actions |
 | Flameshot | Flameshot 14 configuration; the executable is installed separately |
 | Autostart | Machine-specific NetBird UI launcher and Blueman applet suppression |
@@ -76,12 +121,12 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Zsh | Oh My Zsh, syntax highlighting, and Starship |
 | Tmux | Vi copy mode, mouse support, and a minimal status line |
 | Fastfetch | Custom system-information layout and ASCII art |
-| Git | Personal Git identity |
+| Git | Shared Git settings with identity loaded from an untracked local include |
 | Scripts | Reboot-only ASUS graphics-mode switching command |
 | OpenCode | Model selection and global engineering instructions |
 
-The `waybar/` and `swayosd/` configs are retained legacy alternatives. The
-active session uses Niri and Quickshell's bar and OSD.
+Legacy Waybar and SwayOSD packages have been removed. The active session uses
+Niri and Quickshell's bar and OSD.
 
 ### Quickshell Interface
 
@@ -100,10 +145,14 @@ limit, and keyboard backlight. The fan drawer monitors CPU, GPU, and MID fan
 RPM and available curve metadata. Drawers open to the right of the vertical
 rail or below the horizontal bar.
 
-At session start, Niri launches Quickshell, Mako, `awww-daemon`, Waypaper
-restoration, text and image clipboard watchers, and `swayidle`. Quickshell owns
-the Flameshot tray process. XDG autostart starts NetBird UI and suppresses the
-Blueman applet; Bluetooth management remains available from the bar.
+At session start, Niri generates the current wallpaper palette before launching
+Quickshell and Mako, then launches `awww-daemon`, Waypaper restoration, text and
+image clipboard watchers, and `swayidle`. Changing the wallpaper regenerates
+colors for Quickshell, Niri, Mako, Rofi, and Ghostty. Quickshell and Niri watch
+their generated files, Mako and Ghostty reload immediately, and new Rofi
+instances use the new palette. Quickshell owns the Flameshot tray process. XDG
+autostart starts NetBird UI and suppresses the Blueman applet; Bluetooth
+management remains available from the bar.
 
 ## Power Behavior
 
@@ -113,7 +162,8 @@ This policy applies on battery and AC power, while a docked lid close is
 ignored. Hibernation is intentionally unused because Secure Boot places the
 kernel in integrity lockdown mode and this system reports hibernation as
 unavailable. A system-sleep hook preserves the ASUS keyboard-backlight level
-across suspend and resume.
+across suspend and resume. UPower powers off at 2% after low and critical
+thresholds at 20% and 5%.
 
 The idle sequence is:
 
@@ -124,15 +174,23 @@ The idle sequence is:
 | 400 seconds | Power off displays; activity powers them back on |
 | 500 seconds | Suspend through systemd |
 
-The lock helper also runs before every sleep. It starts a separate
-`LockShell.qml` instance, waits for the Wayland session lock to report secure,
-and returns an error after about ten seconds if acquisition fails.
+The lock helper serializes requests, reuses an already secure lock, starts a
+separate `LockShell.qml` instance when needed, and waits for the Wayland session
+lock to report secure. A systemd suspend precondition independently invokes it
+for the active local Wayland session and aborts suspend if acquisition fails
+within roughly ten seconds.
 
-The Quickshell lock screen uses PAM's `login` service, a 12-hour clock with
-AM/PM, live battery state, password visibility and reveal-delay settings, and
-a wallpaper picker. Restart, sleep, logout, and power-off require confirmation;
-logout terminates all sessions for the current user. The selected lock
-wallpaper is independent of Waypaper and persists in Quickshell state.
+The Quickshell lock screen uses the dedicated local-password `quickshell-lock`
+PAM service, a 12-hour clock with AM/PM, lightweight UPower battery state,
+immediate password masking, a Caps Lock warning, and a wallpaper picker. It
+follows the generated Matugen palette while keeping an independently selected
+wallpaper in Quickshell state. Every power action requires confirmation;
+restart, logout, and power-off also require password authentication. Logout
+terminates all sessions for the current user.
+
+An enabled `asus-power-profile-sync.service` configures native `asusd` defaults
+of Balanced on AC and Quiet on battery. Manual selections in the power drawer
+use `powerprofilesctl` and do not replace those ASUS power-source defaults.
 
 ### Fan Curves
 
@@ -271,17 +329,18 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 
 ### Audio, Brightness, and Media
 
-These hardware keys remain active while the session is locked. The normal
-Quickshell instance shows a bottom-center OSD on the focused output for volume,
-microphone mute, display brightness, keyboard-backlight level, media actions,
-and Caps/Num/Scroll Lock changes while the session is unlocked.
+These hardware keys remain active while the session is locked, except that the
+microphone key can only mute an active microphone and cannot unmute it. The
+normal Quickshell instance shows a bottom-center OSD on the focused output for
+volume, microphone mute, display brightness, keyboard-backlight level, media
+actions, and Caps/Num/Scroll Lock changes while the session is unlocked.
 
 | Keybind | Action |
 |---------|--------|
 | `XF86AudioRaiseVolume` (volume up) | Raise the default output volume through PipeWire |
 | `XF86AudioLowerVolume` (volume down) | Lower the default output volume through PipeWire |
 | `XF86AudioMute` (volume mute) | Toggle the default output mute through PipeWire |
-| `XF86AudioMicMute` (microphone mute) | Toggle the default input mute through PipeWire |
+| `XF86AudioMicMute` (microphone mute) | Toggle the default input mute while unlocked; mute only while locked |
 | `XF86MonBrightnessUp` (brightness up) | Raise the runtime-selected display backlight |
 | `XF86MonBrightnessDown` (brightness down) | Lower the runtime-selected display backlight |
 | `XF86KbdBrightnessUp` (keyboard light up) | Raise the ASUS keyboard-backlight level |
@@ -299,26 +358,90 @@ and Caps/Num/Scroll Lock changes while the session is unlocked.
 | `Mod+Shift+P` | Power off all monitors |
 | `Ctrl+Alt+Delete` | Quit Niri |
 
+## Privacy And Network Access
+
+The desktop scripts do not implement custom analytics or telemetry. They do
+read local process, hardware, battery, media-player, network, Bluetooth, and
+window metadata to render the shell. `cliphist` stores copied text and images
+locally, so its database can contain sensitive clipboard contents. The lock
+screen sends credentials only to the local PAM conversation.
+
+Some configured third-party programs communicate over the network: NetBird is
+a networking client, OpenCode sends prompts and context according to the chosen
+provider, Neovim bootstraps plugins from GitHub, and normal update tools contact
+their configured repositories. Review those projects' policies and disable or
+omit packages you do not want. No credentials are intentionally tracked here.
+
 ## Usage
 
-The repository uses a GNU Stow package layout. Clone it into `~/dotfiles`, then link the packages you want:
+The repository uses a GNU Stow package layout. Clone over HTTPS first so a new
+machine does not need a configured GitHub SSH key:
 
 ```bash
-git clone git@github.com:FireNaruto3/dotfiles.git ~/dotfiles
+git clone https://github.com/FireNaruto3/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-stow niri quickshell flameshot ghostty nvim rofi mako wlogout \
-  fastfetch git starship tmux zsh waypaper autostart opencode scripts
+
+# Preview links and stop on conflicts before changing $HOME.
+stow --no-folding --simulate niri quickshell matugen flameshot ghostty nvim \
+  rofi mako wlogout fastfetch starship tmux zsh waypaper scripts
+
+# Run only after reviewing the preview and backing up conflicting files.
+stow --no-folding niri quickshell matugen flameshot ghostty nvim rofi mako \
+  wlogout fastfetch starship tmux zsh waypaper scripts
 ```
 
-The `autostart` package is machine-specific because it enables NetBird UI. The
-`git` package contains a personal name and email address; omit either package
-when deploying to a different machine or user.
+Do not use `stow --adopt` casually: it moves existing files into this checkout
+and can overwrite repository content. For an existing setup, inspect every
+conflict, make a private backup outside the repository, and rerun the simulated
+command until it is clean. Optional packages can then be previewed and linked
+separately:
+
+```bash
+stow --no-folding --simulate git autostart opencode
+stow --no-folding git autostart opencode
+```
+
+Install the tested Matugen release as a user-local binary before starting Niri:
+
+```bash
+cargo install matugen --version 4.2.0 --locked
+```
+
+Create the local Git identity only if it does not already exist:
+
+```bash
+if [ ! -e "$HOME/.gitconfig.local" ]; then
+  install -m 0600 git/.gitconfig.local.example "$HOME/.gitconfig.local"
+else
+  printf '%s\n' 'Keeping existing ~/.gitconfig.local; review it manually.'
+fi
+```
+
+The tracked example uses GitHub's account-ID noreply address for FireNaruto3,
+`87667484+FireNaruto3@users.noreply.github.com`. Change both identity fields for
+another account. The main `.gitconfig` contains only the local include, so a
+private address is not published. SSH can be selected after host verification
+and key setup:
+
+```bash
+git remote set-url origin git@github.com:FireNaruto3/dotfiles.git
+```
+
+The `autostart` package is machine-specific because it starts NetBird UI and
+suppresses Blueman's packaged applet with a minimal `Hidden=true` override.
+Bluetooth management remains available from the Quickshell bar.
+
+The `opencode` package is global user configuration. It currently selects
+`openai/gpt-5.6-sol` and installs global engineering instructions from
+`~/.config/opencode/AGENTS.md`; those instructions affect OpenCode sessions in
+other repositories. Review the model name, provider authentication, data
+handling, costs, instruction scope, and the upstream OpenCode package before
+stowing it. Restart OpenCode after changing its config because running sessions
+do not reload it.
 
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
-use that location. Most home paths use `$HOME` or `~`; Waypaper's stylesheet is
-currently stored as the machine-specific absolute path
-`/home/user/.config/waypaper/style.css`. If the repository or account moves,
-update these references before starting the desktop.
+use that location. User-home paths otherwise use `$HOME` or `~`, including the
+Waypaper stylesheet path.
 
 The active Quickshell fan telemetry calls `~/.local/bin/gpu-mode` to select a
 GPU-safe temperature path, so stow the `scripts` package whenever using the
@@ -331,27 +454,66 @@ tray process, and `F6` runs `flameshot-v14 gui`. Niri's built-in screenshot path
 is configured under `~/Pictures/Screenshots`, but no built-in screenshot action
 is currently bound.
 
-System-wide files are tracked under `system/` and installed as root-owned copies rather than user-writable symlinks:
+System-wide files are tracked under `system/` and installed as root-owned
+copies rather than user-writable symlinks. GNU `install` uses numbered backups
+here so an existing destination is not silently discarded:
 
 ```bash
-sudo install -D -o root -g root -m 0644 \
+sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/systemd/logind.conf.d/90-sleep-policy.conf \
   /etc/systemd/logind.conf.d/90-sleep-policy.conf
 
-sudo install -D -o root -g root -m 0755 \
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/UPower/UPower.conf \
+  /etc/UPower/UPower.conf
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/pam.d/quickshell-lock \
+  /etc/pam.d/quickshell-lock
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/systemd/user/quickshell-secure-lock.service \
+  /etc/systemd/user/quickshell-secure-lock.service
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf \
+  /etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/systemd/system/asus-power-profile-sync.service \
+  /etc/systemd/system/asus-power-profile-sync.service
+
+sudo install --backup=numbered -D -o root -g root -m 0755 \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   /usr/lib/systemd/system-sleep/asus-keyboard-backlight
 
-sudo install -D -o root -g root -m 0644 \
+sudo install --backup=numbered -D -o root -g root -m 0755 \
+  system/usr/libexec/quickshell-secure-suspend \
+  /usr/libexec/quickshell-secure-suspend
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/modprobe.d/asus-nvidia.conf \
   /etc/modprobe.d/asus-nvidia.conf
 
-# Remove the obsolete suspend-then-hibernate policy and any disabled backup.
-sudo rm -f \
+# Preserve obsolete policies instead of deleting them. Stop if a backup exists.
+for policy in \
   /etc/systemd/sleep.conf.d/90-hibernate-delay.conf \
-  /etc/systemd/sleep.conf.d/90-hibernate-delay.conf.disabled
+  /etc/systemd/sleep.conf.d/90-hibernate-delay.conf.disabled; do
+  if [ -e "$policy" ]; then
+    backup="$policy.dotfiles-disabled"
+    if [ -e "$backup" ]; then
+      printf 'Refusing to overwrite %s\n' "$backup" >&2
+      exit 1
+    fi
+    sudo mv -- "$policy" "$backup"
+  fi
+done
 
 sudo systemctl reload systemd-logind.service
+sudo systemctl daemon-reload
+systemctl --user daemon-reload
+sudo systemctl restart upower.service
+sudo systemctl enable --now asus-power-profile-sync.service
 ```
 
 Module options may be copied into the initramfs by the distribution. After
@@ -365,16 +527,24 @@ For the one-time migration from Supergfx, disable its daemon after installing
 backup is already present:
 
 ```bash
-sudo systemctl disable --now supergfxd.service
-
-if [ -e /etc/supergfxd.conf ] && \
-   [ ! -e /etc/supergfxd.conf.supergfx-disabled ]; then
-  sudo mv /etc/supergfxd.conf /etc/supergfxd.conf.supergfx-disabled
+if systemctl cat supergfxd.service >/dev/null 2>&1; then
+  sudo systemctl disable --now supergfxd.service
 fi
 
-if [ -e /etc/modprobe.d/supergfxd.conf ] && \
-   [ ! -e /etc/modprobe.d/supergfxd.conf.supergfx-disabled ]; then
-  sudo mv /etc/modprobe.d/supergfxd.conf \
+if [ -e /etc/supergfxd.conf ]; then
+  if [ -e /etc/supergfxd.conf.supergfx-disabled ]; then
+    printf '%s\n' 'Refusing to overwrite /etc/supergfxd.conf.supergfx-disabled' >&2
+    exit 1
+  fi
+  sudo mv -- /etc/supergfxd.conf /etc/supergfxd.conf.supergfx-disabled
+fi
+
+if [ -e /etc/modprobe.d/supergfxd.conf ]; then
+  if [ -e /etc/modprobe.d/supergfxd.conf.supergfx-disabled ]; then
+    printf '%s\n' 'Refusing to overwrite /etc/modprobe.d/supergfxd.conf.supergfx-disabled' >&2
+    exit 1
+  fi
+  sudo mv -- /etc/modprobe.d/supergfxd.conf \
     /etc/modprobe.d/supergfxd.conf.supergfx-disabled
 fi
 ```
@@ -415,11 +585,21 @@ bash -n quickshell/.config/quickshell/scripts/*.sh \
   scripts/.local/bin/gpu-mode tests/gpu-mode.sh
 sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
   quickshell/.config/quickshell/scripts/lock.sh \
-  system/usr/lib/systemd/system-sleep/asus-keyboard-backlight
+  system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+  system/usr/libexec/quickshell-secure-suspend
 bash tests/gpu-mode.sh
 ```
 
-These checks cover the active desktop and GPU helper, not the retained legacy
-configs. Quickshell QML, IPC, tray integration, drawers, and OSD still require
-runtime validation. Do not launch `LockShell.qml` as a syntax check because it
-attempts to acquire the Wayland session lock.
+GitHub Actions additionally runs ShellCheck, JSON parsing, whitespace checks,
+and publication invariants. Quickshell QML, IPC, tray integration, drawers, and
+OSD still require runtime validation. Do not launch `LockShell.qml` as a syntax
+check because it attempts to acquire the Wayland session lock.
+
+## License And Assets
+
+Source code and configuration files are available under the MIT License; see
+`LICENSE`. The files under `wallpapers/` and `screenshots/` are explicitly
+excluded. Their provenance and redistribution rights are not fully known,
+rights remain with their respective owners, and this repository grants no
+permission to redistribute them. They remain tracked because the configuration
+and project presentation currently reference them.

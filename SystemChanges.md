@@ -1,9 +1,9 @@
 # System Changes
 
-This document inventories custom system and hardware behavior on this laptop as
-of August 14, 2026. It distinguishes root-installed configuration from Niri and
-Quickshell user-session behavior. The active desktop is Niri with Quickshell;
-the retained Waybar and SwayOSD configurations are not included.
+This document inventories behavior managed by files in this repository. It
+distinguishes root-installed configuration from Niri and Quickshell user-session
+behavior. It intentionally excludes observed host state, package-managed files,
+and mutable settings stored by external services.
 
 ## Configuration Ownership
 
@@ -11,8 +11,6 @@ the retained Waybar and SwayOSD configurations are not included.
   `/usr`. They are not deployed with GNU Stow.
 - Files under `niri/`, `quickshell/`, `wlogout/`, and
   other Stow packages are user-session configuration linked under `$HOME`.
-- Files under `/etc/asusd/` are runtime configuration owned and updated by
-  `asusd`. They are documented here but are not tracked in this repository.
 - The base NVIDIA module packages remain package-managed. The ASUS-specific
   module policy is tracked under `system/`.
 
@@ -23,7 +21,13 @@ The following repository copies are installed as root-owned files.
 | Repository source | Installed path | Mode | Purpose |
 |---|---|---:|---|
 | `system/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `0644` | Physical key and lid policy |
+| `system/etc/UPower/UPower.conf` | `/etc/UPower/UPower.conf` | `0644` | Critical-battery thresholds and power-off action |
+| `system/etc/pam.d/quickshell-lock` | `/etc/pam.d/quickshell-lock` | `0644` | Dedicated local-password PAM policy for the lock shell |
+| `system/etc/systemd/user/quickshell-secure-lock.service` | `/etc/systemd/user/quickshell-secure-lock.service` | `0644` | Bounded user-service lock acquisition |
+| `system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `0644` | Block suspend unless the Wayland lock is secure |
+| `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Configure native ASUS AC and battery profiles |
 | `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `0755` | Keyboard-backlight restoration |
+| `system/usr/libexec/quickshell-secure-suspend` | `/usr/libexec/quickshell-secure-suspend` | `0755` | Find the active Wayland user and request a secure lock |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
 
 ## Sleep And Secure Boot
@@ -41,14 +45,14 @@ The following repository copies are installed as root-owned files.
 | Lid close while docked | Ignore |
 
 Niri uses `disable-power-key-handling`, leaving the physical power key under
-logind control rather than handling it a second time in the compositor.
+logind control rather than handling it a second time in the compositor. Lid
+switch handling remains active even when an application holds an inhibitor.
 
 ### Secure Boot constraint
 
-Secure Boot is enabled and the kernel runs in integrity lockdown mode. The
-kernel disables disk hibernation in this state: `/sys/power/disk` reports
-`disabled`, while logind reports hibernation and suspend-then-hibernate as
-unavailable. `AllowHibernation=yes` cannot override this kernel restriction.
+This machine's policy assumes Secure Boot integrity lockdown, where the kernel
+disables disk hibernation. `AllowHibernation=yes` cannot override that kernel
+restriction.
 
 The active policy therefore uses ordinary suspend everywhere. The former
 `90-hibernate-delay.conf` drop-in is removed, and no static `resume=` or
@@ -57,10 +61,16 @@ Boot trust model instead of weakening lockdown to restore hibernation.
 
 ### Sleep hooks
 
-Before every sleep, `asus-keyboard-backlight` saves
-`leds:asus::kbd_backlight` through `systemd-backlight`. After resume it waits
-0.5 seconds and restores the saved level. Save and restore errors are
-intentionally non-fatal.
+Before every sleep, `asus-keyboard-backlight` validates and saves the ASUS
+keyboard LED level in a root-only runtime file. After resume it waits for the
+sysfs device, clamps the saved value to the current maximum, restores it, and
+removes the runtime state. Save and restore errors are intentionally non-fatal.
+
+The `systemd-suspend.service` drop-in runs `quickshell-secure-suspend` before
+suspend. The helper locates an active local Wayland session and starts the
+user-level `quickshell-secure-lock.service` with a bounded timeout. Suspend is
+aborted and an auth-private journal error is emitted if no suitable session is
+available or the Wayland session lock is not secured within roughly 10 seconds.
 
 ## Idle And Lock Behavior
 
@@ -76,11 +86,15 @@ Niri starts `swayidle` with the following user-session timeline:
 | 500 seconds | Run `systemctl suspend` |
 | Before any sleep | Lock before the system enters sleep |
 
-The lock helper starts the separate `LockShell.qml` Quickshell instance and
-polls its `lock isSecure` IPC method for roughly 10 seconds. It returns an error
-if the Wayland session-lock protocol is not secured within that time.
+The lock helper serializes concurrent requests with `flock`, reuses an already
+secure instance, starts the separate `LockShell.qml` Quickshell instance, and
+polls its `lock isSecure` IPC method for roughly 10 seconds. It terminates a
+failed instance and returns an error if the Wayland session-lock protocol is not
+secured within that time.
 
-The lock screen requires confirmation before these system actions:
+The lock screen requires confirmation before these system actions. Restart,
+power off, and logout additionally require successful authentication through
+the dedicated `quickshell-lock` PAM policy:
 
 | Action | Command |
 |---|---|
@@ -97,27 +111,18 @@ Niri's compositor quit action.
 
 The standard `power-profiles-daemon` provides the active power-profile API.
 Quickshell exposes Power Saver, Balanced, and Performance and applies a selected
-profile with `powerprofilesctl set`. The panel does not configure separate AC
-or battery defaults, and this repository does not install a charger-event or
-resume synchronizer.
+profile with `powerprofilesctl set`. The enabled
+`asus-power-profile-sync.service` configures `asusd` to use Balanced on AC and
+Quiet on battery; `asusd` then handles power-source events natively.
 
-## ASUS Runtime Settings
+## Critical Battery Policy
 
-These current settings are stored by `asusd` under `/etc/asusd/` and are not
-reproducible from the tracked `system/` files alone:
+The tracked UPower configuration uses percentage-based thresholds: low at 20%,
+critical at 5%, and action at 2%. The critical action is power off rather than
+an unavailable or unsafe sleep mode.
 
-- Battery charge limit: 80%.
-- Disable NVIDIA powerd on battery: enabled.
-- Quiet EPP: Power.
-- Balanced EPP: BalancePower.
-- Performance and Custom EPP: Performance.
-- Custom CPU fan curves are enabled for Balanced and Quiet profiles.
-- GPU and MID custom fan curves are disabled for all saved profiles.
-- Performance custom fan curves are disabled.
-- Keyboard Aura brightness is Off; its configured mode is Static.
-- The ASUS Slash display is disabled.
+## ASUS Monitoring
 
-The exact fan curve points are stored in `/etc/asusd/fan_curves.ron`.
 Quickshell's fan panel is monitor-only and polls live sensors once per second
 while visible. It reads measured CPU, GPU, and MID RPM across every ASUS
 profile, distinguishes a valid stopped fan from an unavailable sensor, and does
@@ -156,23 +161,18 @@ Armoury support in `asusctl`/`asusd`, an active `asus-shutdown.service`, and
 exited. Failed verification or a rejected reboot request causes the command to
 overwrite the queue with the current firmware values.
 
-`supergfxd.service` is disabled because its live driver unload and PCI removal
-paths are unreliable on this laptop and conflict with ASUS firmware-managed
-transitions. Quickshell uses `gpu-mode --get` only to select a safe temperature
-telemetry path; it does not queue or apply graphics-mode changes.
+Deployment requires `supergfxd.service` to remain disabled because its live
+driver unload and PCI removal paths are unreliable on this laptop and conflict
+with ASUS firmware-managed transitions. Quickshell uses `gpu-mode --get` only
+to select a safe temperature telemetry path; it does not queue or apply
+graphics-mode changes.
 
 ## NVIDIA And Backlight Driver State
 
 The repository-owned `/etc/modprobe.d/asus-nvidia.conf` blacklists Nouveau,
-enables NVIDIA DRM modesetting, and forces `nvidia-wmi-ec-backlight`. The
-following settings are generated by the NVIDIA package and are not tracked:
-
-- `/etc/modprobe.d/nvidia-graphics-drivers-kms.conf` enables NVIDIA DRM
-  modesetting and preserves NVIDIA video memory across suspend/resume using
-  `/var` for temporary storage.
-- `/etc/modules-load.d/nvidia.conf` requests `nvidia`, `nvidia_modeset`,
-  `nvidia_uvm`, and `nvidia_drm` modules.
-- The current kernel command line includes `acpi_backlight=native`.
+enables NVIDIA DRM modesetting, and forces `nvidia-wmi-ec-backlight`. NVIDIA
+package configuration and kernel command-line state are outside this
+repository's scope.
 
 ## Display And Brightness Behavior
 
@@ -183,8 +183,7 @@ approximately 60 Hz at login for lower power consumption.
 `quickshell/.config/quickshell/scripts/display-control.sh` discovers the
 current connector, DRM card, and backlight at runtime instead of assuming
 names such as `eDP-1`, `card1`, or `amdgpu_bl1`. It exposes only supported
-2880x1800 refresh modes and currently reports 60 Hz and 120 Hz. The live mode
-was 60 Hz when this inventory was taken.
+2880x1800 refresh modes; this panel advertises 60 Hz and 120 Hz.
 
 The Quickshell power panel can select 60 Hz or 120 Hz. The bar and Niri's
 hardware brightness keys change the runtime-selected backlight in 5% increments
@@ -193,7 +192,7 @@ display and keyboard brightness, volume, microphone mute, media playback, and
 keyboard-lock state.
 
 The ASUS keyboard backlight can be changed among Off, Low, Medium, and High
-through `asusctl`. Its live level was Off when this inventory was taken.
+through `asusctl`.
 
 ## Battery And Hardware Controls
 
@@ -210,15 +209,6 @@ Battery, backlight, connector, and DRM device names are discovered at runtime
 where possible. The display and ASUS controls remain machine-specific to this
 laptop's hardware.
 
-## Active Services And Expected States
-
-| Service | Enablement | Expected runtime state |
-|---|---|---|
-| `asusd.service` | Static/D-Bus activated | Active |
-| `asus-shutdown.service` | Part of `asusd.service` | Active |
-| `power-profiles-daemon.service` | Enabled | Active |
-| `supergfxd.service` | Disabled | Inactive |
-
 ## Deployment And Maintenance
 
 After changing a tracked root-level file, reinstall its repository copy with
@@ -227,7 +217,10 @@ the ownership and mode listed above. Then apply the relevant operation:
 | Changed component | Required operation |
 |---|---|
 | logind policy | `sudo systemctl reload systemd-logind.service` |
-| Removed hibernation policy | Delete `/etc/systemd/sleep.conf.d/90-hibernate-delay.conf` |
+| UPower policy | `sudo systemctl restart upower.service` |
+| System or user unit | `sudo systemctl daemon-reload` or `systemctl --user daemon-reload`, as applicable |
+| ASUS profile defaults | `sudo systemctl enable --now asus-power-profile-sync.service` |
+| Removed hibernation policy | Move the obsolete file aside with the guarded commands in `README.md` |
 | ASUS NVIDIA module policy | Regenerate the initramfs when applicable, then reboot before relying on changed module options |
 
 `systemctl daemon-reload` does not apply modprobe changes. Use the

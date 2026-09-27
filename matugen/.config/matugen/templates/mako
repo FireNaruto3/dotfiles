@@ -1,0 +1,16 @@
+include=~/.config/mako/config
+
+background-color={{ colors.surface_container.default.hex }}
+text-color={{ colors.on_surface.default.hex }}
+border-color={{ colors.primary.default.hex }}
+progress-color=over {{ colors.secondary.default.hex }}
+
+[urgency=low]
+border-color={{ colors.tertiary.default.hex }}
+
+[urgency=normal]
+border-color={{ colors.primary.default.hex }}
+
+[urgency=critical]
+border-color={{ colors.error.default.hex }}
+text-color={{ colors.error.default.hex }}

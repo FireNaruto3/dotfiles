@@ -1,3 +1,2 @@
-[user]
-	name = FireNaruto3
-	email = 87667484+FireNaruto3@users.noreply.github.com
+[include]
+	path = ~/.gitconfig.local

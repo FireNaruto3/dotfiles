@@ -12,11 +12,21 @@ ShellRoot {
     property string authMessage: ""
     property bool authenticating: false
     property bool pamError: false
+    property string powerPassword: ""
+    property string powerAction: ""
+    property string powerMessage: ""
+    property bool powerAuthenticating: false
+    property bool powerBusy: false
+    property bool powerPamError: false
     property bool hidePassword: true
-    property int revealDelay: 800
+    property bool capsLock: false
+    property bool batteryAvailable: false
+    property int batteryPercentage: 0
+    property string batteryState: "unknown"
     property var wallpapers: []
     readonly property url backgroundSource: wallpaperSettings.wallpaper
     readonly property string wallpaperScanner: Qt.resolvedUrl("scripts/list-wallpapers.sh").toString().replace("file://", "")
+    readonly property string capsLockReader: Qt.resolvedUrl("scripts/caps-lock-state.sh").toString().replace("file://", "")
 
     function selectWallpaper(source) {
         wallpaperSettings.wallpaper = String(source)
@@ -37,6 +47,34 @@ ShellRoot {
         }
     }
 
+    function requestPowerAction(action, response) {
+        if (powerBusy)
+            return
+
+        powerMessage = ""
+        if (action === "suspend") {
+            runPowerAction(action)
+            return
+        }
+
+        if (response.length === 0) {
+            powerMessage = "Password required"
+            return
+        }
+
+        powerAction = action
+        powerPassword = response
+        powerPamError = false
+        powerAuthenticating = true
+        powerBusy = true
+        if (!powerPam.start()) {
+            powerPassword = ""
+            powerAuthenticating = false
+            powerMessage = "Authentication could not be started"
+            powerBusy = false
+        }
+    }
+
     function runPowerAction(action) {
         const commands = {
             restart: ["systemctl", "reboot"],
@@ -45,14 +83,81 @@ ShellRoot {
             logout: ["loginctl", "terminate-user", Quickshell.env("USER")]
         }
 
-        if (commands[action])
-            Quickshell.execDetached(commands[action])
+        if (!commands[action]) {
+            powerMessage = "Unknown power action"
+            powerBusy = false
+            return
+        }
+
+        powerBusy = true
+        powerProcess.command = commands[action]
+        powerProcess.running = true
     }
 
     Component.onCompleted: Quickshell.watchFiles = false
 
-    SystemData {
-        id: systemSource
+    ShellTheme {
+        id: themeSource
+    }
+
+    Process {
+        id: capsLockProcess
+
+        command: ["sh", root.capsLockReader]
+        running: true
+        stdout: StdioCollector { id: capsLockOutput }
+        onExited: root.capsLock = capsLockOutput.text.trim() === "true"
+    }
+
+    Process {
+        id: batteryProcess
+
+        command: ["upower", "-i", "/org/freedesktop/UPower/devices/DisplayDevice"]
+        running: true
+        stdout: StdioCollector { id: batteryOutput }
+        onExited: {
+            const percentage = batteryOutput.text.match(/percentage:\s*([0-9.]+)%/)
+            const state = batteryOutput.text.match(/state:\s*([^\n]+)/)
+            root.batteryAvailable = percentage !== null
+            if (percentage !== null)
+                root.batteryPercentage = Math.round(Number(percentage[1]))
+            if (state !== null)
+                root.batteryState = state[1].trim()
+        }
+    }
+
+    Process {
+        id: powerProcess
+
+        stdout: StdioCollector { id: powerOutput }
+        stderr: StdioCollector { id: powerError }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0)
+                root.powerMessage = powerError.text.trim()
+                    || powerOutput.text.trim()
+                    || "Power action failed"
+            root.powerBusy = false
+        }
+    }
+
+    Timer {
+        interval: 500
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!capsLockProcess.running)
+                capsLockProcess.running = true
+        }
+    }
+
+    Timer {
+        interval: 10000
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!batteryProcess.running)
+                batteryProcess.running = true
+        }
     }
 
     Process {
@@ -61,7 +166,11 @@ ShellRoot {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    root.wallpapers = JSON.parse(text)
+                    const listedWallpapers = JSON.parse(text)
+                    root.wallpapers = listedWallpapers
+                    if (listedWallpapers.length > 0
+                            && !listedWallpapers.some(item => item.source === String(root.backgroundSource)))
+                        wallpaperSettings.wallpaper = listedWallpapers[0].source
                 } catch (error) {
                     console.warn("Unable to list lock screen wallpapers:", error)
                 }
@@ -86,7 +195,7 @@ ShellRoot {
     PamContext {
         id: pam
 
-        config: "login"
+        config: "quickshell-lock"
 
         onPamMessage: {
             if (responseRequired)
@@ -114,6 +223,41 @@ ShellRoot {
         onError: {
             root.pamError = true
             root.authMessage = "Authentication service unavailable"
+        }
+    }
+
+    PamContext {
+        id: powerPam
+
+        config: "quickshell-lock"
+
+        onPamMessage: {
+            if (responseRequired)
+                respond(root.powerPassword)
+            else if (messageIsError)
+                root.powerMessage = message
+        }
+
+        onCompleted: result => {
+            const action = root.powerAction
+            root.powerPassword = ""
+            root.powerAuthenticating = false
+
+            if (result === PamResult.Success) {
+                root.runPowerAction(action)
+            } else {
+                root.powerMessage = result === PamResult.MaxTries
+                    ? "Too many attempts. Try again later."
+                    : (result === PamResult.Error || root.powerPamError
+                        ? "Authentication service unavailable"
+                        : "Incorrect password")
+                root.powerBusy = false
+            }
+        }
+
+        onError: {
+            root.powerPamError = true
+            root.powerMessage = "Authentication service unavailable"
         }
     }
 
@@ -159,10 +303,16 @@ ShellRoot {
             authMessage: root.authMessage
             passwordText: root.inputText
             hidePassword: root.hidePassword
-            revealDelay: root.revealDelay
             backgroundSource: root.backgroundSource
             wallpaperModel: root.wallpapers
-            systemData: systemSource
+            batteryAvailable: root.batteryAvailable
+            batteryPercentage: root.batteryPercentage
+            batteryState: root.batteryState
+            capsLock: root.capsLock
+            powerAuthenticating: root.powerAuthenticating
+            powerBusy: root.powerBusy
+            powerMessage: root.powerMessage
+            theme: themeSource
 
             onAuthenticate: response => {
                 root.inputText = ""
@@ -170,9 +320,9 @@ ShellRoot {
             }
             onPasswordEdited: text => root.inputText = text
             onHidePasswordChangedByUser: hidden => root.hidePassword = hidden
-            onRevealDelayChangedByUser: delay => root.revealDelay = delay
             onWallpaperSelected: source => root.selectWallpaper(source)
-            onPowerActionRequested: action => root.runPowerAction(action)
+            onPowerStateReset: root.powerMessage = ""
+            onPowerActionRequested: (action, response) => root.requestPowerAction(action, response)
         }
     }
 }

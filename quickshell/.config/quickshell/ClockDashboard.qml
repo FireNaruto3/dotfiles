@@ -73,7 +73,12 @@ Item {
                         id: coverImage
 
                         anchors.fill: parent
-                        source: window.activePlayer ? window.activePlayer.trackArtUrl : ""
+                        source: {
+                            if (!window.activePlayer)
+                                return ""
+                            const artwork = String(window.activePlayer.trackArtUrl)
+                            return artwork.startsWith("file:") ? artwork : ""
+                        }
                         fillMode: Image.PreserveAspectCrop
                         visible: status === Image.Ready
                     }

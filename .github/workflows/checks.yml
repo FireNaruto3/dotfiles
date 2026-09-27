@@ -1,0 +1,57 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+
+      - name: Check shell syntax
+        run: |
+          bash -n quickshell/.config/quickshell/scripts/*.sh \
+            scripts/.local/bin/gpu-mode tests/gpu-mode.sh
+          sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
+            quickshell/.config/quickshell/scripts/lock.sh \
+            system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+            system/usr/libexec/quickshell-secure-suspend
+
+      - name: Run ShellCheck
+        run: |
+          shellcheck quickshell/.config/quickshell/scripts/*.sh \
+            scripts/.local/bin/gpu-mode \
+            system/usr/lib/systemd/system-sleep/asus-keyboard-backlight
+          shellcheck --exclude=SC1007 tests/gpu-mode.sh
+          shellcheck --exclude=SC2086 system/usr/libexec/quickshell-secure-suspend
+
+      - name: Check JSON and whitespace
+        run: |
+          python3 -m json.tool nvim/.config/nvim/lazy-lock.json >/dev/null
+          if git grep -nI -E '[[:blank:]]+$' -- \
+            '*.md' '*.sh' '*.lua' '*.qml' '*.json' '*.yml' '*.yaml' '*.desktop'; then
+            exit 1
+          fi
+
+      - name: Check publication invariants
+        run: |
+          test "$(git config -f git/.gitconfig --get include.path)" = '~/.gitconfig.local'
+          test -f git/.gitconfig.local.example
+          test -f LICENSE
+          test -f SECURITY.md
+          test -f wallpapers/Winter.jpg
+          test -f screenshots/desktop.webp
+          ! git check-ignore git/.gitconfig.local.example \
+            .github/workflows/checks.yml LICENSE SECURITY.md
+          ! git grep -n 'jonathan-shell' -- '*.qml'
+          ! test -e waybar
+          ! test -e swayosd

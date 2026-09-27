@@ -30,8 +30,8 @@ for supply in /sys/class/power_supply/*; do
     fi
     if [[ -r $supply/charge_control_end_threshold ]]; then
         read -r charge_limit < "$supply/charge_control_end_threshold"
+        break
     fi
-    break
 done
 
 keyboard_brightness=$(numeric_or_zero "$keyboard_brightness")

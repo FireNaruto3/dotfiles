@@ -1,16 +1,51 @@
 #!/bin/sh
 
-device="leds:asus::kbd_backlight"
-systemd_backlight="/usr/lib/systemd/systemd-backlight"
+device=/sys/class/leds/asus::kbd_backlight
+state=/run/asus-keyboard-backlight.state
+
+valid_level() {
+    case $1 in
+        ''|*[!0-9]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
 
 case "$1" in
     pre)
-        "$systemd_backlight" save "$device" || :
+        # Never carry a failed restoration state into a later sleep cycle.
+        rm -f "$state"
+        [ -r "$device/brightness" ] && [ -r "$device/max_brightness" ] || exit 0
+        read -r level < "$device/brightness" || exit 0
+        read -r maximum < "$device/max_brightness" || exit 0
+        valid_level "$level" && valid_level "$maximum" && [ "$level" -le "$maximum" ] || exit 0
+
+        umask 077
+        temporary="$state.$$"
+        trap 'rm -f "$temporary"' EXIT HUP INT TERM
+        printf '%s\n' "$level" > "$temporary" && mv -f "$temporary" "$state"
         ;;
     post)
-        # The firmware resets the keyboard LED while resuming from hibernation.
+        # The firmware may reset the keyboard LED while resuming.
         sleep 0.5
-        "$systemd_backlight" load "$device" || :
+        [ -r "$state" ] || exit 0
+        read -r level < "$state" || exit 0
+        valid_level "$level" || exit 0
+
+        attempts=0
+        while [ "$attempts" -lt 20 ]; do
+            if [ -w "$device/brightness" ] && [ -r "$device/max_brightness" ]; then
+                read -r maximum < "$device/max_brightness" || maximum=
+                if valid_level "$maximum"; then
+                    [ "$level" -le "$maximum" ] || level=$maximum
+                    if printf '%s\n' "$level" > "$device/brightness"; then
+                        rm -f "$state"
+                        exit 0
+                    fi
+                fi
+            fi
+            attempts=$((attempts + 1))
+            sleep 0.1
+        done
         ;;
 esac
 

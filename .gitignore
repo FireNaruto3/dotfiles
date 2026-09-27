@@ -1,0 +1,17 @@
+**/.DS_Store
+**/Thumbs.db
+**/*~
+**/*.swp
+**/*.swo
+**/.idea/
+**/.vscode/
+
+# Local credentials and machine-specific identity. Keep examples tracked.
+**/.env*
+**/*.key
+**/*.pem
+**/*.log
+**/.cache/
+**/__pycache__/
+git/.gitconfig.local
+!git/.gitconfig.local.example
