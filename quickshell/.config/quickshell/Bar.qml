@@ -20,6 +20,7 @@ PanelWindow {
     readonly property var currentWindow: niriData.focusedWindowFor(screen ? screen.name : "")
     readonly property string osdScriptPath: Qt.resolvedUrl("scripts/osd-control.sh").toString().replace("file://", "")
     readonly property string clipboardScriptPath: Qt.resolvedUrl("scripts/clipboard-history.sh").toString().replace("file://", "")
+    readonly property string wlogoutScriptPath: Qt.resolvedUrl("scripts/launch-wlogout.sh").toString().replace("file://", "")
     readonly property real drawerWidth: displayedView === "clock" ? 440 : 350
     readonly property real drawerHeight: displayedView === "clock"
         ? 478
@@ -36,6 +37,10 @@ PanelWindow {
     signal toggleDrawer(string view, real anchorY)
     signal closeDrawer()
     signal toggleOrientation()
+
+    function launchWlogout(): void {
+        Quickshell.execDetached(["sh", wlogoutScriptPath])
+    }
 
     anchors {
         top: true
@@ -586,7 +591,7 @@ PanelWindow {
                     width: 34
                     text: "󰐥"
                     tooltip: "Power menu"
-                    onClicked: Quickshell.execDetached(["wlogout", "--buttons-per-row", "2"])
+                    onClicked: bar.launchWlogout()
                 }
             }
         }

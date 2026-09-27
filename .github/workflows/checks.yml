@@ -22,6 +22,7 @@ jobs:
           bash -n quickshell/.config/quickshell/scripts/*.sh \
             scripts/.local/bin/gpu-mode tests/gpu-mode.sh
           sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
+            quickshell/.config/quickshell/scripts/launch-wlogout.sh \
             quickshell/.config/quickshell/scripts/lock.sh \
             system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
             system/usr/libexec/quickshell-secure-suspend
@@ -50,8 +51,14 @@ jobs:
           test -f SECURITY.md
           test -f wallpapers/Winter.jpg
           test -f screenshots/desktop.webp
+          test -f system/etc/systemd/user/quickshell-lock-shell.service
+          test -f quickshell/.config/quickshell/scripts/launch-wlogout.sh
+          test -f matugen/.config/matugen/templates/waypaper.css
+          test -f matugen/.config/matugen/templates/wlogout.css
           ! git check-ignore git/.gitconfig.local.example \
             .github/workflows/checks.yml LICENSE SECURITY.md
           ! git grep -n 'jonathan-shell' -- '*.qml'
+          ! git grep -n 'XDG_CACHE_HOME.*matugen' -- '*.sh'
+          ! git grep -n 'keybindings.ini' -- waypaper/.config/waypaper/config.ini
           ! test -e waybar
           ! test -e swayosd

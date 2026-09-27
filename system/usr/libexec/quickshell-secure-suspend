@@ -37,7 +37,7 @@ session=$1
 uid=$2
 user=$3
 
-if timeout --foreground --signal=TERM --kill-after=1s 10s \
+if timeout --foreground --signal=TERM --kill-after=1s 14s \
     runuser -u "$user" -- env \
         XDG_RUNTIME_DIR="/run/user/$uid" \
         DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
@@ -45,5 +45,5 @@ if timeout --foreground --signal=TERM --kill-after=1s 10s \
     exit 0
 fi
 
-report_failure "Session $session did not acquire a secure Wayland lock within 10 seconds; suspend was aborted."
+report_failure "Session $session did not acquire a secure Wayland lock within the timeout; suspend was aborted."
 exit 1

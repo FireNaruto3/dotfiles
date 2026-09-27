@@ -1,0 +1,7 @@
+[Unit]
+Description=Quickshell Wayland lock screen
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/qs -n -p %h/.config/quickshell/LockShell.qml
+Restart=no

@@ -3,13 +3,16 @@
 set -euo pipefail
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-cache_home=${XDG_CACHE_HOME:-"$HOME/.cache"}
-cache_dir="$cache_home/matugen"
+cache_dir="$HOME/.cache/matugen"
 start_command=""
+reload_waypaper=false
 
 if [[ ${1:-} == --start ]]; then
     start_command=${2:-}
     shift 2
+elif [[ ${1:-} == --reload-waypaper ]]; then
+    reload_waypaper=true
+    shift
 fi
 
 wallpaper=${1:-}
@@ -64,4 +67,15 @@ fi
 
 if pgrep -x ghostty >/dev/null && command -v gapplication >/dev/null; then
     gapplication action com.mitchellh.ghostty reload-config || true
+fi
+
+if [[ $reload_waypaper == true ]] && pgrep -x waypaper >/dev/null; then
+    # Waypaper's GTK CSS provider does not watch the generated stylesheet.
+    sleep 0.2
+    pkill -TERM -x waypaper || true
+    for _ in {1..10}; do
+        pgrep -x waypaper >/dev/null || break
+        sleep 0.05
+    done
+    setsid -f waypaper >/dev/null 2>&1
 fi

@@ -2,8 +2,8 @@
 
 This document inventories behavior managed by files in this repository. It
 distinguishes root-installed configuration from Niri and Quickshell user-session
-behavior. It intentionally excludes observed host state, package-managed files,
-and mutable settings stored by external services.
+behavior. Relevant mutable ASUS state is documented separately as an observed
+machine-local snapshot; it is not presented as repository-managed policy.
 
 ## Configuration Ownership
 
@@ -13,6 +13,9 @@ and mutable settings stored by external services.
   other Stow packages are user-session configuration linked under `$HOME`.
 - The base NVIDIA module packages remain package-managed. The ASUS-specific
   module policy is tracked under `system/`.
+- Files under `/etc/asusd` are generated and mutated by `asusd`/`asusctl`. They
+  are not copied from this repository and must be reviewed or recreated on a
+  new installation.
 
 ## Installed Root-Level Changes
 
@@ -23,6 +26,7 @@ The following repository copies are installed as root-owned files.
 | `system/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `0644` | Physical key and lid policy |
 | `system/etc/UPower/UPower.conf` | `/etc/UPower/UPower.conf` | `0644` | Critical-battery thresholds and power-off action |
 | `system/etc/pam.d/quickshell-lock` | `/etc/pam.d/quickshell-lock` | `0644` | Dedicated local-password PAM policy for the lock shell |
+| `system/etc/systemd/user/quickshell-lock-shell.service` | `/etc/systemd/user/quickshell-lock-shell.service` | `0644` | Own the lock-shell process until the user unlocks |
 | `system/etc/systemd/user/quickshell-secure-lock.service` | `/etc/systemd/user/quickshell-secure-lock.service` | `0644` | Bounded user-service lock acquisition |
 | `system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `0644` | Block suspend unless the Wayland lock is secure |
 | `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Configure native ASUS AC and battery profiles |
@@ -65,12 +69,15 @@ Before every sleep, `asus-keyboard-backlight` validates and saves the ASUS
 keyboard LED level in a root-only runtime file. After resume it waits for the
 sysfs device, clamps the saved value to the current maximum, restores it, and
 removes the runtime state. Save and restore errors are intentionally non-fatal.
+The persistent ASUS Aura policy disables the keyboard's firmware sleep animation
+while retaining boot, awake, and shutdown lighting; apply it with
+`asusctl aura power keyboard --boot --awake --shutdown`.
 
 The `systemd-suspend.service` drop-in runs `quickshell-secure-suspend` before
 suspend. The helper locates an active local Wayland session and starts the
 user-level `quickshell-secure-lock.service` with a bounded timeout. Suspend is
 aborted and an auth-private journal error is emitted if no suitable session is
-available or the Wayland session lock is not secured within roughly 10 seconds.
+available or the Wayland session lock is not secured within the timeout.
 
 ## Idle And Lock Behavior
 
@@ -84,13 +91,15 @@ Niri starts `swayidle` with the following user-session timeline:
 | 400 seconds | Power off displays |
 | Activity after display-off | Power displays back on |
 | 500 seconds | Run `systemctl suspend` |
-| Before any sleep | Lock before the system enters sleep |
 
 The lock helper serializes concurrent requests with `flock`, reuses an already
-secure instance, starts the separate `LockShell.qml` Quickshell instance, and
-polls its `lock isSecure` IPC method for roughly 10 seconds. It terminates a
-failed instance and returns an error if the Wayland session-lock protocol is not
-secured within that time.
+secure instance, starts `quickshell-lock-shell.service`, and polls that unit's
+exact Quickshell process through the `lock isSecure` IPC method. The separate
+long-running unit owns the lock process until the user unlocks; the bounded
+acquisition unit can therefore exit without killing the lock UI. IPC calls and
+lock contention are bounded so concurrent requests cannot stall suspend. The
+systemd suspend precondition performs this check before every sleep and aborts
+suspend if the Wayland session-lock protocol is not secured within the timeout.
 
 The lock screen requires confirmation before these system actions. Restart,
 power off, and logout additionally require successful authentication through
@@ -114,6 +123,45 @@ Quickshell exposes Power Saver, Balanced, and Performance and applies a selected
 profile with `powerprofilesctl set`. The enabled
 `asus-power-profile-sync.service` configures `asusd` to use Balanced on AC and
 Quiet on battery; `asusd` then handles power-source events natively.
+
+## Mutable ASUS State
+
+The ASUS daemon owns `/etc/asusd/*.ron`. These files are machine-local runtime
+configuration, not source files installed from this repository. The tracked
+`asus-power-profile-sync.service` reproducibly sets only the AC and battery
+profile defaults; the Aura command in `README.md` reproducibly sets only the
+keyboard power-state policy. Quickshell can subsequently change the charge
+limit and keyboard brightness through `asusctl`.
+
+Observed state on 2026-09-27:
+
+- `/etc/asusd/asusd.ron` uses an 80% charge limit, disables NVIDIA powerd on
+  battery, links platform profiles to EPP, selects Balanced on AC and Quiet on
+  battery, and has no AC/DC profile-tuning groups enabled.
+- `/etc/asusd/aura_19b6.ron` has Aura brightness Off and a red Static effect.
+  Keyboard lighting is enabled at boot, while awake, and during shutdown; the
+  sleep animation is disabled.
+- `/etc/asusd/slash.ron` has the Slash display disabled. Its stored event flags
+  remain enabled but have no effect while the display itself is disabled.
+- `/etc/asusd/fan_curves.ron` enables the CPU custom curve in Quiet and
+  Balanced, and all three CPU/GPU/MID curves in Performance. The stored points
+  are shown below; disabled curves remain present but firmware-controlled.
+
+| Profile | Fan | Enabled | Temperatures (C) | PWM values |
+|---|---|---|---|---|
+| Quiet | CPU | yes | 45, 50, 60, 63, 66, 70, 74, 80 | 0, 41, 61, 69, 74, 88, 101, 127 |
+| Quiet | GPU | no | 50, 67, 68, 70, 70, 70, 70, 70 | 1, 38, 53, 66, 76, 86, 107, 107 |
+| Quiet | MID | no | 43, 49, 70, 72, 74, 76, 78, 78 | 2, 26, 51, 58, 58, 127, 130, 130 |
+| Balanced | CPU | yes | 47, 62, 65, 68, 70, 72, 74, 76 | 1, 43, 48, 58, 68, 94, 114, 140 |
+| Balanced | GPU | no | 50, 59, 62, 65, 67, 69, 71, 73 | 1, 53, 66, 76, 86, 107, 135, 160 |
+| Balanced | MID | no | 50, 62, 65, 68, 70, 72, 74, 76 | 1, 51, 58, 58, 94, 130, 188, 242 |
+| Performance | CPU | yes | 20, 64, 66, 68, 70, 72, 74, 76 | 43, 48, 58, 94, 114, 130, 150, 186 |
+| Performance | GPU | yes | 20, 57, 60, 63, 66, 69, 72, 75 | 53, 66, 76, 107, 135, 150, 170, 209 |
+| Performance | MID | yes | 20, 64, 66, 68, 70, 72, 74, 76 | 51, 58, 58, 130, 188, 198, 237, 237 |
+
+Use `asusctl` rather than editing these files directly. Recheck the daemon-owned
+files after changing charge, fan, lighting, Slash, or profile settings; their
+contents may change across `asusd` versions.
 
 ## Critical Battery Policy
 

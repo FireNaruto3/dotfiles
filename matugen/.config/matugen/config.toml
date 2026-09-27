@@ -27,3 +27,11 @@ output_path = "~/.cache/matugen/rofi.rasi"
 [templates.ghostty]
 input_path = "templates/ghostty"
 output_path = "~/.config/ghostty/themes/Matugen"
+
+[templates.wlogout]
+input_path = "templates/wlogout.css"
+output_path = "~/.cache/matugen/wlogout.css"
+
+[templates.waypaper]
+input_path = "templates/waypaper.css"
+output_path = "~/.cache/matugen/waypaper.css"

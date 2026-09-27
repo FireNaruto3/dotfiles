@@ -346,7 +346,7 @@ Item {
                     text: "󰐥"
                     tooltip: "Power menu"
                     tooltipRight: false
-                    onClicked: Quickshell.execDetached(["wlogout", "--buttons-per-row", "2"])
+                    onClicked: root.panel.launchWlogout()
                 }
             }
         }

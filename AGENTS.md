@@ -9,12 +9,13 @@
 
 ## Coupled Behavior
 
-- `quickshell/.config/quickshell/shell.qml` is the normal shell entrypoint. `LockShell.qml` is a separate Quickshell instance started by `scripts/lock.sh`.
-- Keep the lock acquisition handshake intact: `lock.sh` starts `LockShell.qml`, polls the `lock isSecure` IPC method, and returns an error if the Wayland session-lock protocol is not secured within roughly 10 seconds. Niri keybindings, `swayidle`, and wlogout call `~/.config/quickshell/scripts/lock.sh`.
+- `quickshell/.config/quickshell/shell.qml` is the normal shell entrypoint. `LockShell.qml` runs in a separate Quickshell instance owned by `quickshell-lock-shell.service`; `scripts/lock.sh` starts that unit and verifies it through IPC.
+- Keep the lock acquisition handshake intact: `lock.sh` serializes requests, starts or reuses `quickshell-lock-shell.service`, polls its exact process with the `lock isSecure` IPC method, and returns an error if the Wayland session-lock protocol is not secured within roughly 10 seconds. Niri keybindings, `swayidle`, and wlogout call `~/.config/quickshell/scripts/lock.sh`; the system suspend precondition calls it through `quickshell-secure-lock.service`.
 - Quickshell data objects consume JSON emitted by `scripts/*-stats.sh` and `power-state.sh`. When changing a JSON key or type, update its corresponding QML properties in `SystemData.qml` or `PowerData.qml` in the same change.
 - Fan stats run only while the fan panel is visible. The bar polls lightweight CPU and RAM usage for its indicators; detailed monitoring remains in the external Resources application.
 - Keep `README.md` synchronized when changing documented packages, power behavior, installation steps, or Niri keybindings.
 - Keep publication metadata (`LICENSE`, `SECURITY.md`, and `.github/workflows/checks.yml`) synchronized with repository scope. The MIT grant covers code and configuration, not `wallpapers/` or `screenshots/`.
+- Matugen writes generated desktop files to the fixed `~/.cache/matugen` path used by Niri, Quickshell, Rofi, Waypaper, and Wlogout. Keep producers and consumers synchronized; this setup does not relocate those files with `XDG_CACHE_HOME`.
 
 ## Machine-Specific Assumptions
 
@@ -25,5 +26,5 @@
 
 - Validate Niri config: `niri validate -c niri/.config/niri/config.kdl`.
 - Syntax-check Quickshell helpers: `bash -n quickshell/.config/quickshell/scripts/*.sh`.
-- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight system/usr/libexec/quickshell-secure-suspend`.
+- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/launch-wlogout.sh quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight system/usr/libexec/quickshell-secure-suspend`.
 - GitHub Actions runs shell syntax, ShellCheck, whitespace, JSON, and publication checks. Quickshell validation remains runtime- and hardware-dependent; do not launch the lock shell as a casual syntax check because it attempts to acquire the session lock.

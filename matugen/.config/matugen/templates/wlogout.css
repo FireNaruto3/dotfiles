@@ -1,0 +1,85 @@
+* {
+    background-image: none;
+    font-family: "JetBrains Mono Nerd Font", monospace;
+}
+
+window {
+    background-color: alpha({{ colors.surface.default.hex }}, 0.58);
+}
+
+button {
+    background-color: alpha({{ colors.surface_container.default.hex }}, 0.72);
+    color: {{ colors.on_surface.default.hex }};
+    border: 2px solid alpha({{ colors.outline.default.hex }}, 0.42);
+    background-repeat: no-repeat;
+    background-position: center 36%;
+    background-size: 22%;
+    border-radius: 26px;
+    margin: 14px;
+    padding: 92px 64px 26px;
+    min-width: 180px;
+    min-height: 140px;
+    box-shadow: none;
+}
+
+button label {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: {{ colors.on_surface.default.hex }};
+}
+
+button:hover {
+    background-color: alpha({{ colors.surface_container_high.default.hex }}, 0.88);
+}
+
+button:focus {
+    outline-style: none;
+    box-shadow: none;
+}
+
+#lock {
+    background-image: image(url("/usr/share/wlogout/icons/lock.png"), url("/usr/local/share/wlogout/icons/lock.png"));
+}
+
+#logout {
+    background-image: image(url("/usr/share/wlogout/icons/logout.png"), url("/usr/local/share/wlogout/icons/logout.png"));
+}
+
+#shutdown {
+    background-image: image(url("/usr/share/wlogout/icons/shutdown.png"), url("/usr/local/share/wlogout/icons/shutdown.png"));
+}
+
+#reboot {
+    background-image: image(url("/usr/share/wlogout/icons/reboot.png"), url("/usr/local/share/wlogout/icons/reboot.png"));
+}
+
+#lock,
+#logout,
+#shutdown,
+#reboot {
+    border-color: alpha({{ colors.primary.default.hex }}, 0.55);
+    color: {{ colors.primary.default.hex }};
+}
+
+#lock label,
+#logout label,
+#shutdown label,
+#reboot label {
+    color: {{ colors.primary.default.hex }};
+}
+
+#lock:hover,
+#logout:hover,
+#shutdown:hover,
+#reboot:hover {
+    background-color: alpha({{ colors.primary_container.default.hex }}, 0.86);
+    border-color: {{ colors.primary.default.hex }};
+}
+
+#lock:hover label,
+#logout:hover label,
+#shutdown:hover label,
+#reboot:hover label {
+    color: {{ colors.on_primary_container.default.hex }};
+}

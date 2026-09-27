@@ -8,8 +8,8 @@ Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
 This is a personal, machine-specific configuration, not a turnkey Ubuntu
 distribution. Read the commands and review package-specific settings before
 linking anything into `$HOME` or installing the root-owned files. In particular,
-the display, ASUS, NVIDIA, NetBird, Git, and OpenCode settings may not suit
-another machine.
+the display, ASUS, NVIDIA, NetBird, Git, OpenCode, and Waypaper stylesheet
+settings may not suit another machine.
 
 ## Screenshots
 
@@ -66,9 +66,9 @@ Ubuntu instructions.
 | `thunar`, `pavucontrol`, `blueman` | File, audio, and Bluetooth utilities |
 | NetworkManager (`nmcli`, `nmtui`), BlueZ (`bluetoothctl`) | Network and Bluetooth status and controls |
 | `brightnessctl`, `wpctl`, `playerctl` | Brightness, audio, and media controls |
-| `jq`, `upower`, `procps` | JSON processing, battery telemetry, and process toggles |
+| `jq`, `upower`, `procps`, `libnotify-bin` | JSON processing, battery telemetry, process toggles, and desktop failure notifications |
 | `powerprofilesctl`, compatible `asusctl`/`asusd` | ASUS laptop power, fan, and firmware controls |
-| `systemd` (`busctl`), `util-linux` (`flock`) | Safe GPU-mode queue inspection and serialization |
+| `systemd` (`busctl`, `loginctl`, `systemctl`, `systemd-run`), `util-linux` (`flock`, `logger`, `runuser`, `setsid`), GNU Coreutils (`timeout`) | Lock/suspend orchestration, GPU-mode queue inspection, logging, and bounded execution |
 | NVIDIA utilities (`nvidia-smi`, optional) | Ultimate-mode temperature fallback when PCI hwmon is unavailable |
 | JetBrains Mono Nerd Font, Papirus | Interface font and icon theme |
 | Zsh, Oh My Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell and prompt configured by the recommended Stow set |
@@ -82,7 +82,9 @@ deploying, use this Ubuntu checklist:
 - Install the tested Niri and Quickshell versions, or review upstream changes
   before using newer versions.
 - Confirm `niri`, `qs`, `stow`, `git`, `bash`, `sh`, `jq`, `brightnessctl`,
-  `wpctl`, `playerctl`, `upower`, and `flock` are on `PATH`.
+  `wpctl`, `playerctl`, `upower`, `flock`, `logger`, `loginctl`, `notify-send`,
+  `pgrep`, `pkill`, `runuser`, `setsid`, `systemd-run`, and `timeout` are on
+  `PATH`.
 - Confirm the GNOME and GTK portal backends and GNOME Keyring are installed.
 - Install Matugen 4.2.0 with
   `cargo install matugen --version 4.2.0 --locked` and install awww before
@@ -114,7 +116,7 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
 | Waypaper + Matugen | Wallpaper picker and coordinated wallpaper-derived desktop palette |
-| Wlogout | Styled logout and power actions |
+| Wlogout | Wallpaper-themed logout and power actions |
 | Flameshot | Flameshot 14 configuration; the executable is installed separately |
 | Autostart | Machine-specific NetBird UI launcher and Blueman applet suppression |
 | Neovim | Lua configuration using `lazy.nvim`, Snacks, Oil, Neogit, and Gitsigns |
@@ -148,9 +150,14 @@ rail or below the horizontal bar.
 At session start, Niri generates the current wallpaper palette before launching
 Quickshell and Mako, then launches `awww-daemon`, Waypaper restoration, text and
 image clipboard watchers, and `swayidle`. Changing the wallpaper regenerates
-colors for Quickshell, Niri, Mako, Rofi, and Ghostty. Quickshell and Niri watch
-their generated files, Mako and Ghostty reload immediately, and new Rofi
-instances use the new palette. Quickshell owns the Flameshot tray process. XDG
+colors for Quickshell, Niri, Mako, Rofi, Ghostty, Waypaper, and Wlogout.
+Generated cache files use the fixed `~/.cache/matugen` directory because the
+Matugen output configuration and desktop consumers must agree on literal paths;
+`XDG_CACHE_HOME` does not relocate them. Quickshell and Niri watch their
+generated files, Mako and Ghostty reload immediately, new Rofi and Wlogout
+instances use the new palette, and the wallpaper hook restarts an open Waypaper
+window because its GTK CSS provider does not watch the generated stylesheet.
+Quickshell owns the Flameshot tray process. XDG
 autostart starts NetBird UI and suppresses the Blueman applet; Bluetooth
 management remains available from the bar.
 
@@ -162,8 +169,10 @@ This policy applies on battery and AC power, while a docked lid close is
 ignored. Hibernation is intentionally unused because Secure Boot places the
 kernel in integrity lockdown mode and this system reports hibernation as
 unavailable. A system-sleep hook preserves the ASUS keyboard-backlight level
-across suspend and resume. UPower powers off at 2% after low and critical
-thresholds at 20% and 5%.
+across suspend and resume. The ASUS Aura keyboard policy keeps boot, awake, and
+shutdown lighting enabled but disables the firmware sleep animation with
+`asusctl aura power keyboard --boot --awake --shutdown`. UPower powers off at
+2% after low and critical thresholds at 20% and 5%.
 
 The idle sequence is:
 
@@ -174,11 +183,14 @@ The idle sequence is:
 | 400 seconds | Power off displays; activity powers them back on |
 | 500 seconds | Suspend through systemd |
 
-The lock helper serializes requests, reuses an already secure lock, starts a
-separate `LockShell.qml` instance when needed, and waits for the Wayland session
-lock to report secure. A systemd suspend precondition independently invokes it
-for the active local Wayland session and aborts suspend if acquisition fails
-within roughly ten seconds.
+The lock helper serializes requests, reuses an already secure lock, starts the
+dedicated `quickshell-lock-shell.service` when needed, and waits for its
+`LockShell.qml` process to report a secure Wayland session lock. Keeping the
+lock shell in its own long-running unit prevents the bounded acquisition service
+from terminating it after the security check succeeds. IPC checks and lock
+contention are bounded so a failed client cannot stall suspend indefinitely. A
+systemd suspend precondition invokes the helper for the active local Wayland
+session and aborts suspend if acquisition fails within the timeout.
 
 The Quickshell lock screen uses the dedicated local-password `quickshell-lock`
 PAM service, a 12-hour clock with AM/PM, lightweight UPower battery state,
@@ -440,8 +452,10 @@ stowing it. Restart OpenCode after changing its config because running sessions
 do not reload it.
 
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
-use that location. User-home paths otherwise use `$HOME` or `~`, including the
-Waypaper stylesheet path.
+use that location. Generated themes are written to `~/.cache/matugen` rather
+than an `XDG_CACHE_HOME` override. Waypaper 2.8 does not expand `~` in its
+`stylesheet` setting, so that single path is account-specific and must be
+updated if the account home changes.
 
 The active Quickshell fan telemetry calls `~/.local/bin/gpu-mode` to select a
 GPU-safe temperature path, so stow the `scripts` package whenever using the
@@ -474,6 +488,10 @@ sudo install --backup=numbered -D -o root -g root -m 0644 \
 sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/systemd/user/quickshell-secure-lock.service \
   /etc/systemd/user/quickshell-secure-lock.service
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/systemd/user/quickshell-lock-shell.service \
+  /etc/systemd/user/quickshell-lock-shell.service
 
 sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf \
@@ -514,7 +532,16 @@ sudo systemctl daemon-reload
 systemctl --user daemon-reload
 sudo systemctl restart upower.service
 sudo systemctl enable --now asus-power-profile-sync.service
+
+# Persistently disable the ASUS firmware sleep animation while retaining the
+# keyboard lighting policy for boot, awake, and shutdown.
+asusctl aura power keyboard --boot --awake --shutdown
 ```
+
+The Aura command and Quickshell's charge-limit control update mutable files
+under `/etc/asusd`; they do not install repository copies. `SystemChanges.md`
+records the current machine-local state and distinguishes it from reproducible
+policy. Review those settings separately when provisioning another machine.
 
 Module options may be copied into the initramfs by the distribution. After
 installing or changing `asus-nvidia.conf`, regenerate the initramfs with the
@@ -584,6 +611,7 @@ niri validate -c niri/.config/niri/config.kdl
 bash -n quickshell/.config/quickshell/scripts/*.sh \
   scripts/.local/bin/gpu-mode tests/gpu-mode.sh
 sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
+  quickshell/.config/quickshell/scripts/launch-wlogout.sh \
   quickshell/.config/quickshell/scripts/lock.sh \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   system/usr/libexec/quickshell-secure-suspend

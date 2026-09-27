@@ -1,0 +1,160 @@
+@define-color surface {{ colors.surface.default.hex }};
+@define-color surface_alt alpha({{ colors.surface_container.default.hex }}, 0.76);
+@define-color surface_hover alpha({{ colors.primary_container.default.hex }}, 0.72);
+@define-color surface_active alpha({{ colors.primary_container.default.hex }}, 0.88);
+@define-color border alpha({{ colors.primary.default.hex }}, 0.38);
+@define-color foreground {{ colors.on_surface.default.hex }};
+@define-color muted {{ colors.on_surface_variant.default.hex }};
+@define-color accent {{ colors.primary.default.hex }};
+
+* {
+  font-family: "JetBrains Mono Nerd Font", "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: @foreground;
+}
+
+window,
+window.background,
+scrolledwindow,
+scrolledwindow > viewport {
+  background-color: alpha(@surface, 0.90);
+}
+
+button {
+  min-height: 28px;
+  padding: 7px 12px;
+  border: 1px solid @border;
+  border-radius: 9px;
+  background-color: @surface_alt;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+button:hover {
+  color: @accent;
+  border-color: @accent;
+  background-color: @surface_hover;
+  background-image: none;
+}
+
+button:active,
+button:checked {
+  color: @accent;
+  border-color: @accent;
+  background-color: @surface_active;
+}
+
+button:disabled {
+  color: @muted;
+  border-color: alpha(@muted, 0.18);
+  background-color: alpha(@surface_alt, 0.55);
+}
+
+button > image,
+button:hover > image {
+  -gtk-icon-shadow: none;
+  -gtk-icon-effect: none;
+}
+
+scrolledwindow {
+  border: 1px solid @border;
+  border-radius: 14px;
+}
+
+scrolledwindow grid {
+  padding: 8px;
+  background-color: alpha(@surface, 0.56);
+}
+
+grid > button.image-button,
+scrolledwindow grid > button {
+  margin: 7px;
+  padding: 6px;
+  border: 2px solid alpha(@accent, 0.20);
+  border-radius: 14px;
+  background-color: @surface_alt;
+  background-image: none;
+  box-shadow: none;
+}
+
+grid > button.image-button:hover,
+scrolledwindow grid > button:hover {
+  border-color: alpha(@accent, 0.72);
+  background-color: @surface_hover;
+}
+
+grid > button.highlighted-button,
+scrolledwindow grid > button.highlighted-button {
+  border-color: alpha(@accent, 0.20);
+  background-color: @surface_alt;
+  background-image: none;
+  box-shadow: none;
+}
+
+.highlighted-button > image,
+.highlighted-button:hover > image {
+  -gtk-icon-effect: none;
+}
+
+entry,
+combobox button.combo {
+  min-height: 28px;
+  padding: 6px 10px;
+  border: 1px solid @border;
+  border-radius: 9px;
+  background-color: @surface_alt;
+  background-image: none;
+  box-shadow: none;
+  caret-color: @accent;
+}
+
+entry:focus,
+combobox button.combo:hover {
+  border-color: @accent;
+  box-shadow: none;
+}
+
+entry selection {
+  color: {{ colors.on_primary.default.hex }};
+  background-color: @accent;
+}
+
+combobox arrow {
+  color: @accent;
+}
+
+separator {
+  min-width: 1px;
+  min-height: 1px;
+  background-color: @border;
+}
+
+scrollbar {
+  background-color: transparent;
+}
+
+scrollbar slider {
+  min-width: 7px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background-color: alpha(@accent, 0.42);
+}
+
+scrollbar slider:hover {
+  background-color: alpha(@accent, 0.72);
+}
+
+tooltip,
+tooltip.background {
+  border: 1px solid @border;
+  border-radius: 9px;
+  background-color: alpha({{ colors.surface_container_high.default.hex }}, 0.96);
+  box-shadow: none;
+}
+
+tooltip label {
+  padding: 7px 10px;
+  color: @foreground;
+}

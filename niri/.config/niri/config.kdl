@@ -179,7 +179,7 @@ include optional=true "~/.cache/matugen/niri.kdl"
 spawn-sh-at-startup "$HOME/.config/matugen/apply-theme.sh --start quickshell"
 spawn-sh-at-startup "$HOME/.config/matugen/apply-theme.sh --start mako"
 spawn-at-startup "awww-daemon"
-spawn-at-startup "waypaper" "--restore"
+spawn-at-startup "waypaper" "--restore" "--no-post-command"
 spawn-at-startup "wl-paste" "--type" "text" "--watch" "cliphist" "-max-items" "200" "store"
 spawn-at-startup "wl-paste" "--type" "image" "--watch" "cliphist" "-max-items" "200" "store"
 spawn-sh-at-startup "$HOME/.config/quickshell/scripts/display-control.sh set-brightness 50%"
@@ -188,8 +188,6 @@ spawn-at-startup "swayidle" "-w" \
     "timeout" "300" "$HOME/.config/quickshell/scripts/lock.sh" \
     "timeout" "400" "niri msg action power-off-monitors" "resume" "niri msg action power-on-monitors" \
     "timeout" "500" "systemctl suspend" \
-    "before-sleep" "$HOME/.config/quickshell/scripts/lock.sh" \
-    "after-resume" "niri msg action power-off-monitors" \
     "lock" "$HOME/.config/quickshell/scripts/lock.sh"
   
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:

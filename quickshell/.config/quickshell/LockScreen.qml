@@ -104,7 +104,7 @@ WlSessionLockSurface {
             asynchronous: true
             sourceSize: {
                 const edge = Math.ceil(Math.max(surface.width, surface.height)
-                    * Math.max(1, surface.screen.devicePixelRatio))
+                    * Math.max(1, surface.screen ? surface.screen.devicePixelRatio : 1))
                 return Qt.size(edge, edge)
             }
         }
@@ -232,6 +232,8 @@ WlSessionLockSurface {
                         echoMode: surface.hidePassword ? TextInput.Password : TextInput.Normal
                         passwordMaskDelay: 0
                         maximumLength: 256
+                        clip: true
+                        autoScroll: true
                         enabled: !surface.authenticating
                         focus: true
 
@@ -632,6 +634,8 @@ WlSessionLockSurface {
                             echoMode: TextInput.Password
                             passwordMaskDelay: 0
                             maximumLength: 256
+                            clip: true
+                            autoScroll: true
                             enabled: !surface.powerBusy
 
                             onTextChanged: surface.powerPasswordText = text
