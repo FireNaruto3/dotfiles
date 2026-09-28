@@ -20,20 +20,30 @@ jobs:
       - name: Check shell syntax
         run: |
           bash -n quickshell/.config/quickshell/scripts/*.sh \
-            scripts/.local/bin/gpu-mode tests/gpu-mode.sh
+            scripts/.local/bin/gpu-mode tests/gpu-mode.sh tests/fan-curves.sh \
+            tests/fan-stats.sh
           sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
             quickshell/.config/quickshell/scripts/launch-wlogout.sh \
             quickshell/.config/quickshell/scripts/lock.sh \
             system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+            system/usr/lib/systemd/system-sleep/quiet-resume-console \
             system/usr/libexec/quickshell-secure-suspend
 
       - name: Run ShellCheck
         run: |
           shellcheck quickshell/.config/quickshell/scripts/*.sh \
             scripts/.local/bin/gpu-mode \
-            system/usr/lib/systemd/system-sleep/asus-keyboard-backlight
+            system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+            system/usr/lib/systemd/system-sleep/quiet-resume-console
           shellcheck --exclude=SC1007 tests/gpu-mode.sh
+          shellcheck tests/fan-curves.sh tests/fan-stats.sh
           shellcheck --exclude=SC2086 system/usr/libexec/quickshell-secure-suspend
+
+      - name: Run shell tests
+        run: |
+          bash tests/gpu-mode.sh
+          bash tests/fan-curves.sh
+          bash tests/fan-stats.sh
 
       - name: Check JSON and whitespace
         run: |

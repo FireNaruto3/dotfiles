@@ -136,10 +136,9 @@ show_status() {
     printf 'Firmware: dgpu_disable=%s, gpu_mux_mode=%s\n' \
         "$current_dgpu_disable" "$current_gpu_mux_mode"
     printf 'Queued mode: %s\n' "$pending"
-    printf 'Services: asusd=%s, asus-shutdown=%s, supergfxd=%s\n' \
+    printf 'Services: asusd=%s, asus-shutdown=%s\n' \
         "$(service_state asusd.service)" \
-        "$(service_state asus-shutdown.service)" \
-        "$(service_state supergfxd.service)"
+        "$(service_state asus-shutdown.service)"
 }
 
 restore_queue() {
@@ -188,10 +187,6 @@ systemctl is-active --quiet asusd.service \
     || fail 'asusd.service is not active'
 systemctl is-active --quiet asus-shutdown.service \
     || fail 'asus-shutdown.service is not active; refusing an unprotected firmware change'
-if systemctl is-active --quiet supergfxd.service; then
-    fail 'supergfxd.service is active; disable it before using ASUS firmware mode switching'
-fi
-
 lock_dir=${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}
 exec 9>"$lock_dir/gpu-mode.lock"
 flock -n 9 || fail 'another GPU mode request is already running'

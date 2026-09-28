@@ -43,7 +43,6 @@ cat > "$mock_bin/systemctl" <<'EOF'
 set -euo pipefail
 state_dir=${GPU_MODE_TEST_STATE:?}
 if [[ $1 == is-active ]]; then
-    [[ ${@: -1} != supergfxd.service ]] || exit 3
     [[ ${2:-} == --quiet ]] || printf 'active\n'
 elif [[ $1 == reboot ]]; then
     [[ ! -e $state_dir/fail-reboot ]] || exit 1
@@ -80,7 +79,7 @@ status=$("$script" status)
 [[ $status == *'Configured mode: Hybrid'* ]]
 [[ $status == *'dGPU runtime power:'* ]]
 [[ $status == *'Queued mode: None'* ]]
-[[ $status == *'Services: asusd=active, asus-shutdown=active, supergfxd=inactive'* ]]
+[[ $status == *'Services: asusd=active, asus-shutdown=active'* ]]
 
 "$script" --yes integrated >/dev/null
 assert_eq 1 "$(<"$state_dir/queued-dgpu_disable")"

@@ -9,6 +9,7 @@ QtObject {
     property var fanCurveValues: ({})
     property bool powerMonitoring: false
     property bool fanMonitoring: false
+    property bool fanMetadataReady: false
     property bool busy: false
     property bool refreshPending: false
     property string errorMessage: ""
@@ -24,17 +25,22 @@ QtObject {
     readonly property int displayRefresh: values.display_refresh || 0
     readonly property var displayRefreshRates: values.display_refresh_rates || []
     readonly property string fanProfile: fanCurveValues.fan_profile || "Unknown"
+    readonly property string gpuMode: fanCurveValues.gpu_mode || "Unknown"
     readonly property int cpuTemp: fanValues.cpu_temp || 0
     readonly property bool cpuTempAvailable: fanValues.cpu_temp_available === true
+    readonly property string cpuTempState: fanValues.cpu_temp_state || "unavailable"
     readonly property int gpuTemp: fanValues.gpu_temp || 0
     readonly property bool gpuTempAvailable: fanValues.gpu_temp_available === true
     readonly property string gpuTempState: fanValues.gpu_temp_state || "unavailable"
     readonly property int cpuFan: fanValues.cpu_fan || 0
     readonly property bool cpuFanAvailable: fanValues.cpu_fan_available === true
+    readonly property string cpuFanState: fanValues.cpu_fan_state || "unavailable"
     readonly property int gpuFan: fanValues.gpu_fan || 0
     readonly property bool gpuFanAvailable: fanValues.gpu_fan_available === true
+    readonly property string gpuFanState: fanValues.gpu_fan_state || "unavailable"
     readonly property int midFan: fanValues.mid_fan || 0
     readonly property bool midFanAvailable: fanValues.mid_fan_available === true
+    readonly property string midFanState: fanValues.mid_fan_state || "unavailable"
     readonly property bool cpuFanCurveAvailable: fanCurveValues.cpu_fan_curve_available === true
     readonly property bool gpuFanCurveAvailable: fanCurveValues.gpu_fan_curve_available === true
     readonly property bool cpuFanCurveEnabled: fanCurveValues.cpu_fan_curve_enabled || false
@@ -65,10 +71,20 @@ QtObject {
 
     onFanMonitoringChanged: {
         if (fanMonitoring) {
-            if (!fanCollector.running)
-                fanCollector.running = true
+            fanMetadataReady = false
+            fanValues = {
+                cpu_temp_state: "stale",
+                gpu_temp_state: "stale",
+                cpu_fan_state: "stale",
+                gpu_fan_state: "stale",
+                mid_fan_state: "stale"
+            }
             if (!fanCurveCollector.running)
                 fanCurveCollector.running = true
+        } else {
+            fanMetadataReady = false
+            fanCollector.running = false
+            fanCurveCollector.running = false
         }
     }
 
@@ -164,13 +180,30 @@ QtObject {
     property Process fanCollector: Process {
         id: fanCollector
 
-        command: ["bash", root.fanScriptPath]
+        property bool parsed: false
+        command: ["bash", root.fanScriptPath, root.gpuMode]
+        onRunningChanged: {
+            if (running)
+                parsed = false
+        }
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
                     root.fanValues = JSON.parse(text.trim())
+                    fanCollector.parsed = true
                 } catch (error) {
                     console.warn("Unable to parse fan data:", error, text)
+                }
+            }
+        }
+        onExited: {
+            if (!parsed) {
+                root.fanValues = {
+                    cpu_temp_state: "stale",
+                    gpu_temp_state: "stale",
+                    cpu_fan_state: "stale",
+                    gpu_fan_state: "stale",
+                    mid_fan_state: "stale"
                 }
             }
         }
@@ -179,21 +212,38 @@ QtObject {
     property Process fanCurveCollector: Process {
         id: fanCurveCollector
 
+        property bool parsed: false
         command: ["bash", root.fanCurveScriptPath]
+        onRunningChanged: {
+            if (running)
+                parsed = false
+        }
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
                     root.fanCurveValues = JSON.parse(text.trim())
+                    fanCurveCollector.parsed = true
+                    root.fanMetadataReady = true
+                    if (root.fanMonitoring && !fanCollector.running)
+                        fanCollector.running = true
                 } catch (error) {
                     console.warn("Unable to parse fan curve data:", error, text)
                 }
+            }
+        }
+        onExited: {
+            if (root.fanMonitoring && !root.fanMetadataReady) {
+                root.fanCurveValues = { gpu_mode: "Unknown", fan_profile: "Unavailable" }
+                root.fanMetadataReady = true
+                if (!fanCollector.running)
+                    fanCollector.running = true
             }
         }
     }
 
     property Timer fanPollTimer: Timer {
         interval: 1000
-        running: root.fanMonitoring
+        running: root.fanMonitoring && root.fanMetadataReady
         repeat: true
         onTriggered: {
             if (!fanCollector.running)

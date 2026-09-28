@@ -15,9 +15,15 @@ ShellRoot {
     property string activePanel: "none"
     property var panelScreen: null
     property real panelAnchor: 0
+    property string panelPage: "network"
     property bool verticalBar: true
 
-    function togglePanel(view, screen, anchor) {
+    function togglePanel(view, screen, anchor, page) {
+        const pageChanged = view === "quickSettings" && page && panelPage !== page
+        if (view === "quickSettings" && page)
+            panelPage = page
+        if (activePanel === view && panelScreen === screen && pageChanged)
+            return
         if (activePanel === view && panelScreen === screen) {
             closePanel()
             return
@@ -82,6 +88,11 @@ ShellRoot {
         fanMonitoring: root.activePanel === "fan"
     }
 
+    QuickSettingsData {
+        id: quickSettingsSource
+        monitoring: root.activePanel === "quickSettings"
+    }
+
     NiriData {
         id: niriSource
     }
@@ -142,7 +153,8 @@ ShellRoot {
         }
 
         function toggleSystem(): void {
-            root.openResources()
+            const screen = root.focusedScreen()
+            root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "network")
         }
 
         function toggleOrientation(): void {
@@ -152,6 +164,11 @@ ShellRoot {
         function togglePower(): void {
             const screen = root.focusedScreen()
             root.togglePanel("power", screen, root.defaultPanelAnchor("power", screen))
+        }
+
+        function toggleQuickSettings(): void {
+            const screen = root.focusedScreen()
+            root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "network")
         }
 
         function toggleFan(): void {
@@ -184,12 +201,15 @@ ShellRoot {
             screen: modelData
             systemData: systemSource
             powerData: powerSource
+            quickSettingsData: quickSettingsSource
             niriData: niriSource
             vertical: root.verticalBar
             activeView: root.panelScreen === modelData ? root.activePanel : "none"
+            quickSettingsPage: root.panelPage
             drawerAnchor: root.panelScreen === modelData ? root.panelAnchor : (vertical ? height / 2 : width / 2)
             onOpenResources: root.openResources()
             onToggleDrawer: (view, anchor) => root.togglePanel(view, modelData, anchor)
+            onToggleQuickSettings: (page, anchor) => root.togglePanel("quickSettings", modelData, anchor, page)
             onCloseDrawer: root.closePanel()
             onToggleOrientation: root.toggleBarOrientation()
         }

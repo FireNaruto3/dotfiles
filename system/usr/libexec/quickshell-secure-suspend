@@ -18,13 +18,40 @@ report_failure() {
 
 session_info=$(
     loginctl list-sessions --no-legend 2>/dev/null |
-    while read -r session uid user rest; do
-        [ "$(loginctl show-session "$session" -p Active --value 2>/dev/null)" = "yes" ] || continue
-        [ "$(loginctl show-session "$session" -p Remote --value 2>/dev/null)" = "no" ] || continue
-        [ "$(loginctl show-session "$session" -p Type --value 2>/dev/null)" = "wayland" ] || continue
-        printf '%s %s %s\n' "$session" "$uid" "$user"
-        break
-    done
+    (
+        fallback_count=0
+        while read -r session uid user rest; do
+            properties=$(loginctl show-session "$session" \
+                -p Active -p Remote -p Type 2>/dev/null) || continue
+            active=
+            remote=
+            type=
+
+            while IFS='=' read -r property value; do
+                case $property in
+                    Active) active=$value ;;
+                    Remote) remote=$value ;;
+                    Type) type=$value ;;
+                esac
+            done <<EOF
+$properties
+EOF
+
+            [ "$remote" = "no" ] || continue
+            [ "$type" = "wayland" ] || continue
+
+            if [ "$active" = "yes" ]; then
+                printf '%s %s %s\n' "$session" "$uid" "$user"
+                exit 0
+            fi
+
+            fallback_count=$((fallback_count + 1))
+            fallback_info="$session $uid $user"
+        done
+
+        # logind may briefly clear Active while preparing a lid-close suspend.
+        [ "$fallback_count" -eq 1 ] && printf '%s\n' "$fallback_info"
+    )
 )
 
 if [ -z "$session_info" ]; then

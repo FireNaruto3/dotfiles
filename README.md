@@ -66,8 +66,8 @@ Ubuntu instructions.
 | `matugen` | Wallpaper-derived colors for the active desktop applications |
 | `wlogout` | Session and power menu |
 | `resources` | System resource monitor launched from the bar |
-| `thunar`, `pavucontrol`, `blueman` | File, audio, and Bluetooth utilities |
-| NetworkManager (`nmcli`, `nmtui`), BlueZ (`bluetoothctl`) | Network and Bluetooth status and controls |
+| `thunar` | File manager |
+| NetworkManager (`nmcli`), BlueZ (`bluetoothctl`) | Network, VPN, and Bluetooth status and controls |
 | `brightnessctl`, `wpctl`, `playerctl` | Brightness, audio, and media controls |
 | `jq`, `upower`, `procps`, `libnotify-bin` | JSON processing, battery telemetry, process toggles, and desktop failure notifications |
 | `powerprofilesctl`, compatible `asusctl`/`asusd` | ASUS laptop power, fan, and firmware controls |
@@ -101,7 +101,7 @@ deploying, use this Ubuntu checklist:
 
 The ASUS controls are machine-specific. Niri matches the Samsung
 ATNA40CU05-0 panel by EDID and starts it at `2880x1800@60.001`, scale 1.75,
-position `(0,0)`. The power drawer offers 60 Hz and 120 Hz when those modes are
+position `(0,0)`. Quick settings offers 60 Hz and 120 Hz when those modes are
 advertised. Runtime helpers discover the connector, DRM card, backlight, and
 system battery instead of relying on probe-order names such as `eDP-1`,
 `card1`, `amdgpu_bl1`, or `BAT1`. Power profiles use `powerprofilesctl`; ASUS
@@ -113,7 +113,7 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Config | Description |
 |--------|-------------|
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
-| Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/power/fan drawers |
+| Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power/fan drawers |
 | Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
 | Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
@@ -144,11 +144,13 @@ The displayed application is the active window on that output's active
 workspace.
 
 The clock drawer contains MPRIS artwork and transport controls, Mako DND,
-uptime, and a navigable calendar. The power drawer shows battery state and
-power draw and controls display refresh rate, active power profile, ASUS charge
-limit, and keyboard backlight. The fan drawer monitors CPU, GPU, and MID fan
-RPM and available curve metadata. Drawers open to the right of the vertical
-rail or below the horizontal bar.
+uptime, and a navigable calendar. The unified quick-settings drawer controls
+Wi-Fi, VPNs, Bluetooth devices, audio outputs, microphones, and displays. It
+opens from the related status buttons or with **Mod+S**. The battery button
+opens a separate power drawer for the active power profile, ASUS charge limit,
+keyboard backlight, and internal display refresh rate. The fan drawer monitors
+CPU, GPU, and MID fan RPM and available curve metadata. Drawers open to the
+right of the vertical rail or below the horizontal bar.
 
 At session start, Niri generates the current wallpaper palette before launching
 Quickshell and Mako, then launches `awww-daemon`, Waypaper restoration, text and
@@ -209,9 +211,9 @@ use `powerprofilesctl` and do not replace those ASUS power-source defaults.
 
 ### Fan Curves
 
-The fan panel is monitor-only and polls the ASUS CPU, GPU, and MID fan RPM sensors once per second while visible. Every card continuously shows measured RPM, including a valid stopped state. CPU and GPU show their curve target as secondary information when an enabled custom curve and controlling temperature are available; otherwise they identify firmware control or unavailable telemetry. MID is RPM-only because this laptop exposes its fan speed but not its controlling temperature.
+The fan panel is monitor-only and polls the ASUS CPU, GPU, and MID fan RPM sensors once per second while visible. Every card continuously shows measured RPM, including a valid stopped state. CPU and GPU show an estimated curve target as secondary information when an enabled custom curve and a suitable temperature are available; otherwise they identify firmware control or unavailable telemetry. MID is RPM-only because this laptop exposes its fan speed but not its controlling temperature. Duplicate sensors are reported as ambiguous instead of being selected by hwmon number.
 
-NVIDIA temperature is read only in dGPU MUX mode, where NVIDIA cannot runtime-suspend. Integrated mode reports the dGPU disabled. Hybrid reports active or suspended when runtime status is available, otherwise unavailable, without querying NVIDIA telemetry, so polling cannot wake the dGPU or delay suspension. Live RPM and temperature data updates once per second; ASUS profile and curve metadata updates every 15 seconds to avoid repeated daemon calls. The cards are persistent rather than rebuilt on each telemetry sample, so polling cannot disrupt hover or click state. Use `asusctl` to manage custom curves:
+NVIDIA temperature is read only in Ultimate dGPU MUX mode. Integrated reports the dGPU disabled. Hybrid reports active or suspended from PCI runtime state without reading NVIDIA temperature or invoking `nvidia-smi`, so polling cannot wake the dGPU or delay suspension. Ultimate selects a unique NVIDIA PCI device, prefers an unambiguous core/edge hwmon channel, and uses a bounded, PCI-targeted `nvidia-smi` fallback. Live sysfs data updates once per second; the configured GPU mode, ASUS profile, and curve metadata update every 15 seconds to keep ASUS daemon calls off the fast path. Failed samples are marked stale instead of leaving old values displayed as current. Use `asusctl` to manage custom curves:
 
 ```bash
 # Inspect one profile.
@@ -257,6 +259,13 @@ dGPU runtime power state, and relevant service states. A suspended dGPU is
 normal while Hybrid is configured. `--get` only reads the configured firmware
 mode; mode-changing commands additionally require `asus-shutdown.service`,
 `flock`, queue verification through `busctl`, and reboot authorization.
+
+For staged fan-telemetry validation, boot each mode separately. In Hybrid,
+compare the NVIDIA PCI device's `power/runtime_status` and
+`power/runtime_suspended_time` before and after leaving the fan drawer open; the
+drawer must not wake a suspended device. In Ultimate, compare
+`fan-stats.sh Ultimate` with `nvidia-smi` for the reported PCI device. Return to
+the preferred mode with `gpu-mode integrated` after testing if desired.
 
 ## Keymaps
 
@@ -509,6 +518,10 @@ sudo install --backup=numbered -D -o root -g root -m 0755 \
   /usr/lib/systemd/system-sleep/asus-keyboard-backlight
 
 sudo install --backup=numbered -D -o root -g root -m 0755 \
+  system/usr/lib/systemd/system-sleep/quiet-resume-console \
+  /usr/lib/systemd/system-sleep/quiet-resume-console
+
+sudo install --backup=numbered -D -o root -g root -m 0755 \
   system/usr/libexec/quickshell-secure-suspend \
   /usr/libexec/quickshell-secure-suspend
 
@@ -552,49 +565,6 @@ distribution's normal tooling when applicable, then reboot before relying on
 the new NVIDIA or backlight policy. `systemctl daemon-reload` does not apply
 modprobe changes.
 
-For the one-time migration from Supergfx, disable its daemon after installing
-`asus-nvidia.conf`, then move configuration files only when they exist and no
-backup is already present:
-
-```bash
-if systemctl cat supergfxd.service >/dev/null 2>&1; then
-  sudo systemctl disable --now supergfxd.service
-fi
-
-if [ -e /etc/supergfxd.conf ]; then
-  if [ -e /etc/supergfxd.conf.supergfx-disabled ]; then
-    printf '%s\n' 'Refusing to overwrite /etc/supergfxd.conf.supergfx-disabled' >&2
-    exit 1
-  fi
-  sudo mv -- /etc/supergfxd.conf /etc/supergfxd.conf.supergfx-disabled
-fi
-
-if [ -e /etc/modprobe.d/supergfxd.conf ]; then
-  if [ -e /etc/modprobe.d/supergfxd.conf.supergfx-disabled ]; then
-    printf '%s\n' 'Refusing to overwrite /etc/modprobe.d/supergfxd.conf.supergfx-disabled' >&2
-    exit 1
-  fi
-  sudo mv -- /etc/modprobe.d/supergfxd.conf \
-    /etc/modprobe.d/supergfxd.conf.supergfx-disabled
-fi
-```
-
-The `supergfxctl` package may remain installed, but `supergfxd.service` must not
-run alongside ASUS firmware-managed mode switching. If Supergfx previously
-renamed `/usr/share/vulkan/icd.d/nvidia_icd.json` to
-`nvidia_icd.json_inactive`, restore the original filename before using Hybrid
-or Ultimate mode:
-
-```bash
-if [ ! -e /usr/share/vulkan/icd.d/nvidia_icd.json ] && \
-   [ -e /usr/share/vulkan/icd.d/nvidia_icd.json_inactive ]; then
-  sudo mv /usr/share/vulkan/icd.d/nvidia_icd.json_inactive \
-    /usr/share/vulkan/icd.d/nvidia_icd.json
-fi
-```
-
-Alternatively, reinstall the NVIDIA package that owns the ICD file.
-
 Secure Boot remains enabled. The kernel's integrity lockdown disables
 hibernation, so no hibernation sleep policy or static `resume=` configuration
 is installed.
@@ -612,13 +582,17 @@ Run the focused checks after changing the active desktop or GPU-mode helper:
 ```bash
 niri validate -c niri/.config/niri/config.kdl
 bash -n quickshell/.config/quickshell/scripts/*.sh \
-  scripts/.local/bin/gpu-mode tests/gpu-mode.sh
+  scripts/.local/bin/gpu-mode tests/gpu-mode.sh tests/fan-curves.sh \
+  tests/fan-stats.sh
 sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
   quickshell/.config/quickshell/scripts/launch-wlogout.sh \
   quickshell/.config/quickshell/scripts/lock.sh \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+  system/usr/lib/systemd/system-sleep/quiet-resume-console \
   system/usr/libexec/quickshell-secure-suspend
 bash tests/gpu-mode.sh
+bash tests/fan-curves.sh
+bash tests/fan-stats.sh
 ```
 
 GitHub Actions additionally runs ShellCheck, JSON parsing, whitespace checks,

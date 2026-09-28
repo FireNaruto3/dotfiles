@@ -9,6 +9,8 @@ PanelWindow {
     property string kind: "volume"
     property string action: ""
 
+    ShellTheme { id: theme }
+
     readonly property var activePlayer: {
         const players = Mpris.players.values
         for (let index = 0; index < players.length; ++index) {
@@ -46,13 +48,9 @@ PanelWindow {
 
     function icon(): string {
         if (kind === "brightness") {
-            if (systemData.brightness < 20)
-                return "󰃜"
-            if (systemData.brightness < 50)
-                return "󰃝"
-            if (systemData.brightness < 80)
-                return "󰃟"
-            return "󰃠"
+            const icons = ["󰃚", "󰃜", "󰃞", "󰃠"]
+            const brightness = Math.max(0, Math.min(100, systemData.brightness))
+            return icons[Math.min(3, Math.floor(brightness * 4 / 101))]
         }
         if (kind === "microphone")
             return systemData.microphoneMuted ? "󰍭" : "󰍬"
@@ -129,9 +127,9 @@ PanelWindow {
         width: 390
         height: parent.height
         radius: 8
-        color: "#f0131819"
+        color: theme.background
         border.width: 1
-        border.color: "#29b4dcdc"
+        border.color: theme.border
         opacity: 0
 
         Behavior on opacity {
@@ -148,9 +146,9 @@ PanelWindow {
                 width: 38
                 text: window.icon()
                 color: window.kind === "microphone" && window.systemData.microphoneMuted
-                    ? "#e78284"
-                    : "#99d1db"
-                font.family: "JetBrains Mono Nerd Font"
+                    ? theme.error
+                    : theme.accent
+                font.family: theme.fontFamily
                 font.pixelSize: 28
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -163,8 +161,8 @@ PanelWindow {
                 Text {
                     width: parent.width
                     text: window.primaryText()
-                    color: "#c9d3d6"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.text
+                    font.family: theme.fontFamily
                     font.pixelSize: 14
                     font.bold: true
                     elide: Text.ElideRight
@@ -174,8 +172,8 @@ PanelWindow {
                     width: parent.width
                     visible: text.length > 0
                     text: window.secondaryText()
-                    color: "#758083"
-                    font.family: "JetBrains Mono Nerd Font"
+                    color: theme.textMuted
+                    font.family: theme.fontFamily
                     font.pixelSize: 11
                     elide: Text.ElideRight
                 }
@@ -185,13 +183,13 @@ PanelWindow {
                     height: 7
                     visible: window.showsProgress
                     radius: 4
-                    color: "#293f4749"
+                    color: theme.cardHover
 
                     Rectangle {
                         width: parent.width * Math.max(0, Math.min(100, window.progress)) / 100
                         height: parent.height
                         radius: parent.radius
-                        color: "#99d1db"
+                        color: theme.accent
 
                         Behavior on width {
                             NumberAnimation { duration: 130 }

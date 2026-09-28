@@ -20,11 +20,11 @@
 ## Machine-Specific Assumptions
 
 - Several settings are deliberately machine-specific: the Samsung ATNA40CU05-0 panel with 2880x1800 modes and ASUS utilities/devices. Connector, backlight, DRM card, and system-battery names are discovered at runtime because their numeric suffixes change with GPU probe order. Search all Niri, Quickshell, and systemd references before changing one of these assumptions.
-- `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` must remain executable when installed; it saves/restores `leds:asus::kbd_backlight` around suspend and resume.
+- Files under `system/usr/lib/systemd/system-sleep/` must remain executable when installed. `asus-keyboard-backlight` saves/restores `leds:asus::kbd_backlight`; `quiet-resume-console` temporarily suppresses non-critical console messages while graphics are unavailable.
 
 ## Focused Checks
 
 - Validate Niri config: `niri validate -c niri/.config/niri/config.kdl`.
 - Syntax-check Quickshell helpers: `bash -n quickshell/.config/quickshell/scripts/*.sh`.
-- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/launch-wlogout.sh quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight system/usr/libexec/quickshell-secure-suspend`.
+- Check the POSIX-shell paths specifically: `sh -n quickshell/.config/quickshell/scripts/launch-wlogout.sh quickshell/.config/quickshell/scripts/lock.sh system/usr/lib/systemd/system-sleep/asus-keyboard-backlight system/usr/lib/systemd/system-sleep/quiet-resume-console system/usr/libexec/quickshell-secure-suspend`.
 - GitHub Actions runs shell syntax, ShellCheck, whitespace, JSON, and publication checks. Quickshell validation remains runtime- and hardware-dependent; do not launch the lock shell as a casual syntax check because it attempts to acquire the session lock.

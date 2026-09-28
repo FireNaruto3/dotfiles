@@ -138,7 +138,7 @@ The shell provides:
 - Workspaces and focused-window state from Niri's JSON event stream.
 - StatusNotifier system tray hosting.
 - Volume, microphone, brightness, media, and keyboard-lock OSDs.
-- Clock, media, calendar, DND, power, and fan drawers.
+- Clock, media, calendar, DND, unified quick-settings, power, and fan drawers.
 - Network, Bluetooth, battery, CPU, memory, audio, and brightness indicators.
 - The Flameshot tray process.
 
@@ -164,7 +164,9 @@ keyboard brightness has a separate 400 ms poll so hardware-key changes can
 display an OSD promptly. Invalid JSON leaves the previous QML values intact
 rather than replacing them with incomplete state.
 
-Detailed power and fan polling is demand-driven. It runs only while the
+Detailed quick-settings, power, and fan polling is demand-driven. Quick settings
+uses `quick-settings.sh` as an argument-safe adapter for NetworkManager, BlueZ,
+WirePlumber, and Niri outputs. These collectors run only while their
 corresponding drawer is visible.
 
 ### Hardware Keys And OSD
@@ -289,18 +291,23 @@ The swayidle timeline is:
 | Activity after display-off | Ask Niri to power monitors on |
 | 500 seconds | Request `systemctl suspend` |
 
-The swayidle `lock` event also calls the same lock helper.
+The swayidle `lock` event also calls the same lock helper. Its `before-sleep`
+event holds a logind delay inhibitor until that helper has securely acquired the
+Wayland session lock, before logind pauses Niri's device access.
 
 ### Suspend Is Fail-Closed
 
 Every systemd suspend passes through the installed
 `systemd-suspend.service` drop-in. Its `ExecStartPre` runs
-`/usr/libexec/quickshell-secure-suspend` before the kernel sleep operation.
+`/usr/libexec/quickshell-secure-suspend` before the kernel sleep operation as a
+final fail-closed check after swayidle's pre-sleep lock.
 
-The helper searches logind for an active, local Wayland session. It reconstructs
-that user's runtime-directory and D-Bus environment, then starts
-`quickshell-secure-lock.service` as the session owner. The entire operation has
-a 14-second bound.
+The helper searches logind for an active, local Wayland session. If logind
+temporarily clears the active marker while preparing a lid-close suspend, the
+helper accepts the sole local Wayland session but rejects an ambiguous choice.
+It reconstructs that user's runtime-directory and D-Bus environment, then
+starts `quickshell-secure-lock.service` as the session owner. The entire
+operation has a 14-second bound.
 
 If no suitable session exists, the lock service fails, or the Wayland protocol
 never reports secure, the helper logs an auth-private error, attempts a critical
@@ -327,6 +334,11 @@ Backlight save or restore failures are nonfatal; they must not prevent the
 machine from sleeping or waking. The persistent Aura policy separately disables
 the firmware sleep animation while retaining boot, awake, and shutdown
 lighting.
+
+A separate system-sleep hook temporarily limits the visible kernel console to
+critical messages while the machine sleeps and restores its previous level
+after resume. Resume diagnostics remain in the journal, but transient ASUS ACPI
+firmware errors no longer appear before Niri redraws the lock screen.
 
 ## Power And Battery Management
 
@@ -357,13 +369,16 @@ critical action is power off because hibernation is unavailable.
 ## Fan Monitoring
 
 Fan monitoring is read-only and runs only while the fan drawer is visible.
-Live CPU, GPU, and MID RPM and temperature data is sampled every second. ASUS
-profile and curve metadata is refreshed every 15 seconds.
+Live CPU temperature and CPU, GPU, and MID RPM are sampled from sysfs every
+second. ASUS profile, configured GPU mode, and curve metadata are refreshed
+every 15 seconds, keeping ASUS daemon calls off the live path.
 
 `fan-curves.sh` reads the active profile before and after querying curves and
 accepts the data only if the profile did not change. It retries transient races.
-Quickshell interpolates enabled CPU and GPU curves to show target percentages;
+Quickshell interpolates enabled CPU and GPU curves to show estimated targets;
 MID remains RPM-only because its controlling temperature is not exposed.
+Duplicate hwmon labels and temperature sources are rejected as ambiguous, and
+failed live samples replace old values with a stale state.
 
 GPU temperature collection depends on the configured mode:
 
@@ -371,7 +386,7 @@ GPU temperature collection depends on the configured mode:
 |---|---|
 | Integrated | Report the dGPU disabled |
 | Hybrid | Read PCI runtime state only; never query NVIDIA temperature |
-| Ultimate | Prefer NVIDIA hwmon, with `nvidia-smi` as an active-device fallback |
+| Ultimate | Select one NVIDIA PCI device, prefer an unambiguous core/edge hwmon channel, then use a bounded PCI-targeted `nvidia-smi` fallback |
 
 Avoiding NVIDIA queries in Hybrid mode prevents monitoring from waking a
 runtime-suspended dGPU.
@@ -387,11 +402,10 @@ drivers from the live desktop.
 | Hybrid | 0 | 1 |
 | Ultimate | 0 | 0 |
 
-A mode-changing request verifies required commands and services, rejects an
-active `supergfxd`, serializes requests with a runtime lock, rejects pre-existing
-queued state, and prompts for confirmation unless `--yes` was supplied. It
-queues both firmware values through `asusctl`, verifies both over D-Bus, and
-requests an immediate reboot.
+A mode-changing request verifies required commands and services, serializes
+requests with a runtime lock, rejects pre-existing queued state, and prompts for
+confirmation unless `--yes` was supplied. It queues both firmware values
+through `asusctl`, verifies both over D-Bus, and requests an immediate reboot.
 
 `asusd` keeps queued values in memory. `asus-shutdown` applies them only after
 graphical users have exited. If the second write, verification, or reboot
@@ -488,6 +502,7 @@ defined by this repository.
 - Display discovery fails instead of selecting ambiguous hardware.
 - GPU transitions are reboot-only and verified before reboot.
 - Hybrid fan polling does not wake the dGPU.
+- Fan sensor discovery fails visibly instead of selecting duplicate hwmon data.
 - Root policy is inactive until repository files are installed under `/etc` or
   `/usr`.
 - Wlogout power actions do not have the lock screen's additional PAM layer.

@@ -9,8 +9,13 @@ Item {
     ShellTheme { id: theme }
 
     function fanRpmValue(fan) {
-        if (!fan.rpmAvailable)
+        if (!fan.rpmAvailable) {
+            if (fan.rpmState === "ambiguous")
+                return "Ambiguous"
+            if (fan.rpmState === "stale")
+                return "Stale"
             return "Unavailable"
+        }
         if (fan.rpm <= 0)
             return "Off"
         return `${fan.rpm} RPM`
@@ -19,10 +24,6 @@ Item {
     function fanCurveDetail(fan) {
         if (fan.rpmOnly)
             return "RPM only"
-        if (!fan.curveAvailable)
-            return "Curve unavailable"
-        if (!fan.curveEnabled)
-            return "Firmware auto"
         if (!fan.temperatureAvailable) {
             if (fan.temperatureState === "suspended")
                 return "dGPU suspended"
@@ -30,15 +31,28 @@ Item {
                 return "dGPU disabled"
             if (fan.temperatureState === "active")
                 return "dGPU active"
-            return "Target unavailable"
+            if (fan.temperatureState === "ambiguous")
+                return "Sensor ambiguous"
+            if (fan.temperatureState === "missing")
+                return "dGPU missing"
+            if (fan.temperatureState === "unknown_mode")
+                return "Mode unavailable"
+            if (fan.temperatureState === "stale")
+                return "Telemetry stale"
         }
+        if (!fan.curveAvailable)
+            return "Curve unavailable"
+        if (!fan.curveEnabled)
+            return "Firmware auto"
+        if (!fan.temperatureAvailable)
+            return "Target unavailable"
 
         const target = powerData.fanCurvePercent(
             fan.curve,
             fan.temperature,
             fan.curveEnabled
         )
-        return target >= 0 ? `${target}% @ ${fan.temperature}°C` : "Target unavailable"
+        return target >= 0 ? `~${target}% @ ${fan.temperature}°C` : "Target unavailable"
     }
 
     function fanRpmColor(fan) {
@@ -78,10 +92,11 @@ Item {
                 Text {
                     width: parent.width / 2
                     horizontalAlignment: Text.AlignRight
-                    text: window.powerData.fanProfile
+                    text: `${window.powerData.fanProfile} · ${window.powerData.gpuMode}`
                     color: theme.accent
                     font.family: theme.fontFamily
                     font.pixelSize: 11
+                    elide: Text.ElideLeft
                 }
             }
 
@@ -106,6 +121,9 @@ Item {
                         readonly property bool rpmAvailable: index === 0
                             ? window.powerData.cpuFanAvailable
                             : (index === 1 ? window.powerData.gpuFanAvailable : window.powerData.midFanAvailable)
+                        readonly property string rpmState: index === 0
+                            ? window.powerData.cpuFanState
+                            : (index === 1 ? window.powerData.gpuFanState : window.powerData.midFanState)
                         readonly property bool rpmOnly: index === 2
                         readonly property int temperature: index === 0
                             ? window.powerData.cpuTemp
@@ -114,7 +132,7 @@ Item {
                             ? window.powerData.cpuTempAvailable
                             : (index === 1 ? window.powerData.gpuTempAvailable : false)
                         readonly property string temperatureState: index === 0
-                            ? (window.powerData.cpuTempAvailable ? "active" : "unavailable")
+                            ? window.powerData.cpuTempState
                             : (index === 1 ? window.powerData.gpuTempState : "")
                         readonly property bool curveAvailable: index === 0
                             ? window.powerData.cpuFanCurveAvailable

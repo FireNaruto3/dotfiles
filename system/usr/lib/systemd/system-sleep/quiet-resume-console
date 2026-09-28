@@ -1,0 +1,40 @@
+#!/bin/sh
+
+printk=/proc/sys/kernel/printk
+state=/run/quiet-resume-console.state
+
+valid_loglevel() {
+    case $1 in
+        ''|*[!0-9]*) return 1 ;;
+        *) [ "$1" -le 15 ] ;;
+    esac
+}
+
+case "$1" in
+    pre)
+        rm -f "$state"
+        [ -r "$printk" ] && [ -w "$printk" ] || exit 0
+        read -r console_level rest < "$printk" || exit 0
+        valid_loglevel "$console_level" || exit 0
+
+        umask 077
+        temporary="$state.$$"
+        trap 'rm -f "$temporary"' EXIT HUP INT TERM
+        printf '%s\n' "$console_level" > "$temporary" &&
+            mv -f "$temporary" "$state" || exit 0
+
+        # Hide firmware error text while graphics are unavailable on resume.
+        if [ "$console_level" -gt 3 ]; then
+            printf '%s\n' 3 > "$printk" || rm -f "$state"
+        fi
+        ;;
+    post)
+        [ -r "$state" ] && [ -w "$printk" ] || exit 0
+        read -r console_level < "$state" || exit 0
+        valid_loglevel "$console_level" || exit 0
+        printf '%s\n' "$console_level" > "$printk" || exit 0
+        rm -f "$state"
+        ;;
+esac
+
+exit 0

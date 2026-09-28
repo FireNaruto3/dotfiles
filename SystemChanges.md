@@ -31,6 +31,7 @@ The following repository copies are installed as root-owned files.
 | `system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `0644` | Block suspend unless the Wayland lock is secure |
 | `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Configure native ASUS AC and battery profiles |
 | `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `0755` | Keyboard-backlight restoration |
+| `system/usr/lib/systemd/system-sleep/quiet-resume-console` | `/usr/lib/systemd/system-sleep/quiet-resume-console` | `0755` | Suppress transient firmware errors on the visible resume console |
 | `system/usr/libexec/quickshell-secure-suspend` | `/usr/libexec/quickshell-secure-suspend` | `0755` | Find the active Wayland user and request a secure lock |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
 
@@ -73,11 +74,23 @@ The persistent ASUS Aura policy disables the keyboard's firmware sleep animation
 while retaining boot, awake, and shutdown lighting; apply it with
 `asusctl aura power keyboard --boot --awake --shutdown`.
 
+`quiet-resume-console` saves the current kernel console log level, temporarily
+limits the visible console to critical messages across sleep, and restores the
+previous level after resume. Kernel and firmware messages remain available in
+the journal; this only prevents the ACPI firmware error burst from appearing
+before Niri regains DRM access and redraws the lock screen.
+
 The `systemd-suspend.service` drop-in runs `quickshell-secure-suspend` before
 suspend. The helper locates an active local Wayland session and starts the
-user-level `quickshell-secure-lock.service` with a bounded timeout. Suspend is
-aborted and an auth-private journal error is emitted if no suitable session is
-available or the Wayland session lock is not secured within the timeout.
+user-level `quickshell-secure-lock.service` with a bounded timeout. It accepts
+the sole local Wayland session if logind temporarily clears its active marker
+during lid-close processing, but rejects an ambiguous choice. Suspend is aborted
+and an auth-private journal error is emitted if no suitable session is available
+or the Wayland session lock is not secured within the timeout.
+
+Swayidle's `before-sleep` hook acquires the secure lock while holding logind's
+delay inhibitor, before logind pauses Niri's DRM access. The system suspend
+precondition remains the final fail-closed verification.
 
 ## Idle And Lock Behavior
 
@@ -91,6 +104,9 @@ Niri starts `swayidle` with the following user-session timeline:
 | 400 seconds | Power off displays |
 | Activity after display-off | Power displays back on |
 | 500 seconds | Run `systemctl suspend` |
+
+Before any sleep request, swayidle runs the lock helper and waits for secure
+Wayland lock acquisition before releasing its logind delay inhibitor.
 
 The lock helper serializes concurrent requests with `flock`, reuses an already
 secure instance, starts `quickshell-lock-shell.service`, and polls that unit's
@@ -175,18 +191,22 @@ Quickshell's fan panel is monitor-only and polls live sensors once per second
 while visible. It reads measured CPU, GPU, and MID RPM across every ASUS
 profile, distinguishes a valid stopped fan from an unavailable sensor, and does
 not modify fan curves. Active-profile and curve metadata is refreshed every 15
-seconds rather than on every live sample.
+seconds rather than on every live sample. GPU mode is collected with that
+metadata, so the one-second path does not repeatedly query `asusd`.
 MID is RPM-only because its controlling temperature is not exposed. Every card
-always shows measured RPM. CPU/GPU add a secondary target calculated only from
-an enabled custom curve and an available controlling temperature; disabled
+always shows measured RPM. CPU/GPU add an estimated secondary target calculated
+only from an enabled custom curve and an available suitable temperature; disabled
 curves are identified as firmware-controlled rather than being presented as an
 inaccurate percentage. Persistent cards are not recreated by each telemetry
 sample, avoiding interaction flicker during polling.
 
-NVIDIA temperature is queried only in dGPU MUX mode. Integrated mode reports
-the dGPU disabled, while Hybrid reports its PCI runtime state without reading
-NVIDIA telemetry, so polling cannot wake the dGPU or delay runtime suspension.
-NVIDIA hwmon is preferred; `nvidia-smi` is the MUX-mode fallback.
+NVIDIA temperature is queried only in Ultimate dGPU MUX mode. Integrated mode
+reports the dGPU disabled, while Hybrid reports its PCI runtime state without
+reading NVIDIA telemetry, so polling cannot wake the dGPU or delay runtime
+suspension. Ultimate requires a unique NVIDIA PCI device, prefers an
+unambiguous core/edge hwmon channel, and uses a bounded, PCI-targeted
+`nvidia-smi` fallback. Ambiguous sensors and stale samples are exposed to the UI
+instead of silently retaining or selecting data.
 
 ## ASUS Graphics Modes
 
@@ -209,11 +229,8 @@ Armoury support in `asusctl`/`asusd`, an active `asus-shutdown.service`, and
 exited. Failed verification or a rejected reboot request causes the command to
 overwrite the queue with the current firmware values.
 
-Deployment requires `supergfxd.service` to remain disabled because its live
-driver unload and PCI removal paths are unreliable on this laptop and conflict
-with ASUS firmware-managed transitions. Quickshell uses `gpu-mode --get` only
-to select a safe temperature telemetry path; it does not queue or apply
-graphics-mode changes.
+Quickshell uses `gpu-mode --get` only to select a safe temperature telemetry
+path; it does not queue or apply graphics-mode changes.
 
 ## NVIDIA And Backlight Driver State
 
@@ -283,8 +300,6 @@ systemd-analyze cat-config systemd/sleep.conf
 busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanSuspend
 busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanHibernate
 systemctl status asusd.service asus-shutdown.service power-profiles-daemon.service
-systemctl is-enabled supergfxd.service
-systemctl is-active supergfxd.service
 powerprofilesctl get
 asusctl profile get
 gpu-mode status

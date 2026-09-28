@@ -228,13 +228,6 @@ Item {
                 anchors.centerIn: parent
 
                 SystemButton {
-                    text: "󰒋"
-                    tooltip: "Toggle Resources"
-                    tooltipRight: false
-                    onClicked: root.panel.openResources()
-                }
-
-                SystemButton {
                     id: fanButton
                     text: "󰈐"
                     active: root.panel.activeView === "fan"
@@ -294,39 +287,48 @@ Item {
                 }
 
                 SystemButton {
+                    id: bluetoothButton
                     text: root.panel.systemData.bluetooth === "connected" ? "󰂱" : (root.panel.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
                     tooltip: root.panel.systemData.bluetooth === "connected"
                         ? `Bluetooth: ${root.panel.systemData.bluetoothDevice}`
                         : `Bluetooth ${root.panel.systemData.bluetooth}`
                     tooltipRight: false
-                    onClicked: Quickshell.execDetached(["blueman-manager"])
+                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "bluetooth"
+                    onClicked: root.panel.openQuickSettings("bluetooth", bluetoothButton)
                 }
 
                 SystemButton {
+                    id: networkButton
                     text: root.panel.systemData.network === "wifi" ? "󰤢" : (root.panel.systemData.network === "ethernet" ? "󰈀" : "󰤠")
                     tooltip: root.panel.systemData.network === "wifi"
                         ? `${root.panel.systemData.ssid} (${root.panel.systemData.signal}%)`
                         : root.panel.systemData.network
                     tooltipRight: false
-                    onClicked: Quickshell.execDetached(["ghostty", "-e", "nmtui"])
+                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "network"
+                    onClicked: root.panel.openQuickSettings("network", networkButton)
                 }
 
                 SystemButton {
+                    id: volumeButton
                     text: root.panel.volumeIcon()
                     tooltip: root.panel.systemData.muted
                         ? `Volume: ${root.panel.systemData.volume}% (muted)`
                         : `Volume: ${root.panel.systemData.volume}%`
                     tooltipRight: false
-                    onClicked: Quickshell.execDetached(["pavucontrol"])
+                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "audio"
+                    onClicked: root.panel.openQuickSettings("audio", volumeButton)
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
                     ])
                 }
 
                 SystemButton {
+                    id: brightnessButton
                     text: root.panel.brightnessIcon()
                     tooltip: `Brightness: ${root.panel.systemData.brightness}%`
                     tooltipRight: false
+                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "displays"
+                    onClicked: root.panel.openQuickSettings("displays", brightnessButton)
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
                     ])
