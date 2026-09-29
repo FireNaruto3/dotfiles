@@ -143,7 +143,9 @@ profile with `powerprofilesctl set`. The enabled
 Quiet on battery, then explicitly applies the profile matching the current power
 source. `asusd` handles later plug and unplug events natively. A system-sleep
 hook reapplies the matching profile after resume in case the source changed
-while suspended.
+while suspended. A manual profile selected through Quickshell changes only the
+current `power-profiles-daemon` profile; it does not rewrite either ASUS default
+and can be replaced by a later power-source event or resume reconciliation.
 
 ## Mutable ASUS State
 
@@ -154,14 +156,14 @@ defaults and reconciles the active profile; the Aura command in `README.md`
 reproducibly sets only the keyboard power-state policy. Quickshell can
 subsequently change the charge limit and keyboard brightness through `asusctl`.
 
-Observed state on 2026-09-27:
+Observed state on 2026-09-29:
 
 - `/etc/asusd/asusd.ron` uses an 80% charge limit, disables NVIDIA powerd on
   battery, links platform profiles to EPP, selects Balanced on AC and Quiet on
   battery, and has no AC/DC profile-tuning groups enabled.
-- `/etc/asusd/aura_19b6.ron` has Aura brightness Off and a red Static effect.
-  Keyboard lighting is enabled at boot, while awake, and during shutdown; the
-  sleep animation is disabled.
+- `/etc/asusd/aura_19b6.ron` has Aura brightness Off and Rainbow Wave selected;
+  its stored built-in colors remain red. Keyboard lighting is enabled at boot,
+  while awake, and during shutdown; the sleep animation is disabled.
 - `/etc/asusd/slash.ron` has the Slash display disabled. Its stored event flags
   remain enabled but have no effect while the display itself is disabled.
 - `/etc/asusd/fan_curves.ron` enables the CPU custom curve in Quiet and
@@ -226,8 +228,10 @@ approximately 60 Hz at login for lower power consumption.
 
 `quickshell/.config/quickshell/scripts/display-control.sh` discovers the
 current connector, DRM card, and backlight at runtime instead of assuming
-names such as `eDP-1`, `card1`, or `amdgpu_bl1`. It exposes only supported
-2880x1800 refresh modes; this panel advertises 60 Hz and 120 Hz.
+names such as `eDP-1`, `card1`, or `amdgpu_bl1`. The power drawer exposes only
+supported 2880x1800 refresh modes; this panel advertises 60 Hz and 120 Hz. The
+unified Displays page separately enumerates each enabled Niri output's advertised
+modes at the output's current resolution.
 
 The Quickshell power panel can select 60 Hz or 120 Hz. The bar and Niri's
 hardware brightness keys change the runtime-selected backlight in 5% increments
@@ -246,6 +250,11 @@ The Quickshell power panel additionally provides:
   `asusctl battery limit`.
 - ASUS keyboard-backlight level through `asusctl leds set`.
 - Internal panel refresh selection through Niri.
+
+The bar's lightweight CPU indicator reads utilization and, when available, the
+AMD `k10temp` sensor labeled `Tctl`. It does not poll dGPU telemetry. Both CPU
+and RAM indicators toggle the external Resources application for detailed
+monitoring.
 
 Battery, backlight, connector, and DRM device names are discovered at runtime
 where possible. The display and ASUS controls remain machine-specific to this
@@ -290,8 +299,6 @@ modprobe --showconfig | grep -E '^(blacklist nouveau|options (nvidia-drm|nvidia-
 - Hibernation remains disabled while Secure Boot enforces kernel lockdown.
 - The display helper intentionally fails instead of guessing when connector or
   backlight discovery is ambiguous.
-- GPU temperature is queried only in dGPU MUX mode; Hybrid telemetry reads only
-  PCI runtime state.
 - ASUS GPU requests are intentionally in-memory until shutdown. Restarting
   `asusd.service` cancels a queued request before it is applied.
 - Logout from the lock screen or wlogout terminates all sessions for the user.

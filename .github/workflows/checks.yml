@@ -63,6 +63,10 @@ jobs:
           test -f SECURITY.md
           test -f wallpapers/Winter.jpg
           test -f screenshots/desktop.webp
+          test -f screenshots/horizontal-bar.webp
+          test -f screenshots/clock-dashboard.webp
+          test -f screenshots/power-drawer.webp
+          test -f screenshots/quick-settings.webp
           test -f system/etc/systemd/user/quickshell-lock-shell.service
           test -f quickshell/.config/quickshell/scripts/launch-wlogout.sh
           test -f matugen/.config/matugen/templates/waypaper.css

@@ -78,6 +78,7 @@ QtObject {
                 root.errorMessage = actionError.text.trim() || actionOutput.text.trim() || "Setting failed"
                 errorTimer.restart()
             }
+            actionRunner.command = []
             refreshDelay.restart()
         }
     }

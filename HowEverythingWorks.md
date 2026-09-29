@@ -145,7 +145,18 @@ The shell provides:
 The dedicated quick-settings button sits after clipboard history and before the
 Bluetooth control. Its Bluetooth, network, audio, and display pages follow the
 same order as their bar controls; the individual controls open their matching
-page directly.
+page directly. Bluetooth is the default page. The vertical control order is
+orientation, clipboard, quick settings, Bluetooth, network, audio, display,
+CPU, RAM, battery, clock, and power below the app/tray region. The horizontal
+bar puts workspaces, clock, and tray on the left; the active window in the
+center; and resources, quick settings, and system controls on the right.
+
+The pages are operational rather than status-only. Bluetooth powers the radio
+and connects or disconnects already-paired devices. Network manages saved, open,
+and password-protected Wi-Fi networks plus VPN and WireGuard connections. Audio
+selects and mutes PipeWire sinks and sources. Displays enumerates enabled Niri
+outputs' current-resolution modes and prevents disabling the final active
+output.
 
 ### Niri Event Stream
 
@@ -164,10 +175,13 @@ collects NetworkManager, BlueZ, PipeWire, keyboard-lock, display brightness,
 ASUS keyboard brightness, UPower, battery-health, uptime, and Mako DND data into
 one JSON object.
 
-CPU usage, CPU temperature, and memory use a lighter `resource-stats.sh` poll
-every two seconds. ASUS keyboard brightness has a separate 400 ms poll so
-hardware-key changes can display an OSD promptly. Invalid JSON leaves the
-previous QML values intact rather than replacing them with incomplete state.
+CPU usage, AMD CPU temperature, and memory use a lighter `resource-stats.sh`
+poll every two seconds. The helper discovers the first `k10temp` hwmon device
+whose label is `Tctl`; unavailable temperature is represented as `null` and
+shown as unavailable in the CPU tooltip. ASUS keyboard brightness has a separate
+400 ms poll so hardware-key changes can display an OSD promptly. Invalid JSON
+leaves the previous QML values intact rather than replacing them with incomplete
+state.
 
 Detailed quick-settings and power polling is demand-driven. Quick settings
 uses `quick-settings.sh` as an argument-safe adapter for NetworkManager, BlueZ,
@@ -191,9 +205,11 @@ Quickshell hosts StatusNotifier tray items and owns the configured
 `~/.local/bin/flameshot-v14` tray process. `F6` launches the Flameshot capture
 interface separately.
 
-The Resources button is a toggle: it terminates an existing user-owned
-`resources` process or asks Niri to spawn a new one. Detailed monitoring stays
-in Resources instead of adding more high-frequency bar polling.
+Both CPU and RAM indicators are Resources toggles: either terminates an existing
+user-owned `resources` process or asks Niri to spawn a new one. The CPU tooltip
+shows utilization and optional `Tctl` temperature; RAM shows used and total GB.
+Detailed monitoring stays in Resources instead of adding more high-frequency
+bar polling.
 
 ## Dynamic Themes And Wallpapers
 
@@ -367,6 +383,8 @@ select Balanced on AC and Quiet on battery, detects the current source under
 later plug and unplug events. A system-sleep hook runs the same reconciliation
 after resume in case the source changed while suspended. A manual Quickshell
 selection uses `powerprofilesctl` and does not rewrite the ASUS defaults.
+Consequently, a later plug/unplug event or post-resume reconciliation can
+replace that temporary manual selection.
 
 Bar battery state comes from UPower's display device. Power draw and health are
 calculated from present system batteries under `/sys/class/power_supply`.

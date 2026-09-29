@@ -1,9 +1,10 @@
 # FireNaruto3's Dotfiles
 
 A dark Wayland desktop built around Niri and Quickshell. The interface uses a
-blue-gray palette with a cyan accent, semantic status colors, JetBrains Mono
-Nerd Font, and Papirus icons. It is configured for an ASUS laptop with a
-2880x1800 Samsung OLED panel.
+wallpaper-derived palette, semantic status colors, and JetBrains Mono Nerd Font
+glyphs. Rofi uses Papirus explicitly; Quickshell application and tray icons use
+the active icon theme. The setup targets an ASUS laptop with a 2880x1800 Samsung
+OLED panel.
 
 This is a personal, machine-specific configuration, not a turnkey Ubuntu
 distribution. Read the commands and review package-specific settings before
@@ -27,6 +28,10 @@ For the root-installed policy inventory, see [System Changes](SystemChanges.md).
 | Clock dashboard | Power drawer |
 |:----------------:|:------------:|
 | ![Clock dashboard with media controls, DND, uptime, and calendar](screenshots/clock-dashboard.webp) | ![Power drawer with display, power-profile, charge-limit, and keyboard-backlight controls](screenshots/power-drawer.webp) |
+
+| Unified Quick Settings |
+|:----------------------:|
+| ![Unified Quick Settings with Bluetooth, network, audio, and display pages](screenshots/quick-settings.webp) |
 
 ## Requirements
 
@@ -70,9 +75,11 @@ Ubuntu instructions.
 | NetworkManager (`nmcli`), BlueZ (`bluetoothctl`) | Network, VPN, and Bluetooth status and controls |
 | `brightnessctl`, `wpctl`, `playerctl` | Brightness, audio, and media controls |
 | `jq`, `upower`, `procps`, `libnotify-bin` | JSON processing, battery telemetry, process toggles, and desktop failure notifications |
-| `powerprofilesctl`, compatible `asusctl`/`asusd` | ASUS laptop power, fan, and firmware controls |
-| `systemd` (`busctl`, `loginctl`, `systemctl`, `systemd-run`), `util-linux` (`flock`, `logger`, `runuser`, `setsid`), GNU Coreutils (`timeout`) | Lock/suspend orchestration, GPU-mode queue inspection, logging, and bounded execution |
-| JetBrains Mono Nerd Font, Papirus | Interface font and icon theme |
+| `power-profiles-daemon` (`powerprofilesctl`), compatible `asusctl`/`asusd` | Standard profiles plus ASUS laptop power, fan, and firmware controls |
+| `systemd` (`busctl`, `loginctl`, `systemctl`), `util-linux` (`flock`, `logger`, `runuser`, `setsid`), GNU Coreutils (`timeout`) | Lock/suspend orchestration, GPU-mode queue inspection, logging, and bounded execution |
+| Rust/Cargo | Install the pinned Matugen release |
+| Python 3, ShellCheck | Local validation matching GitHub Actions |
+| JetBrains Mono Nerd Font, Papirus | Shell glyphs and Rofi icon theme |
 | Zsh, Oh My Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell and prompt configured by the recommended Stow set |
 | Neovim, Tmux, OpenCode | Editor, terminal multiplexer, and coding agent configured by the recommended Stow set |
 
@@ -83,10 +90,13 @@ deploying, use this Ubuntu checklist:
   applications, fonts, portals, and command-line dependencies listed above.
 - Install the tested Niri and Quickshell versions, or review upstream changes
   before using newer versions.
-- Confirm `niri`, `qs`, `stow`, `git`, `bash`, `sh`, `jq`, `brightnessctl`,
-  `wpctl`, `playerctl`, `upower`, `flock`, `logger`, `loginctl`, `notify-send`,
-  `pgrep`, `pkill`, `runuser`, `setsid`, `systemd-run`, and `timeout` are on
-  `PATH`.
+- Confirm `niri`, `qs`, `stow`, `git`, `bash`, `sh`, `jq`, `python3`,
+  `shellcheck`, `brightnessctl`, `wpctl`, `playerctl`, `upower`,
+  `powerprofilesctl`,
+  `nmcli`, `bluetoothctl`, `makoctl`, `cliphist`, `wl-paste`, `waypaper`,
+  `awww-daemon`, `swayidle`, `rofi`, `wlogout`, `busctl`, `flock`, `logger`,
+  `loginctl`, `notify-send`, `pgrep`, `pkill`, `runuser`, `setsid`, `systemctl`,
+  and `timeout` are on `PATH`.
 - Confirm the GNOME and GTK portal backends and GNOME Keyring are installed.
 - Install Matugen 4.2.0 with
   `cargo install matugen --version 4.2.0 --locked` and install awww before
@@ -100,12 +110,13 @@ deploying, use this Ubuntu checklist:
 
 The ASUS controls are machine-specific. Niri matches the Samsung
 ATNA40CU05-0 panel by EDID and starts it at `2880x1800@60.001`, scale 1.75,
-position `(0,0)`. Quick settings offers 60 Hz and 120 Hz when those modes are
-advertised. Runtime helpers discover the connector, DRM card, backlight, and
-system battery instead of relying on probe-order names such as `eDP-1`,
-`card1`, `amdgpu_bl1`, or `BAT1`. Power profiles use `powerprofilesctl`; ASUS
-charge limits, keyboard lighting, and GPU firmware attributes use
-`asusctl`/`asusd`.
+position `(0,0)`. The power drawer offers 60 Hz and 120 Hz for the internal
+panel when advertised; the unified Displays page enumerates current-resolution
+modes for enabled Niri outputs. Runtime helpers discover the connector, DRM card,
+backlight, and system battery instead of relying on probe-order names such as
+`eDP-1`, `card1`, `amdgpu_bl1`, or `BAT1`. Power profiles use
+`powerprofilesctl`; ASUS charge limits, keyboard lighting, and GPU firmware
+attributes use `asusctl`/`asusd`.
 
 ## Contents
 
@@ -113,7 +124,7 @@ charge limits, keyboard lighting, and GPU firmware attributes use
 |--------|-------------|
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
 | Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power drawers |
-| Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
+| System policy | Logind and UPower policy, lock PAM and services, fail-closed suspend, ASUS profile/backlight resume hooks, console suppression, and NVIDIA module options |
 | Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
@@ -129,24 +140,36 @@ charge limits, keyboard lighting, and GPU firmware attributes use
 | Scripts | Reboot-only ASUS graphics-mode switching command |
 | OpenCode | Model selection and global engineering instructions |
 
-Legacy Waybar and SwayOSD packages have been removed. The active session uses
-Niri and Quickshell's bar and OSD.
+Legacy tracked Waybar and SwayOSD packages have been removed. The active session
+uses Niri and Quickshell's bar and OSD.
 
 ### Quickshell Interface
 
 Each output gets a bar. It starts as a segmented vertical rail on the left and
 can be switched to a top horizontal layout for the running session. Both
-orientations provide workspace navigation, a system-tray segment, clipboard
-history, Bluetooth and network status, volume and brightness controls, live
-CPU/RAM indicators, a Resources toggle, battery status, and a wlogout launcher.
-The displayed application is the active window on that output's active
-workspace.
+orientations provide workspace navigation, a system tray, clipboard history,
+Quick Settings, Bluetooth and network status, volume and brightness controls,
+live CPU/RAM indicators, battery status, and a wlogout launcher. CPU and RAM
+both toggle Resources. The CPU tooltip adds AMD `k10temp/Tctl` temperature when
+available; RAM shows used and total GB. The displayed application is the active
+window on that output's active workspace.
+
+The vertical rail orders orientation, clipboard, Quick Settings, Bluetooth,
+network, volume, brightness, CPU, RAM, battery, clock, and power controls from
+top to bottom beneath its app/tray area. The horizontal layout places
+workspaces, clock, and tray on the left, the active window in the center, and
+CPU/RAM plus the same controls on the right. The dedicated Quick Settings button
+is the only bar control highlighted while that drawer is open.
 
 The clock drawer contains MPRIS artwork and transport controls, Mako DND,
 uptime, and a navigable calendar. The unified quick-settings drawer orders its
 Bluetooth, network, audio, and display pages to match the bar controls. It opens
-from its dedicated button below clipboard history, the related status buttons,
-or **Mod+S**. The battery button opens a separate power drawer for the active
+from its dedicated button immediately after clipboard history, from the related
+status buttons, or with **Mod+S**; Bluetooth is the default page. Wi-Fi supports
+saved, open, and password-protected networks plus VPN/WireGuard toggles;
+Bluetooth manages paired devices; Audio selects and mutes input/output devices;
+Displays changes current-resolution modes and refuses to disable the final
+active output. The battery button opens a separate power drawer for the active
 power profile, ASUS charge limit, keyboard backlight, and internal display
 refresh rate. Drawers open to the right of the vertical rail or below the
 horizontal bar.
@@ -209,7 +232,8 @@ of Balanced on AC and Quiet on battery, then applies the profile for the current
 power source. `asusd` handles later plug and unplug events, and a system-sleep
 hook reconciles the active profile after resume. Manual selections in the power
 drawer use `powerprofilesctl` and do not replace those ASUS power-source
-defaults.
+defaults; a later power-source event or resume reconciliation can replace the
+manual active selection.
 
 ### Fan Curves
 
@@ -277,6 +301,7 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Mod+Return` | Open Ghostty |
 | `Mod+D` | Toggle Rofi |
 | `Mod+E` | Terminate an existing Thunar process or launch Thunar |
+| `Mod+S` | Toggle unified Quick Settings on the Bluetooth page |
 | `Mod+W` | Toggle Waypaper |
 | `Super+Alt+L` | Lock the session |
 | `Mod+Q` | Close the focused window |
@@ -460,8 +485,8 @@ do not reload it.
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
 use that location. Generated themes are written to `~/.cache/matugen` rather
 than an `XDG_CACHE_HOME` override. Waypaper 2.8 does not expand `~` in its
-`stylesheet` setting, so that single path is account-specific and must be
-updated if the account home changes.
+`stylesheet` setting, and Flameshot stores an absolute screenshot directory;
+both paths are account-specific and must be updated if the account home changes.
 
 Flameshot 14 must be installed separately at `~/.local/bin/flameshot-v14`; the
 `flameshot` Stow package supplies configuration only. Ubuntu's packaged 13.3
@@ -554,7 +579,7 @@ asusctl aura power keyboard --boot --awake --shutdown
 
 The Aura command and Quickshell's charge-limit control update mutable files
 under `/etc/asusd`; they do not install repository copies. `SystemChanges.md`
-records the current machine-local state and distinguishes it from reproducible
+records a dated machine-local snapshot and distinguishes it from reproducible
 policy. Review those settings separately when provisioning another machine.
 
 Module options may be copied into the initramfs by the distribution. After
