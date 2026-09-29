@@ -15,7 +15,7 @@ ShellRoot {
     property string activePanel: "none"
     property var panelScreen: null
     property real panelAnchor: 0
-    property string panelPage: "network"
+    property string panelPage: "bluetooth"
     property bool verticalBar: true
 
     function togglePanel(view, screen, anchor, page) {
@@ -153,7 +153,7 @@ ShellRoot {
 
         function toggleSystem(): void {
             const screen = root.focusedScreen()
-            root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "network")
+            root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "bluetooth")
         }
 
         function toggleOrientation(): void {
@@ -167,7 +167,7 @@ ShellRoot {
 
         function toggleQuickSettings(): void {
             const screen = root.focusedScreen()
-            root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "network")
+            root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "bluetooth")
         }
 
     }

@@ -229,7 +229,7 @@ Item {
 
                 SystemButton {
                     text: ` ${root.panel.systemData.cpuUsage}%`
-                    tooltip: `CPU usage: ${root.panel.systemData.cpuUsage}%`
+                    tooltip: `CPU usage: ${root.panel.systemData.cpuUsage}%\nTemperature: ${root.panel.systemData.cpuTemperatureAvailable ? root.panel.systemData.cpuTemperature + "°C" : "Unavailable"}`
                     tooltipRight: false
                     onClicked: root.panel.openResources()
                 }
@@ -265,6 +265,7 @@ Item {
                 SystemButton {
                     text: "⇅"
                     fontPixelSize: 17
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: "Move bar to left"
                     tooltipRight: false
                     onClicked: root.panel.toggleOrientation()
@@ -272,41 +273,52 @@ Item {
 
                 SystemButton {
                     text: "󰅌"
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: "Clipboard history"
                     tooltipRight: false
                     onClicked: Quickshell.execDetached(["sh", root.panel.clipboardScriptPath])
                 }
 
                 SystemButton {
+                    id: quickSettingsButton
+                    text: "󰒓"
+                    contentOffsetX: root.panel.iconOffset(text)
+                    tooltip: "Quick settings"
+                    tooltipRight: false
+                    active: root.panel.activeView === "quickSettings"
+                    onClicked: root.panel.openQuickSettings("bluetooth", quickSettingsButton)
+                }
+
+                SystemButton {
                     id: bluetoothButton
                     text: root.panel.systemData.bluetooth === "connected" ? "󰂱" : (root.panel.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: root.panel.systemData.bluetooth === "connected"
                         ? `Bluetooth: ${root.panel.systemData.bluetoothDevice}`
                         : `Bluetooth ${root.panel.systemData.bluetooth}`
                     tooltipRight: false
-                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "bluetooth"
                     onClicked: root.panel.openQuickSettings("bluetooth", bluetoothButton)
                 }
 
                 SystemButton {
                     id: networkButton
                     text: root.panel.systemData.network === "wifi" ? "󰤢" : (root.panel.systemData.network === "ethernet" ? "󰈀" : "󰤠")
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: root.panel.systemData.network === "wifi"
                         ? `${root.panel.systemData.ssid} (${root.panel.systemData.signal}%)`
                         : root.panel.systemData.network
                     tooltipRight: false
-                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "network"
                     onClicked: root.panel.openQuickSettings("network", networkButton)
                 }
 
                 SystemButton {
                     id: volumeButton
                     text: root.panel.volumeIcon()
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: root.panel.systemData.muted
                         ? `Volume: ${root.panel.systemData.volume}% (muted)`
                         : `Volume: ${root.panel.systemData.volume}%`
                     tooltipRight: false
-                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "audio"
                     onClicked: root.panel.openQuickSettings("audio", volumeButton)
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
@@ -316,9 +328,9 @@ Item {
                 SystemButton {
                     id: brightnessButton
                     text: root.panel.brightnessIcon()
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: `Brightness: ${root.panel.systemData.brightness}%`
                     tooltipRight: false
-                    active: root.panel.activeView === "quickSettings" && root.panel.quickSettingsPage === "displays"
                     onClicked: root.panel.openQuickSettings("displays", brightnessButton)
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
@@ -337,6 +349,7 @@ Item {
 
                 SystemButton {
                     text: "󰐥"
+                    contentOffsetX: root.panel.iconOffset(text)
                     tooltip: "Power menu"
                     tooltipRight: false
                     onClicked: root.panel.launchWlogout()

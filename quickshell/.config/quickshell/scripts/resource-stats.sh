@@ -29,12 +29,34 @@ fi
 memory_used=$(awk -v value="$memory_used_kib" 'BEGIN { printf "%.1f", value * 1024 / 1000000000 }')
 memory_total=$(awk -v value="$memory_total_kib" 'BEGIN { printf "%.1f", value * 1024 / 1000000000 }')
 
+cpu_temperature=null
+for hwmon in /sys/class/hwmon/hwmon*; do
+  [[ -r $hwmon/name ]] || continue
+  read -r hwmon_name < "$hwmon/name"
+  [[ $hwmon_name == k10temp ]] || continue
+
+  for label_path in "$hwmon"/temp*_label; do
+    [[ -r $label_path ]] || continue
+    read -r temperature_label < "$label_path"
+    [[ $temperature_label == Tctl ]] || continue
+
+    input_path=${label_path%_label}_input
+    [[ -r $input_path ]] || continue
+    read -r temperature < "$input_path"
+    [[ $temperature =~ ^[0-9]+$ ]] || continue
+    cpu_temperature=$(((temperature + 500) / 1000))
+    break 2
+  done
+done
+
 jq -cn \
   --argjson cpu_idle "$cpu_idle" \
   --argjson cpu_total "$cpu_total" \
+  --argjson cpu_temperature "$cpu_temperature" \
   --argjson memory_percent "$memory_percent" \
   --argjson memory_used "$memory_used" \
   --argjson memory_total "$memory_total" \
   '{cpu_idle: $cpu_idle, cpu_total: $cpu_total,
+    cpu_temperature: $cpu_temperature,
     memory_percent: $memory_percent,
     memory_used: $memory_used, memory_total: $memory_total}'

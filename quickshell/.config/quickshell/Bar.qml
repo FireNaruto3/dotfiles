@@ -135,7 +135,51 @@ PanelWindow {
         return icons[index]
     }
 
+    function iconOffset(icon) {
+        switch (icon) {
+        case "⇅":
+        case "󰂯":
+        case "󰖀":
+        case "󰃜":
+            return -0.5
+        case "⇄":
+        case "󰂲":
+        case "󰕿":
+        case "󰂄":
+        case "󰁹":
+        case "󰂑":
+        case "󰂎":
+        case "󰁺":
+        case "󰁼":
+        case "󰁿":
+        case "󰂁":
+            return -1
+        case "󰅌":
+        case "󰂱":
+        case "󰕾":
+        case "󰐥":
+            return -1.5
+        case "󰒓":
+        case "󰈀":
+        case "󰝟":
+        case "󰃚":
+            return -2
+        case "󰤢":
+        case "󰤠":
+        case "󰃞":
+        case "󰃠":
+            return -3
+        case "":
+        case "":
+            return -3.5
+        default:
+            return 0
+        }
+    }
+
     function batteryIcon() {
+        if (!systemData.batteryAvailable)
+            return "󰂑"
         if (systemData.batteryState === "Charging")
             return "󰂄"
         if (systemData.batteryState === "Full")
@@ -198,6 +242,7 @@ PanelWindow {
         }
 
         Rectangle {
+            visible: bar.vertical
             x: bar.vertical
                 ? -10
                 : Math.max(20, Math.min(parent.width - width - 20, bar.drawerAnchor - drawerContainer.x - width / 2))
@@ -453,6 +498,7 @@ PanelWindow {
                     width: 34
                     text: "⇄"
                     fontPixelSize: 17
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: "Move bar to top"
                     onClicked: bar.toggleOrientation()
                 }
@@ -460,18 +506,29 @@ PanelWindow {
                 SystemButton {
                     width: 34
                     text: "󰅌"
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: "Clipboard history"
                     onClicked: Quickshell.execDetached(["sh", bar.clipboardScriptPath])
+                }
+
+                SystemButton {
+                    id: quickSettingsButton
+                    width: 34
+                    text: "󰒓"
+                    contentOffsetX: bar.iconOffset(text)
+                    tooltip: "Quick settings"
+                    active: bar.activeView === "quickSettings"
+                    onClicked: bar.openQuickSettings("bluetooth", quickSettingsButton)
                 }
 
                 SystemButton {
                     id: bluetoothButton
                     width: 34
                     text: bar.systemData.bluetooth === "connected" ? "󰂱" : (bar.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: bar.systemData.bluetooth === "connected"
                         ? `Bluetooth: ${bar.systemData.bluetoothDevice}`
                         : `Bluetooth ${bar.systemData.bluetooth}`
-                    active: bar.activeView === "quickSettings" && bar.quickSettingsPage === "bluetooth"
                     onClicked: bar.openQuickSettings("bluetooth", bluetoothButton)
                 }
 
@@ -479,11 +536,10 @@ PanelWindow {
                     id: networkButton
                     width: 34
                     text: bar.systemData.network === "wifi" ? "󰤢" : (bar.systemData.network === "ethernet" ? "󰈀" : "󰤠")
-                    contentOffsetX: bar.systemData.network === "wifi" ? -2 : 0
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: bar.systemData.network === "wifi"
                         ? `${bar.systemData.ssid} (${bar.systemData.signal}%)`
                         : bar.systemData.network
-                    active: bar.activeView === "quickSettings" && bar.quickSettingsPage === "network"
                     onClicked: bar.openQuickSettings("network", networkButton)
                 }
 
@@ -491,10 +547,10 @@ PanelWindow {
                     id: volumeButton
                     width: 34
                     text: bar.volumeIcon()
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: bar.systemData.muted
                         ? `Volume: ${bar.systemData.volume}% (muted)`
                         : `Volume: ${bar.systemData.volume}%`
-                    active: bar.activeView === "quickSettings" && bar.quickSettingsPage === "audio"
                     onClicked: bar.openQuickSettings("audio", volumeButton)
                     onWheel: delta => Quickshell.execDetached([
                         "bash", bar.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
@@ -505,8 +561,8 @@ PanelWindow {
                     id: brightnessButton
                     width: 34
                     text: bar.brightnessIcon()
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: `Brightness: ${bar.systemData.brightness}%`
-                    active: bar.activeView === "quickSettings" && bar.quickSettingsPage === "displays"
                     onClicked: bar.openQuickSettings("displays", brightnessButton)
                     onWheel: delta => Quickshell.execDetached([
                         "bash", bar.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
@@ -539,8 +595,8 @@ PanelWindow {
                     height: 46
                     text: ""
                     secondaryText: `${bar.systemData.cpuUsage}%`
-                    contentOffsetX: -2
-                    tooltip: `CPU usage: ${bar.systemData.cpuUsage}%`
+                    contentOffsetX: bar.iconOffset(text)
+                    tooltip: `CPU usage: ${bar.systemData.cpuUsage}%\nTemperature: ${bar.systemData.cpuTemperatureAvailable ? bar.systemData.cpuTemperature + "°C" : "Unavailable"}`
                     onClicked: bar.openResources()
                 }
 
@@ -549,7 +605,7 @@ PanelWindow {
                     height: 46
                     text: ""
                     secondaryText: `${bar.systemData.memoryPercent}%`
-                    contentOffsetX: -2.5
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: `RAM: ${bar.systemData.memoryUsed.toFixed(1)} / ${bar.systemData.memoryTotal.toFixed(1)} GB`
                     onClicked: bar.openResources()
                 }
@@ -579,7 +635,9 @@ PanelWindow {
                     id: batteryButton
                     width: 34
                     height: 48
-                    text: `${bar.batteryIcon()}\n${bar.systemData.battery}%`
+                    text: bar.batteryIcon()
+                    secondaryText: bar.systemData.batteryAvailable ? `${bar.systemData.battery}%` : "--"
+                    contentOffsetX: bar.iconOffset(text)
                     foreground: bar.batteryColor()
                     active: bar.activeView === "power"
                     tooltip: `${bar.systemData.batteryState}\n${bar.systemData.batteryTime}\n${bar.systemData.batteryPower.toFixed(1)} W`
@@ -599,6 +657,7 @@ PanelWindow {
                 SystemButton {
                     width: 34
                     text: "󰐥"
+                    contentOffsetX: bar.iconOffset(text)
                     tooltip: "Power menu"
                     onClicked: bar.launchWlogout()
                 }

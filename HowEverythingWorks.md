@@ -142,6 +142,11 @@ The shell provides:
 - Network, Bluetooth, battery, CPU, memory, audio, and brightness indicators.
 - The Flameshot tray process.
 
+The dedicated quick-settings button sits after clipboard history and before the
+Bluetooth control. Its Bluetooth, network, audio, and display pages follow the
+same order as their bar controls; the individual controls open their matching
+page directly.
+
 ### Niri Event Stream
 
 `NiriData.qml` runs `niri msg --json event-stream` and maintains in-memory maps
@@ -159,10 +164,10 @@ collects NetworkManager, BlueZ, PipeWire, keyboard-lock, display brightness,
 ASUS keyboard brightness, UPower, battery-health, uptime, and Mako DND data into
 one JSON object.
 
-CPU and memory use a lighter `resource-stats.sh` poll every two seconds. ASUS
-keyboard brightness has a separate 400 ms poll so hardware-key changes can
-display an OSD promptly. Invalid JSON leaves the previous QML values intact
-rather than replacing them with incomplete state.
+CPU usage, CPU temperature, and memory use a lighter `resource-stats.sh` poll
+every two seconds. ASUS keyboard brightness has a separate 400 ms poll so
+hardware-key changes can display an OSD promptly. Invalid JSON leaves the
+previous QML values intact rather than replacing them with incomplete state.
 
 Detailed quick-settings and power polling is demand-driven. Quick settings
 uses `quick-settings.sh` as an argument-safe adapter for NetworkManager, BlueZ,

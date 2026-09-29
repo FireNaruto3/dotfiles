@@ -5,7 +5,7 @@ Item {
 
     required property var quickData
     required property var systemData
-    property string requestedPage: "network"
+    property string requestedPage: "bluetooth"
     property string currentPage: requestedPage
     property var pendingWifi: null
     readonly property int enabledDisplayCount: quickData.displays.filter(display => display.enabled).length
@@ -232,16 +232,16 @@ Item {
                 spacing: 8
 
                 CategoryButton {
-                    label: "Network"
-                    icon: "󰤨"
-                    selected: root.currentPage === "network"
-                    onClicked: root.currentPage = "network"
-                }
-                CategoryButton {
                     label: "Bluetooth"
                     icon: "󰂯"
                     selected: root.currentPage === "bluetooth"
                     onClicked: root.currentPage = "bluetooth"
+                }
+                CategoryButton {
+                    label: "Network"
+                    icon: "󰤨"
+                    selected: root.currentPage === "network"
+                    onClicked: root.currentPage = "network"
                 }
                 CategoryButton {
                     label: "Audio"

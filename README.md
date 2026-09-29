@@ -143,12 +143,13 @@ The displayed application is the active window on that output's active
 workspace.
 
 The clock drawer contains MPRIS artwork and transport controls, Mako DND,
-uptime, and a navigable calendar. The unified quick-settings drawer controls
-Wi-Fi, VPNs, Bluetooth devices, audio outputs, microphones, and displays. It
-opens from the related status buttons or with **Mod+S**. The battery button
-opens a separate power drawer for the active power profile, ASUS charge limit,
-keyboard backlight, and internal display refresh rate. Drawers open to the right
-of the vertical rail or below the horizontal bar.
+uptime, and a navigable calendar. The unified quick-settings drawer orders its
+Bluetooth, network, audio, and display pages to match the bar controls. It opens
+from its dedicated button below clipboard history, the related status buttons,
+or **Mod+S**. The battery button opens a separate power drawer for the active
+power profile, ASUS charge limit, keyboard backlight, and internal display
+refresh rate. Drawers open to the right of the vertical rail or below the
+horizontal bar.
 
 At session start, Niri generates the current wallpaper palette before launching
 Quickshell and Mako, then launches `awww-daemon`, Waypaper restoration, text and

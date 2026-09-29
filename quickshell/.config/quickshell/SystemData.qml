@@ -11,6 +11,8 @@ QtObject {
     readonly property string scriptPath: Qt.resolvedUrl("scripts/system-stats.sh").toString().replace("file://", "")
     readonly property string resourceScriptPath: Qt.resolvedUrl("scripts/resource-stats.sh").toString().replace("file://", "")
     readonly property int cpuUsage: resourceValues.cpu || 0
+    readonly property bool cpuTemperatureAvailable: resourceValues.cpu_temperature !== undefined && resourceValues.cpu_temperature !== null
+    readonly property real cpuTemperature: cpuTemperatureAvailable ? Number(resourceValues.cpu_temperature) : Number.NaN
     readonly property int memoryPercent: resourceValues.memory_percent || 0
     readonly property real memoryUsed: resourceValues.memory_used || 0
     readonly property real memoryTotal: resourceValues.memory_total || 0
