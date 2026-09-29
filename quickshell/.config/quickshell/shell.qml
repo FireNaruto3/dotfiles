@@ -85,7 +85,6 @@ ShellRoot {
     PowerData {
         id: powerSource
         powerMonitoring: root.activePanel === "power"
-        fanMonitoring: root.activePanel === "fan"
     }
 
     QuickSettingsData {
@@ -171,10 +170,6 @@ ShellRoot {
             root.togglePanel("quickSettings", screen, root.defaultPanelAnchor("quickSettings", screen), "network")
         }
 
-        function toggleFan(): void {
-            const screen = root.focusedScreen()
-            root.togglePanel("fan", screen, root.defaultPanelAnchor("fan", screen))
-        }
     }
 
     IpcHandler {

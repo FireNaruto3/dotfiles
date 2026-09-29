@@ -1,0 +1,67 @@
+#!/bin/sh
+
+set -eu
+
+mode=${1:-configure}
+asusctl_command=${ASUSCTL_COMMAND:-asusctl}
+power_supply_path=${POWER_SUPPLY_PATH:-/sys/class/power_supply}
+
+case $mode in
+    configure)
+        "$asusctl_command" profile set Balanced --ac
+        "$asusctl_command" profile set Quiet --battery
+        ;;
+    apply)
+        ;;
+    *)
+        printf 'Usage: %s [configure|apply]\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
+profiles=$("$asusctl_command" profile get)
+ac_profile=$(printf '%s\n' "$profiles" | sed -n 's/^AC profile //p')
+battery_profile=$(printf '%s\n' "$profiles" | sed -n 's/^Battery profile //p')
+
+if [ -z "$ac_profile" ] || [ -z "$battery_profile" ]; then
+    printf 'Unable to read ASUS AC and battery profile defaults\n' >&2
+    exit 1
+fi
+
+power_source=battery
+for supply in "$power_supply_path"/*; do
+    [ -r "$supply/type" ] || continue
+    [ -r "$supply/online" ] || continue
+
+    IFS= read -r supply_type < "$supply/type"
+    case $supply_type in
+        Mains|USB|USB_C|USB_PD)
+            IFS= read -r supply_online < "$supply/online"
+            if [ "$supply_online" = 1 ]; then
+                power_source=ac
+                break
+            fi
+            ;;
+    esac
+done
+
+case $power_source in
+    ac)
+        profile=$ac_profile
+        ;;
+    battery)
+        profile=$battery_profile
+        ;;
+esac
+
+"$asusctl_command" profile set "$profile"
+
+profiles=$("$asusctl_command" profile get)
+active_profile=$(printf '%s\n' "$profiles" | sed -n 's/^Active profile: //p')
+if [ "$active_profile" != "$profile" ]; then
+    printf 'Expected ASUS %s profile %s, but active profile is %s\n' \
+        "$power_source" "$profile" "${active_profile:-unknown}" >&2
+    exit 1
+fi
+
+printf 'Applied ASUS %s profile for %s power\n' "$profile" "$power_source"

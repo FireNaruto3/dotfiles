@@ -1,16 +1,19 @@
 [Unit]
-Description=Configure ASUS profiles for AC and battery power
+Description=Synchronize ASUS profile with the current power source
 Documentation=https://asus-linux.org/manual/asusctl-manual/
-Wants=asusd.service
+Requires=asusd.service
 After=asusd.service
 ConditionPathExists=/usr/bin/asusctl
+ConditionPathExists=/usr/libexec/asus-power-profile-sync
 
 [Service]
 Type=oneshot
-# asusd stores both choices and applies them on power-source events. Using its
-# native event handling avoids racing udev change events with ad-hoc scripts.
-ExecStart=/usr/bin/asusctl profile set --ac Balanced
-ExecStart=/usr/bin/asusctl profile set --battery Quiet
+ExecStart=/usr/libexec/asus-power-profile-sync configure
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
 
 [Install]
 WantedBy=multi-user.target

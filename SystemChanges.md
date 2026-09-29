@@ -29,9 +29,11 @@ The following repository copies are installed as root-owned files.
 | `system/etc/systemd/user/quickshell-lock-shell.service` | `/etc/systemd/user/quickshell-lock-shell.service` | `0644` | Own the lock-shell process until the user unlocks |
 | `system/etc/systemd/user/quickshell-secure-lock.service` | `/etc/systemd/user/quickshell-secure-lock.service` | `0644` | Bounded user-service lock acquisition |
 | `system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `0644` | Block suspend unless the Wayland lock is secure |
-| `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Configure native ASUS AC and battery profiles |
+| `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Configure and reconcile ASUS AC and battery profiles |
 | `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `0755` | Keyboard-backlight restoration |
+| `system/usr/lib/systemd/system-sleep/asus-power-profile-sync` | `/usr/lib/systemd/system-sleep/asus-power-profile-sync` | `0755` | ASUS profile reconciliation after resume |
 | `system/usr/lib/systemd/system-sleep/quiet-resume-console` | `/usr/lib/systemd/system-sleep/quiet-resume-console` | `0755` | Suppress transient firmware errors on the visible resume console |
+| `system/usr/libexec/asus-power-profile-sync` | `/usr/libexec/asus-power-profile-sync` | `0755` | Apply the ASUS profile matching the current power source |
 | `system/usr/libexec/quickshell-secure-suspend` | `/usr/libexec/quickshell-secure-suspend` | `0755` | Find the active Wayland user and request a secure lock |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
 
@@ -138,16 +140,19 @@ The standard `power-profiles-daemon` provides the active power-profile API.
 Quickshell exposes Power Saver, Balanced, and Performance and applies a selected
 profile with `powerprofilesctl set`. The enabled
 `asus-power-profile-sync.service` configures `asusd` to use Balanced on AC and
-Quiet on battery; `asusd` then handles power-source events natively.
+Quiet on battery, then explicitly applies the profile matching the current power
+source. `asusd` handles later plug and unplug events natively. A system-sleep
+hook reapplies the matching profile after resume in case the source changed
+while suspended.
 
 ## Mutable ASUS State
 
 The ASUS daemon owns `/etc/asusd/*.ron`. These files are machine-local runtime
 configuration, not source files installed from this repository. The tracked
-`asus-power-profile-sync.service` reproducibly sets only the AC and battery
-profile defaults; the Aura command in `README.md` reproducibly sets only the
-keyboard power-state policy. Quickshell can subsequently change the charge
-limit and keyboard brightness through `asusctl`.
+`asus-power-profile-sync.service` reproducibly sets the AC and battery profile
+defaults and reconciles the active profile; the Aura command in `README.md`
+reproducibly sets only the keyboard power-state policy. Quickshell can
+subsequently change the charge limit and keyboard brightness through `asusctl`.
 
 Observed state on 2026-09-27:
 
@@ -185,29 +190,6 @@ The tracked UPower configuration uses percentage-based thresholds: low at 20%,
 critical at 5%, and action at 2%. The critical action is power off rather than
 an unavailable or unsafe sleep mode.
 
-## ASUS Monitoring
-
-Quickshell's fan panel is monitor-only and polls live sensors once per second
-while visible. It reads measured CPU, GPU, and MID RPM across every ASUS
-profile, distinguishes a valid stopped fan from an unavailable sensor, and does
-not modify fan curves. Active-profile and curve metadata is refreshed every 15
-seconds rather than on every live sample. GPU mode is collected with that
-metadata, so the one-second path does not repeatedly query `asusd`.
-MID is RPM-only because its controlling temperature is not exposed. Every card
-always shows measured RPM. CPU/GPU add an estimated secondary target calculated
-only from an enabled custom curve and an available suitable temperature; disabled
-curves are identified as firmware-controlled rather than being presented as an
-inaccurate percentage. Persistent cards are not recreated by each telemetry
-sample, avoiding interaction flicker during polling.
-
-NVIDIA temperature is queried only in Ultimate dGPU MUX mode. Integrated mode
-reports the dGPU disabled, while Hybrid reports its PCI runtime state without
-reading NVIDIA telemetry, so polling cannot wake the dGPU or delay runtime
-suspension. Ultimate requires a unique NVIDIA PCI device, prefers an
-unambiguous core/edge hwmon channel, and uses a bounded, PCI-targeted
-`nvidia-smi` fallback. Ambiguous sensors and stale samples are exposed to the UI
-instead of silently retaining or selecting data.
-
 ## ASUS Graphics Modes
 
 Graphics modes are controlled by the `dgpu_disable` and `gpu_mux_mode` ASUS
@@ -228,9 +210,6 @@ Armoury support in `asusctl`/`asusd`, an active `asus-shutdown.service`, and
 `asus-shutdown` applies them only after logind and graphical GPU users have
 exited. Failed verification or a rejected reboot request causes the command to
 overwrite the queue with the current firmware values.
-
-Quickshell uses `gpu-mode --get` only to select a safe temperature telemetry
-path; it does not queue or apply graphics-mode changes.
 
 ## NVIDIA And Backlight Driver State
 
@@ -267,8 +246,6 @@ The Quickshell power panel additionally provides:
   `asusctl battery limit`.
 - ASUS keyboard-backlight level through `asusctl leds set`.
 - Internal panel refresh selection through Niri.
-- Read-only fan RPM, temperature, custom-curve state, and interpolated curve
-  percentage.
 
 Battery, backlight, connector, and DRM device names are discovered at runtime
 where possible. The display and ASUS controls remain machine-specific to this
@@ -284,7 +261,7 @@ the ownership and mode listed above. Then apply the relevant operation:
 | logind policy | `sudo systemctl reload systemd-logind.service` |
 | UPower policy | `sudo systemctl restart upower.service` |
 | System or user unit | `sudo systemctl daemon-reload` or `systemctl --user daemon-reload`, as applicable |
-| ASUS profile defaults | `sudo systemctl enable --now asus-power-profile-sync.service` |
+| ASUS profile policy | `sudo systemctl enable --now asus-power-profile-sync.service` |
 | Removed hibernation policy | Move the obsolete file aside with the guarded commands in `README.md` |
 | ASUS NVIDIA module policy | Regenerate the initramfs when applicable, then reboot before relying on changed module options |
 

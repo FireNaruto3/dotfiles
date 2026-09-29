@@ -228,15 +228,6 @@ Item {
                 anchors.centerIn: parent
 
                 SystemButton {
-                    id: fanButton
-                    text: "󰈐"
-                    active: root.panel.activeView === "fan"
-                    tooltip: "Fan monitor"
-                    tooltipRight: false
-                    onClicked: root.panel.toggleDrawer("fan", root.panel.anchorFor(fanButton))
-                }
-
-                SystemButton {
                     text: ` ${root.panel.systemData.cpuUsage}%`
                     tooltip: `CPU usage: ${root.panel.systemData.cpuUsage}%`
                     tooltipRight: false

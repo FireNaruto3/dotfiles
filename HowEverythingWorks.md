@@ -138,7 +138,7 @@ The shell provides:
 - Workspaces and focused-window state from Niri's JSON event stream.
 - StatusNotifier system tray hosting.
 - Volume, microphone, brightness, media, and keyboard-lock OSDs.
-- Clock, media, calendar, DND, unified quick-settings, power, and fan drawers.
+- Clock, media, calendar, DND, unified quick-settings, and power drawers.
 - Network, Bluetooth, battery, CPU, memory, audio, and brightness indicators.
 - The Flameshot tray process.
 
@@ -164,7 +164,7 @@ keyboard brightness has a separate 400 ms poll so hardware-key changes can
 display an OSD promptly. Invalid JSON leaves the previous QML values intact
 rather than replacing them with incomplete state.
 
-Detailed quick-settings, power, and fan polling is demand-driven. Quick settings
+Detailed quick-settings and power polling is demand-driven. Quick settings
 uses `quick-settings.sh` as an argument-safe adapter for NetworkManager, BlueZ,
 WirePlumber, and Niri outputs. These collectors run only while their
 corresponding drawer is visible.
@@ -357,39 +357,17 @@ The drawer applies one action at a time:
 
 The standard active profile and ASUS source-dependent defaults are related but
 separate. The enabled `asus-power-profile-sync.service` configures `asusd` to
-select Balanced on AC and Quiet on battery. A manual Quickshell selection uses
-`powerprofilesctl` and does not rewrite those defaults.
+select Balanced on AC and Quiet on battery, detects the current source under
+`/sys/class/power_supply`, and applies its matching profile. `asusd` handles
+later plug and unplug events. A system-sleep hook runs the same reconciliation
+after resume in case the source changed while suspended. A manual Quickshell
+selection uses `powerprofilesctl` and does not rewrite the ASUS defaults.
 
 Bar battery state comes from UPower's display device. Power draw and health are
 calculated from present system batteries under `/sys/class/power_supply`.
 
 The installed UPower policy marks 20% low, 5% critical, and 2% action. Its
 critical action is power off because hibernation is unavailable.
-
-## Fan Monitoring
-
-Fan monitoring is read-only and runs only while the fan drawer is visible.
-Live CPU temperature and CPU, GPU, and MID RPM are sampled from sysfs every
-second. ASUS profile, configured GPU mode, and curve metadata are refreshed
-every 15 seconds, keeping ASUS daemon calls off the live path.
-
-`fan-curves.sh` reads the active profile before and after querying curves and
-accepts the data only if the profile did not change. It retries transient races.
-Quickshell interpolates enabled CPU and GPU curves to show estimated targets;
-MID remains RPM-only because its controlling temperature is not exposed.
-Duplicate hwmon labels and temperature sources are rejected as ambiguous, and
-failed live samples replace old values with a stale state.
-
-GPU temperature collection depends on the configured mode:
-
-| Mode | Telemetry behavior |
-|---|---|
-| Integrated | Report the dGPU disabled |
-| Hybrid | Read PCI runtime state only; never query NVIDIA temperature |
-| Ultimate | Select one NVIDIA PCI device, prefer an unambiguous core/edge hwmon channel, then use a bounded PCI-targeted `nvidia-smi` fallback |
-
-Avoiding NVIDIA queries in Hybrid mode prevents monitoring from waking a
-runtime-suspended dGPU.
 
 ## GPU Mode Changes
 
@@ -412,8 +390,8 @@ graphical users have exited. If the second write, verification, or reboot
 request fails, `gpu-mode` attempts to neutralize the queue by restoring the
 current firmware values.
 
-`gpu-mode --get` is read-only and is used by fan telemetry. `gpu-mode status`
-reports configured and queued values, PCI runtime state, and relevant services.
+`gpu-mode --get` prints the configured mode. `gpu-mode status` reports
+configured and queued values, PCI runtime state, and relevant services.
 
 ## Logout, Shutdown, And Wlogout
 
@@ -501,8 +479,6 @@ defined by this repository.
 - PAM uses a dedicated local-password policy.
 - Display discovery fails instead of selecting ambiguous hardware.
 - GPU transitions are reboot-only and verified before reboot.
-- Hybrid fan polling does not wake the dGPU.
-- Fan sensor discovery fails visibly instead of selecting duplicate hwmon data.
 - Root policy is inactive until repository files are installed under `/etc` or
   `/usr`.
 - Wlogout power actions do not have the lock screen's additional PAM layer.

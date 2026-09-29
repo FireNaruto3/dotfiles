@@ -72,7 +72,6 @@ Ubuntu instructions.
 | `jq`, `upower`, `procps`, `libnotify-bin` | JSON processing, battery telemetry, process toggles, and desktop failure notifications |
 | `powerprofilesctl`, compatible `asusctl`/`asusd` | ASUS laptop power, fan, and firmware controls |
 | `systemd` (`busctl`, `loginctl`, `systemctl`, `systemd-run`), `util-linux` (`flock`, `logger`, `runuser`, `setsid`), GNU Coreutils (`timeout`) | Lock/suspend orchestration, GPU-mode queue inspection, logging, and bounded execution |
-| NVIDIA utilities (`nvidia-smi`, optional) | Ultimate-mode temperature fallback when PCI hwmon is unavailable |
 | JetBrains Mono Nerd Font, Papirus | Interface font and icon theme |
 | Zsh, Oh My Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell and prompt configured by the recommended Stow set |
 | Neovim, Tmux, OpenCode | Editor, terminal multiplexer, and coding agent configured by the recommended Stow set |
@@ -105,7 +104,7 @@ position `(0,0)`. Quick settings offers 60 Hz and 120 Hz when those modes are
 advertised. Runtime helpers discover the connector, DRM card, backlight, and
 system battery instead of relying on probe-order names such as `eDP-1`,
 `card1`, `amdgpu_bl1`, or `BAT1`. Power profiles use `powerprofilesctl`; ASUS
-charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
+charge limits, keyboard lighting, and GPU firmware attributes use
 `asusctl`/`asusd`.
 
 ## Contents
@@ -113,7 +112,7 @@ charge limits, keyboard lighting, fan metadata, and GPU firmware attributes use
 | Config | Description |
 |--------|-------------|
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
-| Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power/fan drawers |
+| Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power drawers |
 | Systemd | Unified sleep policy and ASUS keyboard-backlight restoration across resume |
 | Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
@@ -148,9 +147,8 @@ uptime, and a navigable calendar. The unified quick-settings drawer controls
 Wi-Fi, VPNs, Bluetooth devices, audio outputs, microphones, and displays. It
 opens from the related status buttons or with **Mod+S**. The battery button
 opens a separate power drawer for the active power profile, ASUS charge limit,
-keyboard backlight, and internal display refresh rate. The fan drawer monitors
-CPU, GPU, and MID fan RPM and available curve metadata. Drawers open to the
-right of the vertical rail or below the horizontal bar.
+keyboard backlight, and internal display refresh rate. Drawers open to the right
+of the vertical rail or below the horizontal bar.
 
 At session start, Niri generates the current wallpaper palette before launching
 Quickshell and Mako, then launches `awww-daemon`, Waypaper restoration, text and
@@ -206,14 +204,16 @@ restart, logout, and power-off also require password authentication. Logout
 terminates all sessions for the current user.
 
 An enabled `asus-power-profile-sync.service` configures native `asusd` defaults
-of Balanced on AC and Quiet on battery. Manual selections in the power drawer
-use `powerprofilesctl` and do not replace those ASUS power-source defaults.
+of Balanced on AC and Quiet on battery, then applies the profile for the current
+power source. `asusd` handles later plug and unplug events, and a system-sleep
+hook reconciles the active profile after resume. Manual selections in the power
+drawer use `powerprofilesctl` and do not replace those ASUS power-source
+defaults.
 
 ### Fan Curves
 
-The fan panel is monitor-only and polls the ASUS CPU, GPU, and MID fan RPM sensors once per second while visible. Every card continuously shows measured RPM, including a valid stopped state. CPU and GPU show an estimated curve target as secondary information when an enabled custom curve and a suitable temperature are available; otherwise they identify firmware control or unavailable telemetry. MID is RPM-only because this laptop exposes its fan speed but not its controlling temperature. Duplicate sensors are reported as ambiguous instead of being selected by hwmon number.
-
-NVIDIA temperature is read only in Ultimate dGPU MUX mode. Integrated reports the dGPU disabled. Hybrid reports active or suspended from PCI runtime state without reading NVIDIA temperature or invoking `nvidia-smi`, so polling cannot wake the dGPU or delay suspension. Ultimate selects a unique NVIDIA PCI device, prefers an unambiguous core/edge hwmon channel, and uses a bounded, PCI-targeted `nvidia-smi` fallback. Live sysfs data updates once per second; the configured GPU mode, ASUS profile, and curve metadata update every 15 seconds to keep ASUS daemon calls off the fast path. Failed samples are marked stale instead of leaving old values displayed as current. Use `asusctl` to manage custom curves:
+Fan curves remain machine-local `asusd` state. Use `asusctl` to inspect or
+manage custom curves:
 
 ```bash
 # Inspect one profile.
@@ -240,7 +240,7 @@ then the machine reboots immediately:
 
 ```bash
 gpu-mode status
-gpu-mode --get       # Machine-readable mode used by fan telemetry.
+gpu-mode --get       # Print the configured mode.
 gpu-mode integrated
 gpu-mode hybrid
 gpu-mode ultimate
@@ -259,13 +259,6 @@ dGPU runtime power state, and relevant service states. A suspended dGPU is
 normal while Hybrid is configured. `--get` only reads the configured firmware
 mode; mode-changing commands additionally require `asus-shutdown.service`,
 `flock`, queue verification through `busctl`, and reboot authorization.
-
-For staged fan-telemetry validation, boot each mode separately. In Hybrid,
-compare the NVIDIA PCI device's `power/runtime_status` and
-`power/runtime_suspended_time` before and after leaving the fan drawer open; the
-drawer must not wake a suspended device. In Ultimate, compare
-`fan-stats.sh Ultimate` with `nvidia-smi` for the reported PCI device. Return to
-the preferred mode with `gpu-mode integrated` after testing if desired.
 
 ## Keymaps
 
@@ -469,10 +462,6 @@ than an `XDG_CACHE_HOME` override. Waypaper 2.8 does not expand `~` in its
 `stylesheet` setting, so that single path is account-specific and must be
 updated if the account home changes.
 
-The active Quickshell fan telemetry calls `~/.local/bin/gpu-mode` to select a
-GPU-safe temperature path, so stow the `scripts` package whenever using the
-Quickshell package.
-
 Flameshot 14 must be installed separately at `~/.local/bin/flameshot-v14`; the
 `flameshot` Stow package supplies configuration only. Ubuntu's packaged 13.3
 release crops captures on the laptop's 1.75-scale display. Quickshell starts the
@@ -514,8 +503,16 @@ sudo install --backup=numbered -D -o root -g root -m 0644 \
   /etc/systemd/system/asus-power-profile-sync.service
 
 sudo install --backup=numbered -D -o root -g root -m 0755 \
+  system/usr/libexec/asus-power-profile-sync \
+  /usr/libexec/asus-power-profile-sync
+
+sudo install --backup=numbered -D -o root -g root -m 0755 \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   /usr/lib/systemd/system-sleep/asus-keyboard-backlight
+
+sudo install --backup=numbered -D -o root -g root -m 0755 \
+  system/usr/lib/systemd/system-sleep/asus-power-profile-sync \
+  /usr/lib/systemd/system-sleep/asus-power-profile-sync
 
 sudo install --backup=numbered -D -o root -g root -m 0755 \
   system/usr/lib/systemd/system-sleep/quiet-resume-console \
@@ -582,17 +579,18 @@ Run the focused checks after changing the active desktop or GPU-mode helper:
 ```bash
 niri validate -c niri/.config/niri/config.kdl
 bash -n quickshell/.config/quickshell/scripts/*.sh \
-  scripts/.local/bin/gpu-mode tests/gpu-mode.sh tests/fan-curves.sh \
-  tests/fan-stats.sh
+  scripts/.local/bin/gpu-mode tests/gpu-mode.sh \
+  tests/asus-power-profile-sync.sh
 sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
   quickshell/.config/quickshell/scripts/launch-wlogout.sh \
   quickshell/.config/quickshell/scripts/lock.sh \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
+  system/usr/lib/systemd/system-sleep/asus-power-profile-sync \
   system/usr/lib/systemd/system-sleep/quiet-resume-console \
+  system/usr/libexec/asus-power-profile-sync \
   system/usr/libexec/quickshell-secure-suspend
 bash tests/gpu-mode.sh
-bash tests/fan-curves.sh
-bash tests/fan-stats.sh
+bash tests/asus-power-profile-sync.sh
 ```
 
 GitHub Actions additionally runs ShellCheck, JSON parsing, whitespace checks,

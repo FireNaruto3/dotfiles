@@ -27,7 +27,7 @@ PanelWindow {
     readonly property real drawerHeight: displayedView === "clock"
         ? 478
         : (displayedView === "quickSettings" ? 590
-        : (displayedView === "fan" ? 176 : (drawerLoader.item ? drawerLoader.item.implicitHeight : 397)))
+        : (drawerLoader.item ? drawerLoader.item.implicitHeight : 397))
     readonly property real drawerScale: Math.min(
         1,
         Math.max(0.1, (width - (vertical ? railWidth : 0)) / drawerWidth),
@@ -225,8 +225,7 @@ PanelWindow {
                 sourceComponent: bar.displayedView === "clock"
                     ? clockDrawer
                     : (bar.displayedView === "power" ? powerDrawer
-                    : (bar.displayedView === "fan" ? fanDrawer
-                    : (bar.displayedView === "quickSettings" ? quickSettingsDrawer : null)))
+                    : (bar.displayedView === "quickSettings" ? quickSettingsDrawer : null))
             }
         }
     }
@@ -242,11 +241,6 @@ PanelWindow {
             systemData: bar.systemData
             powerData: bar.powerData
         }
-    }
-
-    Component {
-        id: fanDrawer
-        FanControl { powerData: bar.powerData }
     }
 
     Component {
@@ -539,16 +533,6 @@ PanelWindow {
             Column {
                 id: resourceColumn
                 anchors.centerIn: parent
-
-                SystemButton {
-                    id: fanButton
-                    width: 34
-                    text: "󰈐"
-                    contentOffsetX: -1
-                    active: bar.activeView === "fan"
-                    tooltip: "Fan monitor"
-                    onClicked: bar.toggleDrawer("fan", bar.anchorFor(fanButton))
-                }
 
                 SystemButton {
                     width: 34
