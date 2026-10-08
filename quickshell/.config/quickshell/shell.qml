@@ -67,7 +67,6 @@ ShellRoot {
     }
 
     property bool lockStateInitialized: false
-    property bool previousCapsLock: false
     property bool previousNumLock: false
     property bool previousScrollLock: false
 
@@ -116,23 +115,23 @@ ShellRoot {
 
         function onRefreshed(): void {
             if (!root.lockStateInitialized) {
-                root.previousCapsLock = systemSource.capsLock
                 root.previousNumLock = systemSource.numLock
                 root.previousScrollLock = systemSource.scrollLock
                 root.lockStateInitialized = true
                 return
             }
 
-            if (root.previousCapsLock !== systemSource.capsLock)
-                root.showOsd("lock", `Caps Lock ${systemSource.capsLock ? "On" : "Off"}`)
-            else if (root.previousNumLock !== systemSource.numLock)
+            if (root.previousNumLock !== systemSource.numLock)
                 root.showOsd("lock", `Num Lock ${systemSource.numLock ? "On" : "Off"}`)
             else if (root.previousScrollLock !== systemSource.scrollLock)
                 root.showOsd("lock", `Scroll Lock ${systemSource.scrollLock ? "On" : "Off"}`)
 
-            root.previousCapsLock = systemSource.capsLock
             root.previousNumLock = systemSource.numLock
             root.previousScrollLock = systemSource.scrollLock
+        }
+
+        function onCapsLockUpdated(enabled: bool): void {
+            root.showOsd("lock", `Caps Lock ${enabled ? "On" : "Off"}`)
         }
 
         function onKeyboardBrightnessUpdated(changed: bool): void {

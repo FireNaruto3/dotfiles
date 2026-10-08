@@ -22,8 +22,8 @@ selection=$(
 if [ "$selection" = "$clear_entry" ]; then
     confirmation=$(printf 'Cancel\nClear history\n' | rofi -dmenu -i -no-custom -p "Clear clipboard history?") || exit 0
     [ "$confirmation" = 'Clear history' ] || exit 0
+    wl-copy --clear || true
     cliphist wipe
-    wl-copy --clear
     exit 0
 fi
 

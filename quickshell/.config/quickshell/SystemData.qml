@@ -10,6 +10,7 @@ QtObject {
     property real previousCpuTotal: -1
     readonly property string scriptPath: Qt.resolvedUrl("scripts/system-stats.sh").toString().replace("file://", "")
     readonly property string resourceScriptPath: Qt.resolvedUrl("scripts/resource-stats.sh").toString().replace("file://", "")
+    readonly property string capsLockScriptPath: Qt.resolvedUrl("scripts/caps-lock-state.sh").toString().replace("file://", "")
     readonly property int cpuUsage: resourceValues.cpu || 0
     readonly property bool cpuTemperatureAvailable: resourceValues.cpu_temperature !== undefined && resourceValues.cpu_temperature !== null
     readonly property real cpuTemperature: cpuTemperatureAvailable ? Number(resourceValues.cpu_temperature) : Number.NaN
@@ -42,9 +43,11 @@ QtObject {
     readonly property bool dnd: values.dnd || false
     property bool refreshPending: false
     property int observedKeyboardBrightness: -1
+    property var observedCapsLock: null
 
     signal refreshed()
     signal keyboardBrightnessUpdated(bool changed)
+    signal capsLockUpdated(bool enabled)
 
     function refresh(): void {
         if (collector.running)
@@ -67,7 +70,10 @@ QtObject {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    root.values = JSON.parse(text.trim())
+                    const data = JSON.parse(text.trim())
+                    if (root.observedCapsLock !== null)
+                        data.caps_lock = root.observedCapsLock
+                    root.values = data
                     root.refreshed()
                 } catch (error) {
                     console.warn("Unable to parse system data:", error, text)
@@ -155,6 +161,33 @@ QtObject {
         onTriggered: {
             if (!keyboardCollector.running)
                 keyboardCollector.running = true
+        }
+    }
+
+    property Process capsLockCollector: Process {
+        id: capsLockCollector
+
+        command: ["sh", root.capsLockScriptPath]
+        running: true
+        stdout: StdioCollector { id: capsLockOutput }
+        onExited: {
+            const enabled = capsLockOutput.text.trim() === "true"
+            const changed = root.observedCapsLock !== null
+                && root.observedCapsLock !== enabled
+            root.observedCapsLock = enabled
+            root.values = Object.assign({}, root.values, { caps_lock: enabled })
+            if (changed)
+                root.capsLockUpdated(enabled)
+        }
+    }
+
+    property Timer capsLockRefreshTimer: Timer {
+        interval: 250
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!capsLockCollector.running)
+                capsLockCollector.running = true
         }
     }
 

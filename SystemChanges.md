@@ -141,11 +141,14 @@ Quickshell exposes Power Saver, Balanced, and Performance and applies a selected
 profile with `powerprofilesctl set`. The enabled
 `asus-power-profile-sync.service` configures `asusd` to use Balanced on AC and
 Quiet on battery, then explicitly applies the profile matching the current power
-source. `asusd` handles later plug and unplug events natively. A system-sleep
-hook reapplies the matching profile after resume in case the source changed
-while suspended. A manual profile selected through Quickshell changes only the
-current `power-profiles-daemon` profile; it does not rewrite either ASUS default
-and can be replaced by a later power-source event or resume reconciliation.
+source. The reconciler recognizes online `Mains` supplies as external power and
+ignores UCSI `USB` source-port entries, which can remain online while the battery
+is discharging. `asusd` handles later plug and unplug events natively. A
+system-sleep hook reapplies the matching profile after resume in case the source
+changed while suspended. A manual profile selected through Quickshell changes
+only the current `power-profiles-daemon` profile; it does not rewrite either
+ASUS default and can be replaced by a later power-source event or resume
+reconciliation.
 
 ## Mutable ASUS State
 

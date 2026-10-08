@@ -22,6 +22,7 @@
 ## Machine-Specific Assumptions
 
 - Several settings are deliberately machine-specific: the Samsung ATNA40CU05-0 panel with 2880x1800 modes and ASUS utilities/devices. Connector, backlight, DRM card, and system-battery names are discovered at runtime because their numeric suffixes change with GPU probe order. Search all Niri, Quickshell, and systemd references before changing one of these assumptions.
+- ASUS power-source reconciliation treats only online `Mains` supplies as external power. Do not count UCSI `USB` source-port entries: they can report online while this laptop is supplying a peripheral and its battery is discharging.
 - Files under `system/usr/lib/systemd/system-sleep/` must remain executable when installed. `asus-keyboard-backlight` saves/restores `leds:asus::kbd_backlight`; `asus-power-profile-sync` reapplies the source-dependent profile after resume; `quiet-resume-console` temporarily suppresses non-critical console messages while graphics are unavailable.
 
 ## Focused Checks

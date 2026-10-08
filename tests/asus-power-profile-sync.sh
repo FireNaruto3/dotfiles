@@ -69,6 +69,9 @@ run_helper configure >/dev/null
 [[ $(< "$state_dir/active") == Balanced ]]
 
 reset_state 0
+mkdir -p "$power_supply_path/USBC"
+printf 'USB\n' > "$power_supply_path/USBC/type"
+printf '1\n' > "$power_supply_path/USBC/online"
 run_helper configure >/dev/null
 [[ $(< "$state_dir/ac") == Balanced ]]
 [[ $(< "$state_dir/battery") == Quiet ]]

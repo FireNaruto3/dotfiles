@@ -48,7 +48,7 @@ PanelWindow {
 
     function icon(): string {
         if (kind === "brightness") {
-            const icons = ["󰃚", "󰃜", "󰃞", "󰃠"]
+            const icons = ["󰪟", "󰪡", "󰪣", "󰪥"]
             const brightness = Math.max(0, Math.min(100, systemData.brightness))
             return icons[Math.min(3, Math.floor(brightness * 4 / 101))]
         }

@@ -379,12 +379,14 @@ The drawer applies one action at a time:
 The standard active profile and ASUS source-dependent defaults are related but
 separate. The enabled `asus-power-profile-sync.service` configures `asusd` to
 select Balanced on AC and Quiet on battery, detects the current source under
-`/sys/class/power_supply`, and applies its matching profile. `asusd` handles
-later plug and unplug events. A system-sleep hook runs the same reconciliation
-after resume in case the source changed while suspended. A manual Quickshell
-selection uses `powerprofilesctl` and does not rewrite the ASUS defaults.
-Consequently, a later plug/unplug event or post-resume reconciliation can
-replace that temporary manual selection.
+`/sys/class/power_supply`, and applies its matching profile. Only online supplies
+typed `Mains` count as external power. UCSI entries typed `USB` are source-port
+state on this laptop and can remain online while the battery discharges. `asusd`
+handles later plug and unplug events. A system-sleep hook runs the same
+reconciliation after resume in case the source changed while suspended. A
+manual Quickshell selection uses `powerprofilesctl` and does not rewrite the
+ASUS defaults. Consequently, a later plug/unplug event or post-resume
+reconciliation can replace that temporary manual selection.
 
 Bar battery state comes from UPower's display device. Power draw and health are
 calculated from present system batteries under `/sys/class/power_supply`.

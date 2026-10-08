@@ -230,10 +230,12 @@ terminates all sessions for the current user.
 An enabled `asus-power-profile-sync.service` configures native `asusd` defaults
 of Balanced on AC and Quiet on battery, then applies the profile for the current
 power source. `asusd` handles later plug and unplug events, and a system-sleep
-hook reconciles the active profile after resume. Manual selections in the power
-drawer use `powerprofilesctl` and do not replace those ASUS power-source
-defaults; a later power-source event or resume reconciliation can replace the
-manual active selection.
+hook reconciles the active profile after resume using the kernel's online
+`Mains` supply. USB-C source-port entries are ignored because they can report
+online while the battery is discharging. Manual selections in the power drawer
+use `powerprofilesctl` and do not replace those ASUS power-source defaults; a
+later power-source event or resume reconciliation can replace the manual active
+selection.
 
 ### Fan Curves
 

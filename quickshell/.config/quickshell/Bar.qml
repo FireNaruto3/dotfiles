@@ -129,7 +129,7 @@ PanelWindow {
     }
 
     function brightnessIcon() {
-        const icons = ["󰃚", "󰃜", "󰃞", "󰃠"]
+        const icons = ["󰪟", "󰪡", "󰪣", "󰪥"]
         const brightness = Math.max(0, Math.min(100, systemData.brightness))
         const index = Math.min(3, Math.floor(brightness * 4 / 101))
         return icons[index]
@@ -140,7 +140,6 @@ PanelWindow {
         case "⇅":
         case "󰂯":
         case "󰖀":
-        case "󰃜":
             return -0.5
         case "⇄":
         case "󰂲":
@@ -162,12 +161,9 @@ PanelWindow {
         case "󰒓":
         case "󰈀":
         case "󰝟":
-        case "󰃚":
             return -2
         case "󰤢":
         case "󰤠":
-        case "󰃞":
-        case "󰃠":
             return -3
         case "":
         case "":

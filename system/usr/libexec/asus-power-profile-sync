@@ -35,7 +35,7 @@ for supply in "$power_supply_path"/*; do
 
     IFS= read -r supply_type < "$supply/type"
     case $supply_type in
-        Mains|USB|USB_C|USB_PD)
+        Mains)
             IFS= read -r supply_online < "$supply/online"
             if [ "$supply_online" = 1 ]; then
                 power_source=ac
