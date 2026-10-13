@@ -70,10 +70,10 @@ ShellRoot {
     property bool previousNumLock: false
     property bool previousScrollLock: false
 
-    function showOsd(kind, action) {
+    function showOsd(kind, action, refreshData = true) {
         osd.screen = focusedScreen()
         osd.show(kind, action)
-        if (kind !== "media" && kind !== "lock")
+        if (refreshData && kind !== "media" && kind !== "lock")
             systemSource.refresh()
     }
 
@@ -174,8 +174,14 @@ ShellRoot {
     IpcHandler {
         target: "osd"
 
-        function showVolume(): void { root.showOsd("volume", "") }
-        function showBrightness(): void { root.showOsd("brightness", "") }
+        function showVolume(volume: int, muted: bool): void {
+            systemSource.updateVolume(volume, muted)
+            root.showOsd("volume", "", false)
+        }
+        function showBrightness(brightness: int): void {
+            systemSource.updateBrightness(brightness)
+            root.showOsd("brightness", "", false)
+        }
         function showMicrophone(): void { root.showOsd("microphone", "") }
         function showKeyboard(): void { root.showOsd("keyboard", "") }
         function showPlayPause(): void { root.showOsd("media", "play-pause") }

@@ -5,7 +5,7 @@ set -euo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 notify_osd() {
-    qs ipc call osd "$1" >/dev/null 2>&1 || true
+    qs ipc call osd "$@" >/dev/null 2>&1 || true
 }
 
 case ${1:-} in
@@ -16,7 +16,11 @@ case ${1:-} in
             mute) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
             *) printf 'Invalid volume action: %s\n' "${2:-}" >&2; exit 2 ;;
         esac
-        notify_osd showVolume
+        volume_line=$(wpctl get-volume @DEFAULT_AUDIO_SINK@)
+        volume=$(awk '{printf "%.0f", $2 * 100}' <<< "$volume_line")
+        muted=false
+        [[ $volume_line == *"[MUTED]"* ]] && muted=true
+        notify_osd showVolume "$volume" "$muted"
         ;;
     microphone)
         [[ ${2:-} == mute ]] || {
@@ -38,7 +42,9 @@ case ${1:-} in
                 ;;
             *) printf 'Invalid brightness action: %s\n' "${2:-}" >&2; exit 2 ;;
         esac
-        notify_osd showBrightness
+        brightness_line=$(brightnessctl -d "$device" -m)
+        IFS=, read -r _ _ _ brightness _ <<< "$brightness_line"
+        notify_osd showBrightness "${brightness%%%}"
         ;;
     keyboard)
         keyboard_line=$(brightnessctl -d 'asus::kbd_backlight' -m 2>/dev/null) || exit 1

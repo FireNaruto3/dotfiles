@@ -13,6 +13,8 @@ machine-local snapshot; it is not presented as repository-managed policy.
   other Stow packages are user-session configuration linked under `$HOME`.
 - The base NVIDIA module packages remain package-managed. The ASUS-specific
   module policy is tracked under `system/`.
+- Ly's binary, support files, and systemd unit are upstream-installed. Its
+  customized configuration and login PAM service are repository-owned.
 - Files under `/etc/asusd` are generated and mutated by `asusd`/`asusctl`. They
   are not copied from this repository and must be reviewed or recreated on a
   new installation.
@@ -26,6 +28,8 @@ The following repository copies are installed as root-owned files.
 | `system/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `/etc/systemd/logind.conf.d/90-sleep-policy.conf` | `0644` | Physical key and lid policy |
 | `system/etc/UPower/UPower.conf` | `/etc/UPower/UPower.conf` | `0644` | Critical-battery thresholds and power-off action |
 | `system/etc/pam.d/quickshell-lock` | `/etc/pam.d/quickshell-lock` | `0644` | Dedicated local-password PAM policy for the lock shell |
+| `system/etc/ly/config.ini` | `/etc/ly/config.ini` | `0644` | Ly TTY display-manager appearance, session discovery, and login behavior |
+| `system/etc/pam.d/ly` | `/etc/pam.d/ly` | `0644` | Ly login stack and GNOME Keyring integration |
 | `system/etc/systemd/user/quickshell-lock-shell.service` | `/etc/systemd/user/quickshell-lock-shell.service` | `0644` | Own the lock-shell process until the user unlocks |
 | `system/etc/systemd/user/quickshell-secure-lock.service` | `/etc/systemd/user/quickshell-secure-lock.service` | `0644` | Bounded user-service lock acquisition |
 | `system/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `/etc/systemd/system/systemd-suspend.service.d/90-quickshell-secure-lock.conf` | `0644` | Block suspend unless the Wayland lock is secure |
@@ -36,6 +40,20 @@ The following repository copies are installed as root-owned files.
 | `system/usr/libexec/asus-power-profile-sync` | `/usr/libexec/asus-power-profile-sync` | `0755` | Apply the ASUS profile matching the current power source |
 | `system/usr/libexec/quickshell-secure-suspend` | `/usr/libexec/quickshell-secure-suspend` | `0755` | Find the active Wayland user and request a secure lock |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
+
+## Login And Session Startup
+
+Ly 1.5.0 runs as `ly@tty2.service` and discovers Niri through
+`/usr/share/wayland-sessions/niri.desktop`. It is compiled without X11 support;
+automatic login and shell sessions are disabled. TTY1 retains an enabled getty
+as the recovery path, and TTY2's ordinary getty is disabled because Ly owns it.
+
+The `ly` PAM service includes the distribution's `login` policy and adds GNOME
+Keyring hooks. Login password handling and keyring startup are separate from the
+minimal `quickshell-lock` PAM service used for screen unlock. Niri starts
+`/usr/libexec/xfce-polkit` to provide graphical PolicyKit prompts. The Ly login
+screen intentionally retains F1 shutdown, F2 restart, and F7 password visibility
+controls.
 
 ## Sleep And Secure Boot
 
@@ -141,14 +159,15 @@ Quickshell exposes Power Saver, Balanced, and Performance and applies a selected
 profile with `powerprofilesctl set`. The enabled
 `asus-power-profile-sync.service` configures `asusd` to use Balanced on AC and
 Quiet on battery, then explicitly applies the profile matching the current power
-source. The reconciler recognizes online `Mains` supplies as external power and
-ignores UCSI `USB` source-port entries, which can remain online while the battery
-is discharging. `asusd` handles later plug and unplug events natively. A
-system-sleep hook reapplies the matching profile after resume in case the source
-changed while suspended. A manual profile selected through Quickshell changes
-only the current `power-profiles-daemon` profile; it does not rewrite either
-ASUS default and can be replaced by a later power-source event or resume
-reconciliation.
+source. The service runs after `power-profiles-daemon` so its startup default
+cannot overwrite that initial selection. The reconciler recognizes online
+`Mains` supplies as external power and ignores UCSI `USB` source-port entries,
+which can remain online while the battery is discharging. `asusd` handles later
+plug and unplug events natively. A system-sleep hook reapplies the matching
+profile after resume in case the source changed while suspended. A manual
+profile selected through Quickshell changes only the current
+`power-profiles-daemon` profile; it does not rewrite either ASUS default and can
+be replaced by a later power-source event or resume reconciliation.
 
 ## Mutable ASUS State
 
@@ -232,9 +251,7 @@ approximately 60 Hz at login for lower power consumption.
 `quickshell/.config/quickshell/scripts/display-control.sh` discovers the
 current connector, DRM card, and backlight at runtime instead of assuming
 names such as `eDP-1`, `card1`, or `amdgpu_bl1`. The power drawer exposes only
-supported 2880x1800 refresh modes; this panel advertises 60 Hz and 120 Hz. The
-unified Displays page separately enumerates each enabled Niri output's advertised
-modes at the output's current resolution.
+supported 2880x1800 refresh modes; this panel advertises 60 Hz and 120 Hz.
 
 The Quickshell power panel can select 60 Hz or 120 Hz. The bar and Niri's
 hardware brightness keys change the runtime-selected backlight in 5% increments
@@ -276,6 +293,8 @@ the ownership and mode listed above. Then apply the relevant operation:
 | ASUS profile policy | `sudo systemctl enable --now asus-power-profile-sync.service` |
 | Removed hibernation policy | Move the obsolete file aside with the guarded commands in `README.md` |
 | ASUS NVIDIA module policy | Regenerate the initramfs when applicable, then reboot before relying on changed module options |
+| Ly configuration | `/usr/bin/ly --validate-config /etc/ly/config.ini`, then restart Ly only from a recovery TTY or reboot |
+| Ly PAM policy | Reboot or end the current login session; keep TTY1 available for rollback |
 
 `systemctl daemon-reload` does not apply modprobe changes. Use the
 distribution's normal initramfs tooling if module configuration is included in
@@ -289,6 +308,8 @@ systemd-analyze cat-config systemd/sleep.conf
 busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanSuspend
 busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanHibernate
 systemctl status asusd.service asus-shutdown.service power-profiles-daemon.service
+systemctl status ly@tty2.service getty@tty1.service
+/usr/bin/ly --validate-config /etc/ly/config.ini
 powerprofilesctl get
 asusctl profile get
 gpu-mode status
@@ -299,6 +320,8 @@ modprobe --showconfig | grep -E '^(blacklist nouveau|options (nvidia-drm|nvidia-
 
 - `system/` is not a Stow package; editing the repository copy does not update
   the installed root-owned file until it is reinstalled.
+- A broken Ly or login PAM configuration can prevent graphical login. Validate
+  before rebooting and keep the TTY1 getty enabled as the recovery path.
 - Hibernation remains disabled while Secure Boot enforces kernel lockdown.
 - The display helper intentionally fails instead of guessing when connector or
   backlight discovery is ambiguous.

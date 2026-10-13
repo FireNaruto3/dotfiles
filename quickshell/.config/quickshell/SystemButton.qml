@@ -18,6 +18,15 @@ Rectangle {
     property bool tooltipRight: true
     property int fontPixelSize: 12
     property real contentOffsetX: 0
+    property bool opticalCenter: false
+    readonly property real effectiveOffsetX: {
+        if (!opticalCenter || textMetrics.tightBoundingRect.width <= 0)
+            return contentOffsetX
+
+        return textMetrics.advanceWidth / 2
+            - textMetrics.tightBoundingRect.x
+            - textMetrics.tightBoundingRect.width / 2
+    }
 
     signal clicked(int button)
     signal wheel(int delta)
@@ -31,12 +40,21 @@ Rectangle {
         ColorAnimation { duration: 150 }
     }
 
+    TextMetrics {
+        id: textMetrics
+
+        text: root.text
+        font.family: "JetBrains Mono Nerd Font"
+        font.pixelSize: root.fontPixelSize
+        font.bold: true
+    }
+
     Text {
         id: label
 
         anchors.fill: parent
-        anchors.leftMargin: root.contentOffsetX
-        anchors.rightMargin: -root.contentOffsetX
+        anchors.leftMargin: root.effectiveOffsetX
+        anchors.rightMargin: -root.effectiveOffsetX
         visible: root.secondaryText.length === 0
         text: root.text
         color: root.foreground
@@ -69,7 +87,7 @@ Rectangle {
             font.pixelSize: root.fontPixelSize
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
-            transform: Translate { x: root.contentOffsetX }
+            transform: Translate { x: root.effectiveOffsetX }
         }
 
         Text {

@@ -56,6 +56,14 @@ QtObject {
             collector.running = true
     }
 
+    function updateVolume(volume: int, muted: bool): void {
+        values = Object.assign({}, values, { volume: volume, muted: muted })
+    }
+
+    function updateBrightness(brightness: int): void {
+        values = Object.assign({}, values, { brightness: brightness })
+    }
+
     property Process collector: Process {
         id: collector
 

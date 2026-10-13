@@ -1,8 +1,8 @@
 [Unit]
 Description=Synchronize ASUS profile with the current power source
 Documentation=https://asus-linux.org/manual/asusctl-manual/
-Requires=asusd.service
-After=asusd.service
+Requires=asusd.service power-profiles-daemon.service
+After=asusd.service power-profiles-daemon.service
 ConditionPathExists=/usr/bin/asusctl
 ConditionPathExists=/usr/libexec/asus-power-profile-sync
 

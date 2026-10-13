@@ -14,6 +14,13 @@ other live credentials in an issue, pull request, or log attachment.
 
 ## Security-Relevant Behavior
 
+- Ly is the login security boundary on TTY2. Its tracked PAM service includes
+  the distribution login stack and GNOME Keyring hooks; it is distinct from the
+  lock screen's PAM service. TTY1 remains an enabled recovery console. The Ly
+  login UI intentionally permits F1 shutdown, F2 restart, and F7 password
+  visibility before authentication.
+- Niri starts `xfce-polkit` for graphical PolicyKit prompts. The agent presents
+  authentication UI but does not grant authorization or replace system policy.
 - The lock screen uses the dedicated `quickshell-lock` PAM service and the
   Wayland session-lock protocol. Do not treat appearance alone as proof that the
   session is secured. Restart, power-off, and user-wide logout actions require
@@ -25,11 +32,12 @@ other live credentials in an issue, pull request, or log attachment.
   and should be shared only after review. A failed acquisition stops a lock
   service started by that attempt; it never treats a visible lock surface as
   sufficient.
-- The tracked `system/` files require root installation and affect sleep,
-  critical-battery shutdown, PAM, system-wide user units, ASUS power-profile
-  selection, kernel modules, keyboard-backlight restoration, and resume-console
-  output. UPower is configured to power off at 2%, after 20% low and 5% critical
-  thresholds, because hibernation is unavailable under kernel lockdown.
+- The tracked `system/` files require root installation and affect login,
+  keyring startup, sleep, critical-battery shutdown, PAM, system-wide user units,
+  ASUS power-profile selection, kernel modules, keyboard-backlight restoration,
+  and resume-console output. UPower is configured to power off at 2%, after 20%
+  low and 5% critical thresholds, because hibernation is unavailable under
+  kernel lockdown.
 - `asusctl` commands mutate daemon-owned files under `/etc/asusd`. The setup
   disables the keyboard firmware's sleep animation while retaining boot,
   awake, and shutdown lighting; fan curves, charge limits, and other ASUS state
@@ -37,8 +45,8 @@ other live credentials in an issue, pull request, or log attachment.
 - Helpers invoke local system services and utilities, including systemd,
   NetworkManager, BlueZ, PipeWire, `asusd`, and Niri IPC.
 - Quick Settings can connect to networks, manage paired Bluetooth devices,
-  change PipeWire defaults, and reconfigure Niri outputs. Wi-Fi passwords are
-  passed to `nmcli` as process arguments and may be visible through process
+  and change PipeWire defaults. Wi-Fi passwords are passed to `nmcli` as process
+  arguments and may be visible through process
   inspection while the connection runs. The input and QML command state are
   cleared afterward. NetworkManager can persist the credential in its connection
   profile according to the system's NetworkManager and secret-agent policy.

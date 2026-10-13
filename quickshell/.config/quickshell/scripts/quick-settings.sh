@@ -97,34 +97,6 @@ audio_nodes() {
     done | json_array_from_lines
 }
 
-display_state() {
-    niri msg -j outputs 2>/dev/null | jq -c '
-        [to_entries[]
-            | .value as $output
-            | ($output.current_mode // -1) as $current
-            | ($output.modes[$current] // null) as $active_mode
-            | {
-                name: .key,
-                label: (($output.make + " " + ($output.model | gsub("[[:space:]]+$"; "")))
-                    | gsub("^[[:space:]]+|[[:space:]]+$"; "")),
-                enabled: ($current >= 0),
-                current_mode: (if $active_mode then
-                    "\($active_mode.width)x\($active_mode.height)@\(($active_mode.refresh_rate / 1000) * 1000 | round / 1000)"
-                    else "" end),
-                modes: ([$output.modes[]
-                    | select($active_mode == null or (.width == $active_mode.width and .height == $active_mode.height))
-                    | {
-                        label: "\(.refresh_rate / 1000 | round) Hz",
-                        value: "\(.width)x\(.height)@\((.refresh_rate / 1000) * 1000 | round / 1000)",
-                        active: ($active_mode != null and .width == $active_mode.width
-                            and .height == $active_mode.height
-                            and .refresh_rate == $active_mode.refresh_rate)
-                      }
-                  ] | unique_by(.label))
-              }]
-    ' 2>/dev/null || printf '[]\n'
-}
-
 vpn_state() {
     local line remainder name uuid type active active_uuids
 
@@ -149,14 +121,13 @@ vpn_state() {
 }
 
 state() {
-    local wifi_enabled wifi_networks bluetooth_powered sinks sources displays vpns
+    local wifi_enabled wifi_networks bluetooth_powered sinks sources vpns
 
     wifi_enabled=$([[ $(nmcli radio wifi 2>/dev/null) == enabled ]] && printf true || printf false)
     wifi_networks=$(wifi_state)
     bluetooth_powered=$([[ $(bluetoothctl show 2>/dev/null) == *'Powered: yes'* ]] && printf true || printf false)
     sinks=$(audio_nodes Sinks)
     sources=$(audio_nodes Sources)
-    displays=$(display_state)
     vpns=$(vpn_state)
 
     jq -cn \
@@ -166,11 +137,10 @@ state() {
         --argjson bluetooth_devices "$(bluetooth_devices)" \
         --argjson sinks "$sinks" \
         --argjson sources "$sources" \
-        --argjson displays "$displays" \
         --argjson vpns "$vpns" \
         '{wifi_enabled: $wifi_enabled, wifi_networks: $wifi_networks,
           bluetooth_powered: $bluetooth_powered, bluetooth_devices: $bluetooth_devices,
-          sinks: $sinks, sources: $sources, displays: $displays, vpns: $vpns}'
+          sinks: $sinks, sources: $sources, vpns: $vpns}'
 }
 
 action=${1:-state}
@@ -196,18 +166,6 @@ case $action in
     audio-default) wpctl set-default "${1:?Missing audio node ID}" ;;
     audio-mute) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
     microphone-mute) wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ;;
-    display-power)
-        if [[ ${2:-} == off ]]; then
-            enabled_outputs=$(niri msg -j outputs 2>/dev/null \
-                | jq '[.[] | select(.current_mode != null)] | length')
-            if ((enabled_outputs <= 1)); then
-                printf 'The only active display cannot be disabled\n' >&2
-                exit 1
-            fi
-        fi
-        niri msg output "${1:?Missing output}" "${2:?Missing display state}"
-        ;;
-    display-mode) niri msg output "${1:?Missing output}" mode "${2:?Missing display mode}" ;;
     vpn-up) nmcli connection up uuid "${1:?Missing VPN UUID}" ;;
     vpn-down) nmcli connection down uuid "${1:?Missing VPN UUID}" ;;
     *)

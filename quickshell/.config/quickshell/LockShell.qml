@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
+import Quickshell.Services.UPower
 import Quickshell.Wayland
 
 ShellRoot {
@@ -20,9 +21,14 @@ ShellRoot {
     property bool powerPamError: false
     property bool hidePassword: true
     property bool capsLock: false
-    property bool batteryAvailable: false
-    property int batteryPercentage: 0
-    property string batteryState: "unknown"
+    readonly property var batteryDevice: UPower.displayDevice
+    readonly property bool batteryAvailable: batteryDevice.ready
+        && batteryDevice.isPresent
+        && batteryDevice.isLaptopBattery
+    readonly property int batteryPercentage: batteryAvailable
+        ? Math.round(batteryDevice.percentage * 100)
+        : 0
+    readonly property string batteryState: batteryStateName(batteryDevice.state)
     property var wallpapers: []
     readonly property url backgroundSource: wallpaperSettings.wallpaper
     readonly property string wallpaperScanner: Qt.resolvedUrl("scripts/list-wallpapers.sh").toString().replace("file://", "")
@@ -30,6 +36,25 @@ ShellRoot {
 
     function selectWallpaper(source) {
         wallpaperSettings.wallpaper = String(source)
+    }
+
+    function batteryStateName(state) {
+        switch (state) {
+        case UPowerDeviceState.Charging:
+            return "charging"
+        case UPowerDeviceState.Discharging:
+            return "discharging"
+        case UPowerDeviceState.Empty:
+            return "empty"
+        case UPowerDeviceState.FullyCharged:
+            return "fully-charged"
+        case UPowerDeviceState.PendingCharge:
+            return "pending-charge"
+        case UPowerDeviceState.PendingDischarge:
+            return "pending-discharge"
+        default:
+            return "unknown"
+        }
     }
 
     function authenticate(response) {
@@ -110,23 +135,6 @@ ShellRoot {
     }
 
     Process {
-        id: batteryProcess
-
-        command: ["upower", "-i", "/org/freedesktop/UPower/devices/DisplayDevice"]
-        running: true
-        stdout: StdioCollector { id: batteryOutput }
-        onExited: {
-            const percentage = batteryOutput.text.match(/percentage:\s*([0-9.]+)%/)
-            const state = batteryOutput.text.match(/state:\s*([^\n]+)/)
-            root.batteryAvailable = percentage !== null
-            if (percentage !== null)
-                root.batteryPercentage = Math.round(Number(percentage[1]))
-            if (state !== null)
-                root.batteryState = state[1].trim()
-        }
-    }
-
-    Process {
         id: powerProcess
 
         stdout: StdioCollector { id: powerOutput }
@@ -147,16 +155,6 @@ ShellRoot {
         onTriggered: {
             if (!capsLockProcess.running)
                 capsLockProcess.running = true
-        }
-    }
-
-    Timer {
-        interval: 10000
-        running: true
-        repeat: true
-        onTriggered: {
-            if (!batteryProcess.running)
-                batteryProcess.running = true
         }
     }
 

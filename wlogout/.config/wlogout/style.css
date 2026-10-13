@@ -18,7 +18,7 @@ button {
     color: #c6d0f5;
     border: 1px solid rgba(153, 209, 219, 0.20);
     background-repeat: no-repeat;
-    background-position: center 35%;
+    background-position: center;
     background-size: 24%;
     border-radius: 12px;
     margin: 8px;
@@ -57,17 +57,17 @@ button:focus label {
 }
 
 #lock {
-    background-image: image(url("/usr/share/wlogout/icons/lock.png"), url("/usr/local/share/wlogout/icons/lock.png"));
+    background-image: -gtk-icontheme("system-lock-screen-symbolic");
 }
 
 #logout {
-    background-image: image(url("/usr/share/wlogout/icons/logout.png"), url("/usr/local/share/wlogout/icons/logout.png"));
+    background-image: -gtk-icontheme("system-log-out-symbolic");
 }
 
 #shutdown {
-    background-image: image(url("/usr/share/wlogout/icons/shutdown.png"), url("/usr/local/share/wlogout/icons/shutdown.png"));
+    background-image: -gtk-icontheme("system-shutdown-symbolic");
 }
 
 #reboot {
-    background-image: image(url("/usr/share/wlogout/icons/reboot.png"), url("/usr/local/share/wlogout/icons/reboot.png"));
+    background-image: -gtk-icontheme("system-reboot-symbolic");
 }

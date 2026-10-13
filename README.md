@@ -4,7 +4,7 @@ A dark Wayland desktop built around Niri and Quickshell. The interface uses a
 wallpaper-derived palette, semantic status colors, and JetBrains Mono Nerd Font
 glyphs. Rofi uses Papirus explicitly; Quickshell application and tray icons use
 the active icon theme. The setup targets an ASUS laptop with a 2880x1800 Samsung
-OLED panel.
+OLED panel and uses Ly to start the Niri session from a TTY.
 
 This is a personal, machine-specific configuration, not a turnkey Ubuntu
 distribution. Read the commands and review package-specific settings before
@@ -14,6 +14,8 @@ settings may not suit another machine.
 
 For the runtime process and data flow, see [How Everything Works](HowEverythingWorks.md).
 For the root-installed policy inventory, see [System Changes](SystemChanges.md).
+For a guided explanation of Ly, PAM, keyring, portals, locking, package cleanup,
+and recovery, see [Login And Session Guide](LoginAndSession.md).
 
 ## Screenshots
 
@@ -31,7 +33,7 @@ For the root-installed policy inventory, see [System Changes](SystemChanges.md).
 
 | Unified Quick Settings |
 |:----------------------:|
-| ![Unified Quick Settings with Bluetooth, network, audio, and display pages](screenshots/quick-settings.webp) |
+| ![Unified Quick Settings with Bluetooth, network, and audio pages](screenshots/quick-settings.webp) |
 
 ## Requirements
 
@@ -44,13 +46,15 @@ For the root-installed policy inventory, see [System Changes](SystemChanges.md).
 | Quickshell | 0.3.1 tested |
 | GNU Stow | 2.4.1 tested |
 | Matugen | 4.2.0 pinned for installation |
+| Ly | 1.5.0 (`bccddcda3290c6286b5cb6e5eea9910d65c5f178`) |
+| Zig | 0.17.0 for building Ly 1.5.0 |
 | Neovim | 0.13 development build tested; lazy.nvim itself requires Neovim 0.8+ |
 | lazy.nvim | `85c7ff3711b730b4030d03144f6db6375044ae82` (11.17.5), pinned in bootstrap and lockfile |
 | Flameshot | 14, installed as `~/.local/bin/flameshot-v14` |
 | OpenCode | 1.18.32 tested |
 
 These are reproducibility notes, not claims that every version is packaged by
-Ubuntu. Niri, Quickshell, Matugen, awww, Resources, ASUS Linux utilities,
+Ubuntu. Niri, Quickshell, Ly, Matugen, awww, Resources, ASUS Linux utilities,
 OpenCode, and Flameshot 14 may require their upstream repositories or release
 artifacts. Verify signatures or checksums and follow each upstream project's
 Ubuntu instructions.
@@ -59,6 +63,7 @@ Ubuntu instructions.
 |---------|---------|
 | `git`, GNU Stow | Clone and deploy the repository |
 | `niri` | Scrollable-tiling Wayland compositor |
+| Ly 1.5.0, Zig 0.17.0, `build-essential`, `libpam0g-dev`, `libaudit-dev` | TTY display manager and its pinned Wayland-only build toolchain |
 | `quickshell` | Per-output bar, OSD, dashboards, lock screen, and power controls |
 | `ghostty` | Terminal emulator |
 | `rofi` | Application launcher |
@@ -66,6 +71,7 @@ Ubuntu instructions.
 | Flameshot 14 | Screenshot capture and annotation; installed separately as `~/.local/bin/flameshot-v14` |
 | `mako` | Notifications and do-not-disturb mode |
 | `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, GNOME Keyring | Preferred portal backend, GTK Access/Notification fallback, and Secret portal |
+| `xfce-polkit` | Graphical PolicyKit authentication agent started by Niri |
 | `swayidle` | Idle dimming, locking, display power, and suspend handling |
 | `waypaper` + `awww` | Wallpaper selection and restoration |
 | `matugen` | Wallpaper-derived colors for the active desktop applications |
@@ -88,7 +94,7 @@ deploying, use this Ubuntu checklist:
 
 - Update the system and install Git, GNU Stow, the Wayland utilities, desktop
   applications, fonts, portals, and command-line dependencies listed above.
-- Install the tested Niri and Quickshell versions, or review upstream changes
+- Install the tested Niri, Quickshell, and Ly versions, or review upstream changes
   before using newer versions.
 - Confirm `niri`, `qs`, `stow`, `git`, `bash`, `sh`, `jq`, `python3`,
   `shellcheck`, `brightnessctl`, `wpctl`, `playerctl`, `upower`,
@@ -97,7 +103,8 @@ deploying, use this Ubuntu checklist:
   `awww-daemon`, `swayidle`, `rofi`, `wlogout`, `busctl`, `flock`, `logger`,
   `loginctl`, `notify-send`, `pgrep`, `pkill`, `runuser`, `setsid`, `systemctl`,
   and `timeout` are on `PATH`.
-- Confirm the GNOME and GTK portal backends and GNOME Keyring are installed.
+- Confirm the GNOME and GTK portal backends, GNOME Keyring, and `xfce-polkit`
+  are installed.
 - Install Matugen 4.2.0 with
   `cargo install matugen --version 4.2.0 --locked` and install awww before
   starting the session.
@@ -111,8 +118,7 @@ deploying, use this Ubuntu checklist:
 The ASUS controls are machine-specific. Niri matches the Samsung
 ATNA40CU05-0 panel by EDID and starts it at `2880x1800@60.001`, scale 1.75,
 position `(0,0)`. The power drawer offers 60 Hz and 120 Hz for the internal
-panel when advertised; the unified Displays page enumerates current-resolution
-modes for enabled Niri outputs. Runtime helpers discover the connector, DRM card,
+panel when advertised. Runtime helpers discover the connector, DRM card,
 backlight, and system battery instead of relying on probe-order names such as
 `eDP-1`, `card1`, `amdgpu_bl1`, or `BAT1`. Power profiles use
 `powerprofilesctl`; ASUS charge limits, keyboard lighting, and GPU firmware
@@ -124,7 +130,7 @@ attributes use `asusctl`/`asusd`.
 |--------|-------------|
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
 | Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power drawers |
-| System policy | Logind and UPower policy, lock PAM and services, fail-closed suspend, ASUS profile/backlight resume hooks, console suppression, and NVIDIA module options |
+| System policy | Ly and login PAM, logind and UPower policy, lock PAM and services, fail-closed suspend, ASUS profile/backlight resume hooks, console suppression, and NVIDIA module options |
 | Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
@@ -163,20 +169,21 @@ is the only bar control highlighted while that drawer is open.
 
 The clock drawer contains MPRIS artwork and transport controls, Mako DND,
 uptime, and a navigable calendar. The unified quick-settings drawer orders its
-Bluetooth, network, audio, and display pages to match the bar controls. It opens
+Bluetooth, network, and audio pages to match the bar controls. It opens
 from its dedicated button immediately after clipboard history, from the related
 status buttons, or with **Mod+S**; Bluetooth is the default page. Wi-Fi supports
 saved, open, and password-protected networks plus VPN/WireGuard toggles;
-Bluetooth manages paired devices; Audio selects and mutes input/output devices;
-Displays changes current-resolution modes and refuses to disable the final
-active output. The battery button opens a separate power drawer for the active
+Bluetooth manages paired devices; Audio selects and mutes input/output devices.
+The brightness and battery buttons open a separate power drawer for the active
 power profile, ASUS charge limit, keyboard backlight, and internal display
 refresh rate. Drawers open to the right of the vertical rail or below the
 horizontal bar.
 
-At session start, Niri generates the current wallpaper palette before launching
-Quickshell and Mako, then launches `awww-daemon`, Waypaper restoration, text and
-image clipboard watchers, and `swayidle`. Changing the wallpaper regenerates
+Ly authenticates on TTY2 and launches the packaged `niri-session` Wayland entry;
+TTY1 remains a recovery console. At session start, Niri generates the current
+wallpaper palette before launching Quickshell and Mako, then launches the
+PolicyKit agent, `awww-daemon`, Waypaper restoration, text and image clipboard
+watchers, and `swayidle`. Changing the wallpaper regenerates
 colors for Quickshell, Niri, Mako, Rofi, Ghostty, Waypaper, and Wlogout.
 Generated cache files use the fixed `~/.cache/matugen` directory because the
 Matugen output configuration and desktop consumers must agree on literal paths;
@@ -229,13 +236,14 @@ terminates all sessions for the current user.
 
 An enabled `asus-power-profile-sync.service` configures native `asusd` defaults
 of Balanced on AC and Quiet on battery, then applies the profile for the current
-power source. `asusd` handles later plug and unplug events, and a system-sleep
-hook reconciles the active profile after resume using the kernel's online
-`Mains` supply. USB-C source-port entries are ignored because they can report
-online while the battery is discharging. Manual selections in the power drawer
-use `powerprofilesctl` and do not replace those ASUS power-source defaults; a
-later power-source event or resume reconciliation can replace the manual active
-selection.
+power source after `power-profiles-daemon` has started, preventing its startup
+default from overwriting the selected boot profile. `asusd` handles later plug
+and unplug events, and a system-sleep hook reconciles the active profile after
+resume using the kernel's online `Mains` supply. USB-C source-port entries are
+ignored because they can report online while the battery is discharging. Manual
+selections in the power drawer use `powerprofilesctl` and do not replace those
+ASUS power-source defaults; a later power-source event or resume reconciliation
+can replace the manual active selection.
 
 ### Fan Curves
 
@@ -409,7 +417,9 @@ The desktop scripts do not implement custom analytics or telemetry. They do
 read local process, hardware, battery, media-player, network, Bluetooth, and
 window metadata to render the shell. `cliphist` stores copied text and images
 locally, so its database can contain sensitive clipboard contents. The lock
-screen sends credentials only to the local PAM conversation.
+screen sends credentials only to the local PAM conversation. Ly uses its own
+tracked PAM service for login and starts GNOME Keyring with the authenticated
+password; this is separate from the narrower `quickshell-lock` PAM policy.
 
 Some configured third-party programs communicate over the network: NetBird is
 a networking client, OpenCode sends prompts and context according to the chosen
@@ -497,6 +507,33 @@ tray process, and `F6` runs `flameshot-v14 gui`. Niri's built-in screenshot path
 is configured under `~/Pictures/Screenshots`, but no built-in screenshot action
 is currently bound.
 
+Ly 1.5.0 is built as a Wayland-only display manager from the pinned Codeberg
+release at `https://codeberg.org/fairyglade/ly` with Zig 0.17.0. Ubuntu does not
+package Ly, so `/usr/bin/ly`, its language
+and support files under `/etc/ly`, and `ly@.service` remain upstream-installed
+artifacts. Verify the Codeberg tag resolves to
+`bccddcda3290c6286b5cb6e5eea9910d65c5f178`; verify the official x86-64 Zig
+0.17.0 archive against SHA-256
+`1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026`.
+Build with `-Doptimize=ReleaseSafe -Denable_x11_support=false`. The repository
+owns only the customized Ly configuration and login PAM policy.
+
+Ly runs as `ly@tty2.service`; `getty@tty2.service` is disabled, while
+`getty@tty1.service` remains enabled for recovery. During migration, keep GDM
+installed but disabled until Ly has completed a reboot and a login/logout/login
+cycle. Do not switch display managers until
+`/usr/bin/ly --validate-config /etc/ly/config.ini` succeeds and
+`/usr/share/wayland-sessions/niri.desktop` exists. Before purging GDM, roll back
+from TTY1 with:
+
+```bash
+sudo systemctl disable ly@tty2.service
+sudo systemctl enable gdm.service
+sudo reboot
+```
+
+After GDM has been purged, reinstall `gdm3` before using that rollback sequence.
+
 System-wide files are tracked under `system/` and installed as root-owned
 copies rather than user-writable symlinks. GNU `install` uses numbered backups
 here so an existing destination is not silently discarded:
@@ -513,6 +550,14 @@ sudo install --backup=numbered -D -o root -g root -m 0644 \
 sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/pam.d/quickshell-lock \
   /etc/pam.d/quickshell-lock
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/ly/config.ini \
+  /etc/ly/config.ini
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/pam.d/ly \
+  /etc/pam.d/ly
 
 sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/systemd/user/quickshell-secure-lock.service \
@@ -606,6 +651,7 @@ Run the focused checks after changing the active desktop or GPU-mode helper:
 
 ```bash
 niri validate -c niri/.config/niri/config.kdl
+/usr/bin/ly --validate-config system/etc/ly/config.ini
 bash -n quickshell/.config/quickshell/scripts/*.sh \
   scripts/.local/bin/gpu-mode tests/gpu-mode.sh \
   tests/asus-power-profile-sync.sh

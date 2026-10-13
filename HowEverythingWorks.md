@@ -6,26 +6,31 @@ which state is persistent, and what happens when something fails. `README.md`
 contains installation and usage instructions. `SystemChanges.md` inventories
 root-installed policy and machine-local ASUS state.
 
-The repository does not define how the display manager initially starts Niri.
-It assumes Niri is launched as a Wayland session with a working user systemd
-manager and D-Bus session.
+Ly runs on TTY2 and starts the packaged `niri-session` Wayland entry. TTY1 is
+kept as a recovery console. Ly's executable, support files, and systemd unit are
+installed from upstream; this repository owns its customized configuration and
+login PAM policy.
 
 ## Runtime Overview
 
 ```text
-display manager or session launcher
-└─ Niri
-   ├─ apply-theme.sh --start quickshell
-   │  ├─ generate the Matugen palette
-   │  └─ exec Quickshell's normal shell
-   ├─ apply-theme.sh --start mako
-   │  ├─ wait for the Matugen generation lock
-   │  └─ exec Mako with its generated configuration
-   ├─ awww-daemon
-   ├─ Waypaper wallpaper restoration
-   ├─ text and image clipboard watchers
-   ├─ initial display-brightness setup
-   └─ swayidle
+ly@tty2.service
+└─ Ly login through PAM
+   ├─ unlock and start GNOME Keyring
+   └─ niri-session
+      └─ Niri
+         ├─ apply-theme.sh --start quickshell
+         │  ├─ generate the Matugen palette
+         │  └─ exec Quickshell's normal shell
+         ├─ apply-theme.sh --start mako
+         │  ├─ wait for the Matugen generation lock
+         │  └─ exec Mako with its generated configuration
+         ├─ xfce-polkit authentication agent
+         ├─ awww-daemon
+         ├─ Waypaper wallpaper restoration
+         ├─ text and image clipboard watchers
+         ├─ initial display-brightness setup
+         └─ swayidle
 
 lock request
 └─ lock.sh
@@ -56,12 +61,24 @@ root-owned destinations under `/etc` and `/usr`. They have no system effect
 until they are installed with the commands and modes in `README.md`. Editing a
 repository copy does not automatically update its installed counterpart.
 
+Ly's tracked files follow that rule: `system/etc/ly/config.ini` installs to
+`/etc/ly/config.ini`, and `system/etc/pam.d/ly` installs to `/etc/pam.d/ly`.
+The upstream build owns `/usr/bin/ly`, the remaining `/etc/ly` support files,
+and `/usr/lib/systemd/system/ly@.service`.
+
 Files under `/etc/asusd` are mutable state owned by `asusd` and `asusctl`. They
 are not installed from this repository. The tracked system service and the
 documented Aura command recreate specific policy, while charge limits, fan
 curves, effects, and other daemon state remain machine-local.
 
 ## Session Startup
+
+`ly@tty2.service` owns TTY2 and conflicts with its normal getty. Password login
+uses the `ly` PAM service, which includes the distribution login stack and
+GNOME Keyring auth/session hooks. Ly reads the packaged Niri desktop entry from
+`/usr/share/wayland-sessions` and executes `niri-session`, which establishes the
+Wayland session, user systemd manager, D-Bus environment, and XDG autostart
+processing. Automatic login and Ly's shell and X11 session entries are disabled.
 
 Niri's startup commands are defined in
 `niri/.config/niri/config.kdl`. Niri starts the components independently, so
@@ -92,6 +109,7 @@ Niri also starts:
 
 | Process | Purpose |
 |---|---|
+| `/usr/libexec/xfce-polkit` | Provides graphical PolicyKit authentication prompts |
 | `awww-daemon` | Owns desktop wallpaper rendering and transitions |
 | `waypaper --restore --no-post-command` | Restores the saved wallpaper without regenerating the theme a second time |
 | `wl-paste --type text --watch cliphist ...` | Stores text clipboard entries |
@@ -143,9 +161,9 @@ The shell provides:
 - The Flameshot tray process.
 
 The dedicated quick-settings button sits after clipboard history and before the
-Bluetooth control. Its Bluetooth, network, audio, and display pages follow the
-same order as their bar controls; the individual controls open their matching
-page directly. Bluetooth is the default page. The vertical control order is
+Bluetooth control. Its Bluetooth, network, and audio pages follow the same order
+as their bar controls; the individual controls open their matching page directly.
+Bluetooth is the default page. The vertical control order is
 orientation, clipboard, quick settings, Bluetooth, network, audio, display,
 CPU, RAM, battery, clock, and power below the app/tray region. The horizontal
 bar puts workspaces, clock, and tray on the left; the active window in the
@@ -154,9 +172,8 @@ center; and resources, quick settings, and system controls on the right.
 The pages are operational rather than status-only. Bluetooth powers the radio
 and connects or disconnects already-paired devices. Network manages saved, open,
 and password-protected Wi-Fi networks plus VPN and WireGuard connections. Audio
-selects and mutes PipeWire sinks and sources. Displays enumerates enabled Niri
-outputs' current-resolution modes and prevents disabling the final active
-output.
+selects and mutes PipeWire sinks and sources. The brightness control opens the
+power drawer, which owns the internal panel's refresh-rate controls.
 
 ### Niri Event Stream
 
@@ -379,7 +396,9 @@ The drawer applies one action at a time:
 The standard active profile and ASUS source-dependent defaults are related but
 separate. The enabled `asus-power-profile-sync.service` configures `asusd` to
 select Balanced on AC and Quiet on battery, detects the current source under
-`/sys/class/power_supply`, and applies its matching profile. Only online supplies
+`/sys/class/power_supply`, and applies its matching profile after
+`power-profiles-daemon` has started. This ordering prevents the daemon's startup
+default from replacing the source-appropriate boot profile. Only online supplies
 typed `Mains` count as external power. UCSI entries typed `USB` are source-port
 state on this laptop and can remain online while the battery discharges. `asusd`
 handles later plug and unplug events. A system-sleep hook runs the same
@@ -458,8 +477,8 @@ this repository does not configure encryption or the database location.
 
 The Niri portal preference selects GNOME first with GTK fallback, forces GTK
 for Access and Notification, and uses GNOME Keyring for Secret. The portal
-backends and keyring are package-managed; their service activation is not
-defined by this repository.
+backends remain package-activated. Ly's PAM session unlocks and starts GNOME
+Keyring, while Niri explicitly starts the XFCE PolicyKit authentication agent.
 
 ## State And Lifetime
 
@@ -468,6 +487,7 @@ defined by this repository.
 - Stow-managed application and desktop configuration.
 - Wallpapers under `~/dotfiles/wallpapers`.
 - Root policy after files from `system/` are installed.
+- Ly login configuration and PAM policy after their tracked copies are installed.
 
 ### Generated State
 
@@ -492,6 +512,7 @@ defined by this repository.
 - Queued GPU values held in `asusd` memory.
 - Running Niri, Quickshell, lock shell, Mako, awww, clipboard, and swayidle
   processes.
+- The Ly process on TTY2 while no graphical user session is active.
 
 ## Failure And Security Properties
 
@@ -502,6 +523,9 @@ defined by this repository.
 - The normal Quickshell bar and the security-sensitive lock shell are separate
   processes.
 - PAM uses a dedicated local-password policy.
+- Ly login PAM and Quickshell lock PAM are separate security boundaries.
+- Ly's F1, F2, and F7 shortcuts intentionally expose shutdown, restart, and
+  password-visibility controls at the local login screen.
 - Display discovery fails instead of selecting ambiguous hardware.
 - GPU transitions are reboot-only and verified before reboot.
 - Root policy is inactive until repository files are installed under `/etc` or
@@ -515,13 +539,15 @@ defined by this repository.
 
 When a workflow fails, check it from owner to consumer:
 
-1. Validate Niri with `niri validate -c niri/.config/niri/config.kdl`.
-2. Confirm the expected process is running with `systemctl`, `systemctl --user`,
-   or `pgrep`.
+1. Validate Ly with `/usr/bin/ly --validate-config system/etc/ly/config.ini`
+   and Niri with `niri validate -c niri/.config/niri/config.kdl`.
+2. Confirm `ly@tty2.service`, the expected process, and the PolicyKit agent are
+   running with `systemctl`, `systemctl --user`, or `pgrep`.
 3. Confirm Stow links point to this repository and root-installed files match
    their `system/` sources.
 4. Check generated files under `~/.cache/matugen` before debugging consumers.
-5. Read the relevant user and system journals for the current boot.
+5. Read `/var/log/ly.log`, `~/.local/state/ly-session.log`, and the relevant
+   user and system journals for the current boot.
 6. For suspend, inspect `systemd-suspend.service`,
    `quickshell-secure-lock.service`, and `quickshell-lock-shell.service` together.
 7. For hardware controls, run the corresponding helper directly and inspect its

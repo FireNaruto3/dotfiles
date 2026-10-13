@@ -331,7 +331,7 @@ Item {
                     contentOffsetX: root.panel.iconOffset(text)
                     tooltip: `Brightness: ${root.panel.systemData.brightness}%`
                     tooltipRight: false
-                    onClicked: root.panel.openQuickSettings("displays", brightnessButton)
+                    onClicked: root.panel.toggleDrawer("power", root.panel.anchorFor(brightnessButton))
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
                     ])

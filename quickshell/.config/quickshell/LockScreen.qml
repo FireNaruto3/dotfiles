@@ -80,6 +80,37 @@ WlSessionLockSurface {
         return Qt.rgba(value.r, value.g, value.b, alpha)
     }
 
+    component OpticallyCenteredText: Text {
+        id: opticalText
+
+        property bool opticalCenter: true
+        property bool opticalCenterX: opticalCenter
+        property bool opticalCenterY: opticalCenter
+        readonly property real opticalOffsetX: (opticalCenterX && metrics.tightBoundingRect.width > 0
+            ? metrics.advanceWidth / 2
+                - metrics.tightBoundingRect.x
+                - metrics.tightBoundingRect.width / 2
+            : 0)
+        readonly property real opticalOffsetY: opticalCenterY && metrics.tightBoundingRect.height > 0
+            ? implicitHeight / 2
+                - baselineOffset
+                - metrics.tightBoundingRect.y
+                - metrics.tightBoundingRect.height / 2
+            : 0
+
+        transform: Translate {
+            x: opticalText.opticalOffsetX
+            y: opticalText.opticalOffsetY
+        }
+
+        TextMetrics {
+            id: metrics
+
+            text: opticalText.text
+            font: opticalText.font
+        }
+    }
+
     SequentialAnimation {
         id: failureAnimation
 
@@ -127,7 +158,7 @@ WlSessionLockSurface {
             border.color: surface.withAlpha(theme.border, 0.65)
             visible: surface.batteryAvailable
 
-            Text {
+            OpticallyCenteredText {
                 anchors.centerIn: parent
                 text: `${surface.batteryIcon()} ${surface.batteryPercentage}%`
                 color: surface.batteryColor()
@@ -266,14 +297,20 @@ WlSessionLockSurface {
                         width: 52
                         height: parent.height
 
-                        Text {
+                        Item {
                             id: submitIcon
 
                             anchors.centerIn: parent
-                            text: surface.authenticating ? "󰔟" : "↵"
-                            color: theme.textMuted
-                            font.family: theme.fontFamily
-                            font.pixelSize: 17
+                            width: 24
+                            height: 24
+
+                            OpticallyCenteredText {
+                                anchors.centerIn: parent
+                                text: surface.authenticating ? "󰔟" : "↵"
+                                color: theme.textMuted
+                                font.family: theme.fontFamily
+                                font.pixelSize: 17
+                            }
                         }
 
                         RotationAnimator {
@@ -287,7 +324,7 @@ WlSessionLockSurface {
                     }
                 }
 
-                Text {
+                OpticallyCenteredText {
                     anchors.top: parent.verticalCenter
                     anchors.topMargin: 34
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -298,6 +335,7 @@ WlSessionLockSurface {
                     font.family: theme.fontFamily
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
+                    opticalCenter: surface.authMessage.length === 0
                     opacity: text.length > 0 ? 1 : 0
                 }
             }
@@ -491,14 +529,15 @@ WlSessionLockSurface {
                                 : theme.cardHover)
                             : "transparent"
 
-                        Text {
+                        OpticallyCenteredText {
                             anchors.left: parent.left
-                            anchors.leftMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
+                            width: 32
                             text: modelData.icon
                             color: modelData.destructive ? theme.error : theme.accent
                             font.family: theme.fontFamily
                             font.pixelSize: 17
+                            horizontalAlignment: Text.AlignHCenter
                         }
 
                         Text {
@@ -536,12 +575,13 @@ WlSessionLockSurface {
                 color: settingsMouse.containsMouse ? theme.cardHover : "transparent"
                 radius: 24
 
-                Text {
+                OpticallyCenteredText {
                     anchors.centerIn: parent
                     text: "󰒓"
                     color: theme.text
                     font.family: theme.fontFamily
                     font.pixelSize: 18
+                    opticalCenterX: false
                 }
 
                 MouseArea {

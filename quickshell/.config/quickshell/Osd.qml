@@ -8,6 +8,7 @@ PanelWindow {
     required property var systemData
     property string kind: "volume"
     property string action: ""
+    property double hideDeadline: 0
 
     ShellTheme { id: theme }
 
@@ -101,22 +102,30 @@ PanelWindow {
     }
 
     function show(requestedKind, requestedAction): void {
+        hideTimer.stop()
         kind = requestedKind
         action = requestedAction || ""
         visible = true
         card.opacity = 1
-        closeTimer.restart()
+        hideDeadline = Date.now() + 1500
     }
 
     Timer {
-        id: closeTimer
-        interval: 1500
-        onTriggered: card.opacity = 0
+        interval: 100
+        running: true
+        repeat: true
+        onTriggered: {
+            if (window.visible && window.hideDeadline > 0 && Date.now() >= window.hideDeadline) {
+                window.hideDeadline = 0
+                card.opacity = 0
+                hideTimer.restart()
+            }
+        }
     }
 
     Timer {
+        id: hideTimer
         interval: 160
-        running: card.opacity === 0 && window.visible
         onTriggered: window.visible = false
     }
 

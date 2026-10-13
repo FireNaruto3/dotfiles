@@ -8,7 +8,6 @@ Item {
     property string requestedPage: "bluetooth"
     property string currentPage: requestedPage
     property var pendingWifi: null
-    readonly property int enabledDisplayCount: quickData.displays.filter(display => display.enabled).length
 
     implicitWidth: 460
     implicitHeight: 590
@@ -249,12 +248,6 @@ Item {
                     selected: root.currentPage === "audio"
                     onClicked: root.currentPage = "audio"
                 }
-                CategoryButton {
-                    label: "Displays"
-                    icon: "󰍹"
-                    selected: root.currentPage === "displays"
-                    onClicked: root.currentPage = "displays"
-                }
             }
 
             Rectangle { width: parent.width; height: 1; color: theme.border }
@@ -265,8 +258,7 @@ Item {
                     - (errorText.visible ? errorText.implicitHeight + parent.spacing : 0)
                 sourceComponent: root.currentPage === "network" ? networkPage
                     : (root.currentPage === "bluetooth" ? bluetoothPage
-                    : (root.currentPage === "audio" ? audioPage
-                    : displaysPage))
+                    : audioPage)
             }
 
             Text {
@@ -503,62 +495,6 @@ Item {
                         active: modelData.active
                         enabled: !root.quickData.busy
                         onClicked: root.quickData.run("audio-default", [modelData.id])
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: displaysPage
-
-        Flickable {
-            clip: true
-            contentHeight: displaysColumn.implicitHeight
-            boundsBehavior: Flickable.StopAtBounds
-
-            Column {
-                id: displaysColumn
-                width: parent.width
-                spacing: 8
-
-                Repeater {
-                    model: root.quickData.displays
-                    Column {
-                        id: display
-                        required property var modelData
-                        width: parent.width
-                        spacing: 6
-
-                        ActionRow {
-                            label: display.modelData.label || display.modelData.name
-                            detail: display.modelData.name
-                            icon: "󰍹"
-                            active: display.modelData.enabled
-                            showSwitch: true
-                            enabled: !root.quickData.busy
-                                && (!display.modelData.enabled || root.enabledDisplayCount > 1)
-                            onClicked: root.quickData.run("display-power", [
-                                display.modelData.name, display.modelData.enabled ? "off" : "on"
-                            ])
-                        }
-                        Row {
-                            visible: display.modelData.enabled
-                            spacing: 7
-                            Repeater {
-                                model: display.modelData.modes
-                                ChoiceButton {
-                                    required property var modelData
-                                    label: modelData.label
-                                    selected: modelData.active
-                                    enabled: !root.quickData.busy
-                                    onClicked: root.quickData.run("display-mode", [
-                                        display.modelData.name, modelData.value
-                                    ])
-                                }
-                            }
-                        }
-                        Rectangle { width: parent.width; height: 1; color: theme.border }
                     }
                 }
             }

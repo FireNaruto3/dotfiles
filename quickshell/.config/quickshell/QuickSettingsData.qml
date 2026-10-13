@@ -17,7 +17,6 @@ QtObject {
     readonly property var bluetoothDevices: values.bluetooth_devices || []
     readonly property var sinks: values.sinks || []
     readonly property var sources: values.sources || []
-    readonly property var displays: values.displays || []
     readonly property var vpns: values.vpns || []
 
     onMonitoringChanged: {

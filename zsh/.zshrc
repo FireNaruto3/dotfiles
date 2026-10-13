@@ -122,3 +122,4 @@ eval "$(starship init zsh)"
 fastfetch
 # Created by `pipx` on 2026-07-06 02:36:49
 export PATH="$PATH:$HOME/.local/bin"
+. "$HOME/.deno/env"
