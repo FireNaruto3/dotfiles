@@ -43,7 +43,7 @@ and recovery, see [Login And Session Guide](LoginAndSession.md).
 |-----------|--------------------------|
 | Ubuntu | 26.04.1 LTS |
 | Niri | 26.04 (`v26.04-36-g49fc6117` tested) |
-| Quickshell | 0.3.1 tested |
+| Quickshell | 0.3.2 tested |
 | GNU Stow | 2.4.1 tested |
 | Matugen | 4.2.0 pinned for installation |
 | Ly | 1.5.0 (`bccddcda3290c6286b5cb6e5eea9910d65c5f178`) |
@@ -51,7 +51,7 @@ and recovery, see [Login And Session Guide](LoginAndSession.md).
 | Neovim | 0.13 development build tested; lazy.nvim itself requires Neovim 0.8+ |
 | lazy.nvim | `85c7ff3711b730b4030d03144f6db6375044ae82` (11.17.5), pinned in bootstrap and lockfile |
 | Flameshot | 14, installed as `~/.local/bin/flameshot-v14` |
-| OpenCode | 1.18.32 tested |
+| OpenCode | 2.0.30 tested |
 
 These are reproducibility notes, not claims that every version is packaged by
 Ubuntu. Niri, Quickshell, Ly, Matugen, awww, Resources, ASUS Linux utilities,
