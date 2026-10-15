@@ -27,7 +27,6 @@ jobs:
             quickshell/.config/quickshell/scripts/lock.sh \
             system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
             system/usr/lib/systemd/system-sleep/asus-power-profile-sync \
-            system/usr/lib/systemd/system-sleep/quiet-resume-console \
             system/usr/libexec/asus-power-profile-sync \
             system/usr/libexec/quickshell-secure-suspend
 
@@ -36,8 +35,7 @@ jobs:
           shellcheck quickshell/.config/quickshell/scripts/*.sh \
             scripts/.local/bin/gpu-mode \
             system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
-            system/usr/lib/systemd/system-sleep/asus-power-profile-sync \
-            system/usr/lib/systemd/system-sleep/quiet-resume-console
+            system/usr/lib/systemd/system-sleep/asus-power-profile-sync
           shellcheck --exclude=SC1007 tests/gpu-mode.sh tests/asus-power-profile-sync.sh
           shellcheck --exclude=SC2086 system/usr/libexec/asus-power-profile-sync \
             system/usr/libexec/quickshell-secure-suspend

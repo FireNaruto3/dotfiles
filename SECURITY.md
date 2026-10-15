@@ -34,10 +34,10 @@ other live credentials in an issue, pull request, or log attachment.
   sufficient.
 - The tracked `system/` files require root installation and affect login,
   keyring startup, sleep, critical-battery shutdown, PAM, system-wide user units,
-  ASUS power-profile selection, kernel modules, keyboard-backlight restoration,
-  and resume-console output. UPower is configured to power off at 2%, after 20%
-  low and 5% critical thresholds, because hibernation is unavailable under
-  kernel lockdown.
+  ASUS power-profile selection, kernel modules, and keyboard-backlight
+  restoration. UPower is configured to power off at 2%, after 20% low and 5%
+  critical thresholds, because hibernation is unavailable under kernel
+  lockdown.
 - `asusctl` commands mutate daemon-owned files under `/etc/asusd`. The setup
   disables the keyboard firmware's sleep animation while retaining boot,
   awake, and shutdown lighting; fan curves, charge limits, and other ASUS state

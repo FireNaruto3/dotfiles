@@ -12,10 +12,15 @@ linking anything into `$HOME` or installing the root-owned files. In particular,
 the display, ASUS, NVIDIA, NetBird, Git, OpenCode, and Waypaper stylesheet
 settings may not suit another machine.
 
-For the runtime process and data flow, see [How Everything Works](HowEverythingWorks.md).
-For the root-installed policy inventory, see [System Changes](SystemChanges.md).
+For the runtime process and data flow, see
+[How Everything Works](documentation/HowEverythingWorks.md).
+For the root-installed policy inventory, see
+[System Changes](documentation/SystemChanges.md).
 For a guided explanation of Ly, PAM, keyring, portals, locking, package cleanup,
-and recovery, see [Login And Session Guide](LoginAndSession.md).
+and recovery, see
+[Login And Session Guide](documentation/LoginAndSession.md).
+For the tracked OpenCode configuration, agents, skills, and permissions, see
+[How OpenCode Works](documentation/HowOpencodeWorks.md).
 
 ## Screenshots
 
@@ -130,7 +135,7 @@ attributes use `asusctl`/`asusd`.
 |--------|-------------|
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
 | Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power drawers |
-| System policy | Ly and login PAM, logind and UPower policy, lock PAM and services, fail-closed suspend, ASUS profile/backlight resume hooks, console suppression, and NVIDIA module options |
+| System policy | Ly and login PAM, logind and UPower policy, lock PAM and services, fail-closed suspend, ASUS profile/backlight resume hooks, and NVIDIA module options |
 | Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
 | Mako | Compact notifications with urgency-colored borders |
@@ -144,7 +149,7 @@ attributes use `asusctl`/`asusd`.
 | Fastfetch | Custom system-information layout and ASCII art |
 | Git | Shared Git settings with identity loaded from an untracked local include |
 | Scripts | Reboot-only ASUS graphics-mode switching command |
-| OpenCode | Model selection and global engineering instructions |
+| OpenCode | Default model and agent, Context7 MCP integration, global instructions, specialized agents, reusable skills, update policy, and permissions |
 
 Legacy tracked Waybar and SwayOSD packages have been removed. The active session
 uses Niri and Quickshell's bar and OSD.
@@ -486,13 +491,20 @@ The `autostart` package is machine-specific because it starts NetBird UI and
 suppresses Blueman's packaged applet with a minimal `Hidden=true` override.
 Bluetooth management remains available from the Quickshell bar.
 
-The `opencode` package is global user configuration. It currently selects
-`openai/gpt-5.6-sol` and installs global engineering instructions from
-`~/.config/opencode/AGENTS.md`; those instructions affect OpenCode sessions in
-other repositories. Review the model name, provider authentication, data
-handling, costs, instruction scope, and the upstream OpenCode package before
-stowing it. Restart OpenCode after changing its config because running sessions
-do not reload it.
+The `opencode` package is global user configuration. It selects
+`openai/gpt-5.6-sol` with the built-in `build` agent by default, configures the
+Context7 MCP server, disables session sharing, enables automatic updates and
+context compaction, and installs global engineering instructions from
+`~/.config/opencode/AGENTS.md`. It also provides four custom agents and two
+skills. These settings and instructions affect OpenCode sessions in other
+repositories. Review the model name, provider authentication, data handling,
+costs, automatic-update policy, instruction scope, and upstream OpenCode
+package before stowing it. OpenCode V2 watches instruction and command sources;
+if a broader configuration change appears stale, start a new session or use
+`opencode service restart` as a troubleshooting step rather than assuming every
+edit requires a restart. See
+[`documentation/HowOpencodeWorks.md`](documentation/HowOpencodeWorks.md) for the
+tracked configuration and its permission implications.
 
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
 use that location. Generated themes are written to `~/.cache/matugen` rather
@@ -588,10 +600,6 @@ sudo install --backup=numbered -D -o root -g root -m 0755 \
   /usr/lib/systemd/system-sleep/asus-power-profile-sync
 
 sudo install --backup=numbered -D -o root -g root -m 0755 \
-  system/usr/lib/systemd/system-sleep/quiet-resume-console \
-  /usr/lib/systemd/system-sleep/quiet-resume-console
-
-sudo install --backup=numbered -D -o root -g root -m 0755 \
   system/usr/libexec/quickshell-secure-suspend \
   /usr/libexec/quickshell-secure-suspend
 
@@ -625,7 +633,8 @@ asusctl aura power keyboard --boot --awake --shutdown
 ```
 
 The Aura command and Quickshell's charge-limit control update mutable files
-under `/etc/asusd`; they do not install repository copies. `SystemChanges.md`
+under `/etc/asusd`; they do not install repository copies.
+`documentation/SystemChanges.md`
 records a dated machine-local snapshot and distinguishes it from reproducible
 policy. Review those settings separately when provisioning another machine.
 
@@ -660,7 +669,6 @@ sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
   quickshell/.config/quickshell/scripts/lock.sh \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   system/usr/lib/systemd/system-sleep/asus-power-profile-sync \
-  system/usr/lib/systemd/system-sleep/quiet-resume-console \
   system/usr/libexec/asus-power-profile-sync \
   system/usr/libexec/quickshell-secure-suspend
 bash tests/gpu-mode.sh

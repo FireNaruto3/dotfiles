@@ -2,7 +2,7 @@
 
 This document explains the runtime architecture of the desktop managed by this
 repository: which process starts each component, how data moves between them,
-which state is persistent, and what happens when something fails. `README.md`
+which state is persistent, and what happens when something fails. `../README.md`
 contains installation and usage instructions. `SystemChanges.md` inventories
 root-installed policy and machine-local ASUS state.
 
@@ -58,8 +58,11 @@ Rofi, Ghostty, and the user scripts run from these user-owned links.
 
 The `system/` directory is different. Its files are source copies for
 root-owned destinations under `/etc` and `/usr`. They have no system effect
-until they are installed with the commands and modes in `README.md`. Editing a
+until they are installed with the commands and modes in `../README.md`. Editing a
 repository copy does not automatically update its installed counterpart.
+
+The installed copies were compared with the repository on 2026-10-15. Every
+documented root-owned copy matched its repository source and documented mode.
 
 Ly's tracked files follow that rule: `system/etc/ly/config.ini` installs to
 `/etc/ly/config.ini`, and `system/etc/pam.d/ly` installs to `/etc/pam.d/ly`.
@@ -313,8 +316,9 @@ After successful authentication, the shell releases the Wayland lock, waits
 150 ms, and exits. Failed authentication keeps the lock active and reports an
 incorrect-password, maximum-attempt, or PAM-service error.
 
-The lock screen polls Caps Lock every 500 ms and UPower battery state every ten
-seconds. It does not run the normal shell's heavier system polling.
+The lock screen polls Caps Lock every 500 ms and receives battery state from
+Quickshell's `UPower.displayDevice` service object. It does not run the normal
+shell's heavier system polling.
 
 ## Idle, Suspend, And Resume
 
@@ -372,11 +376,6 @@ Backlight save or restore failures are nonfatal; they must not prevent the
 machine from sleeping or waking. The persistent Aura policy separately disables
 the firmware sleep animation while retaining boot, awake, and shutdown
 lighting.
-
-A separate system-sleep hook temporarily limits the visible kernel console to
-critical messages while the machine sleeps and restores its previous level
-after resume. Resume diagnostics remain in the journal, but transient ASUS ACPI
-firmware errors no longer appear before Niri redraws the lock screen.
 
 ## Power And Battery Management
 

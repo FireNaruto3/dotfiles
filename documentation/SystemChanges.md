@@ -19,9 +19,11 @@ machine-local snapshot; it is not presented as repository-managed policy.
   are not copied from this repository and must be reviewed or recreated on a
   new installation.
 
-## Installed Root-Level Changes
+## Tracked Root-Level Changes
 
-The following repository copies are installed as root-owned files.
+The following repository copies are intended to be installed as root-owned
+files. On 2026-10-15, all listed installed copies matched their repository
+sources and documented modes.
 
 | Repository source | Installed path | Mode | Purpose |
 |---|---|---:|---|
@@ -36,7 +38,6 @@ The following repository copies are installed as root-owned files.
 | `system/etc/systemd/system/asus-power-profile-sync.service` | `/etc/systemd/system/asus-power-profile-sync.service` | `0644` | Configure and reconcile ASUS AC and battery profiles |
 | `system/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `/usr/lib/systemd/system-sleep/asus-keyboard-backlight` | `0755` | Keyboard-backlight restoration |
 | `system/usr/lib/systemd/system-sleep/asus-power-profile-sync` | `/usr/lib/systemd/system-sleep/asus-power-profile-sync` | `0755` | ASUS profile reconciliation after resume |
-| `system/usr/lib/systemd/system-sleep/quiet-resume-console` | `/usr/lib/systemd/system-sleep/quiet-resume-console` | `0755` | Suppress transient firmware errors on the visible resume console |
 | `system/usr/libexec/asus-power-profile-sync` | `/usr/libexec/asus-power-profile-sync` | `0755` | Apply the ASUS profile matching the current power source |
 | `system/usr/libexec/quickshell-secure-suspend` | `/usr/libexec/quickshell-secure-suspend` | `0755` | Find the active Wayland user and request a secure lock |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
@@ -93,12 +94,6 @@ removes the runtime state. Save and restore errors are intentionally non-fatal.
 The persistent ASUS Aura policy disables the keyboard's firmware sleep animation
 while retaining boot, awake, and shutdown lighting; apply it with
 `asusctl aura power keyboard --boot --awake --shutdown`.
-
-`quiet-resume-console` saves the current kernel console log level, temporarily
-limits the visible console to critical messages across sleep, and restores the
-previous level after resume. Kernel and firmware messages remain available in
-the journal; this only prevents the ACPI firmware error burst from appearing
-before Niri regains DRM access and redraws the lock screen.
 
 The `systemd-suspend.service` drop-in runs `quickshell-secure-suspend` before
 suspend. The helper locates an active local Wayland session and starts the
@@ -174,11 +169,11 @@ be replaced by a later power-source event or resume reconciliation.
 The ASUS daemon owns `/etc/asusd/*.ron`. These files are machine-local runtime
 configuration, not source files installed from this repository. The tracked
 `asus-power-profile-sync.service` reproducibly sets the AC and battery profile
-defaults and reconciles the active profile; the Aura command in `README.md`
+defaults and reconciles the active profile; the Aura command in `../README.md`
 reproducibly sets only the keyboard power-state policy. Quickshell can
 subsequently change the charge limit and keyboard brightness through `asusctl`.
 
-Observed state on 2026-09-29:
+Observed state reverified on 2026-10-15:
 
 - `/etc/asusd/asusd.ron` uses an 80% charge limit, disables NVIDIA powerd on
   battery, links platform profiles to EPP, selects Balanced on AC and Quiet on
@@ -291,7 +286,7 @@ the ownership and mode listed above. Then apply the relevant operation:
 | UPower policy | `sudo systemctl restart upower.service` |
 | System or user unit | `sudo systemctl daemon-reload` or `systemctl --user daemon-reload`, as applicable |
 | ASUS profile policy | `sudo systemctl enable --now asus-power-profile-sync.service` |
-| Removed hibernation policy | Move the obsolete file aside with the guarded commands in `README.md` |
+| Removed hibernation policy | Move the obsolete file aside with the guarded commands in `../README.md` |
 | ASUS NVIDIA module policy | Regenerate the initramfs when applicable, then reboot before relying on changed module options |
 | Ly configuration | `/usr/bin/ly --validate-config /etc/ly/config.ini`, then restart Ly only from a recovery TTY or reboot |
 | Ly PAM policy | Reboot or end the current login session; keep TTY1 available for rollback |

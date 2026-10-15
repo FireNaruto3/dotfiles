@@ -793,9 +793,10 @@ systemctl --user is-active xdg-desktop-portal-gtk.service
 pgrep -a xfce-polkit
 ```
 
-After the migration, these checks passed, the tracked Ly and PAM files matched
-their installed copies, no systemd units were failed, and the login/logout/login
-cycle worked.
+At migration time, these checks passed, the tracked Ly and PAM files matched
+their installed copies, no systemd units were failed, and the
+login/logout/login cycle worked. This is a historical migration result, not a
+claim about the current state of every unrelated system or user unit.
 
 Validation proves the tested state, not that future upgrades can never change
 behavior. Changes to Ubuntu, Niri, Quickshell, Ly, PAM, portals, or packages can
