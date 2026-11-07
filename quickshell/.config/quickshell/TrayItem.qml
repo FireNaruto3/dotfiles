@@ -74,8 +74,6 @@ Rectangle {
         onClicked: event => {
             if (root.trayItem.id === "software-update-available")
                 Quickshell.execDetached(["update-manager"])
-            else if (root.trayItem.title === "warp-taskbar")
-                Quickshell.execDetached(["warp-taskbar"])
             else if (event.button === Qt.RightButton || root.trayItem.onlyMenu)
                 root.showMenu()
             else if (event.button === Qt.MiddleButton)

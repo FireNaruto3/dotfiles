@@ -47,16 +47,97 @@ case ${1:-} in
         notify_osd showBrightness "${brightness%%%}"
         ;;
     keyboard)
-        keyboard_line=$(brightnessctl -d 'asus::kbd_backlight' -m 2>/dev/null) || exit 1
-        IFS=, read -r _ _ current _ maximum <<< "$keyboard_line"
-        levels=(off low med high)
         case ${2:-} in
-            raise) target=$((current < maximum ? current + 1 : maximum)) ;;
-            lower) target=$((current > 0 ? current - 1 : 0)) ;;
+            raise|lower)
+                keyboard_line=$(brightnessctl -d 'asus::kbd_backlight' -m 2>/dev/null) || exit 1
+                IFS=, read -r _ _ current _ maximum <<< "$keyboard_line"
+                levels=(off low med high)
+                if [[ ${2:-} == raise ]]; then
+                    target=$((current < maximum ? current + 1 : maximum))
+                else
+                    target=$((current > 0 ? current - 1 : 0))
+                fi
+                asusctl leds set "${levels[target]}"
+                notify_osd showKeyboard
+                ;;
+            effect-next)
+                asusctl aura effect --next-mode
+                mode=
+                while IFS= read -r path; do
+                    [[ $path == /xyz/ljones/aura/* ]] || continue
+                    mode_line=$(busctl get-property xyz.ljones.Asusd "$path" xyz.ljones.Aura LedMode 2>/dev/null) || continue
+                    mode=${mode_line#u }
+                    break
+                done < <(busctl tree xyz.ljones.Asusd --list --no-pager 2>/dev/null || true)
+                case $mode in
+                    0) mode_label="Static" ;;
+                    1) mode_label="Breathe" ;;
+                    2) mode_label="Rainbow Cycle" ;;
+                    3) mode_label="Rainbow Wave" ;;
+                    10) mode_label="Pulse" ;;
+                    *) mode_label="Changed" ;;
+                esac
+                notify_osd showKeyboardEffect "$mode_label"
+                ;;
             *) printf 'Invalid keyboard action: %s\n' "${2:-}" >&2; exit 2 ;;
         esac
-        asusctl leds set "${levels[target]}"
-        notify_osd showKeyboard
+        ;;
+    power-profile)
+        [[ ${2:-} == next ]] || {
+            printf 'Invalid power-profile action: %s\n' "${2:-}" >&2
+            exit 2
+        }
+        current_profile=$(powerprofilesctl get)
+        case $current_profile in
+            power-saver) target_profile=balanced ;;
+            balanced) target_profile=performance ;;
+            performance) target_profile=power-saver ;;
+            *) target_profile=balanced ;;
+        esac
+        powerprofilesctl set "$target_profile"
+        active_profile=$(powerprofilesctl get)
+        case $active_profile in
+            power-saver) profile_label="Power Saver" ;;
+            balanced) profile_label="Balanced" ;;
+            performance) profile_label="Performance" ;;
+            *) profile_label="$active_profile" ;;
+        esac
+        notify_osd showPowerProfile "$profile_label"
+        ;;
+    touchpad)
+        [[ ${2:-} == toggle ]] || {
+            printf 'Invalid touchpad action: %s\n' "${2:-}" >&2
+            exit 2
+        }
+        state_dir="$HOME/.cache/niri"
+        state_file="$state_dir/touchpad-disabled.kdl"
+        if [[ -e $state_file ]]; then
+            rm -f -- "$state_file"
+            if ! niri validate -c "$HOME/.config/niri/config.kdl" >/dev/null 2>&1 \
+                || ! niri msg action load-config-file >/dev/null; then
+                mkdir -p -- "$state_dir"
+                printf 'input {\n    touchpad {\n        off\n    }\n}\n' > "$state_file"
+                niri msg action load-config-file >/dev/null 2>&1 || true
+                printf 'Unable to enable the touchpad\n' >&2
+                exit 1
+            fi
+            touchpad_state="On"
+        else
+            mkdir -p -- "$state_dir"
+            temporary="$state_file.$$"
+            trap 'rm -f -- "$temporary"' EXIT HUP INT TERM
+            printf 'input {\n    touchpad {\n        off\n    }\n}\n' > "$temporary"
+            mv -f -- "$temporary" "$state_file"
+            if ! niri validate -c "$HOME/.config/niri/config.kdl" >/dev/null 2>&1 \
+                || ! niri msg action load-config-file >/dev/null; then
+                rm -f -- "$state_file"
+                niri msg action load-config-file >/dev/null 2>&1 || true
+                printf 'Unable to disable the touchpad\n' >&2
+                exit 1
+            fi
+            touchpad_state="Off"
+        fi
+        notify_osd showTouchpad "$touchpad_state"
         ;;
     media)
         case ${2:-} in
@@ -73,7 +154,7 @@ case ${1:-} in
         esac
         ;;
     *)
-        printf 'Usage: %s {volume raise|lower|mute|microphone mute|brightness raise|lower|keyboard raise|lower|media play-pause|play|pause|stop|previous|next}\n' "$0" >&2
+        printf 'Usage: %s {volume raise|lower|mute|microphone mute|brightness raise|lower|keyboard raise|lower|effect-next|power-profile next|touchpad toggle|media play-pause|play|pause|stop|previous|next}\n' "$0" >&2
         exit 2
         ;;
 esac

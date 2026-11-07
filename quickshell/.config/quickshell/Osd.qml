@@ -57,6 +57,17 @@ PanelWindow {
             return systemData.microphoneMuted ? "󰍭" : "󰍬"
         if (kind === "keyboard")
             return systemData.keyboardBrightness === 0 ? "󰌐" : "󰌌"
+        if (kind === "keyboard-effect")
+            return "󰌌"
+        if (kind === "power-profile") {
+            if (action === "Power Saver")
+                return "󰌪"
+            if (action === "Performance")
+                return "󰓅"
+            return "󰾅"
+        }
+        if (kind === "touchpad")
+            return action === "Off" ? "󰟸" : "󰟷"
         if (kind === "media") {
             if (action === "next")
                 return "󰒭"
@@ -88,6 +99,12 @@ PanelWindow {
             const levels = ["Off", "Low", "Medium", "High"]
             return `Keyboard light  ${levels[Math.max(0, Math.min(3, systemData.keyboardBrightness))]}`
         }
+        if (kind === "keyboard-effect")
+            return `Keyboard effect ${action || "Changed"}`
+        if (kind === "power-profile")
+            return `Power profile ${action || "Changed"}`
+        if (kind === "touchpad")
+            return `Touchpad ${action || "Changed"}`
         if (kind === "media")
             return activePlayer ? (activePlayer.trackTitle || activePlayer.identity || "Media") : "Media"
         if (kind === "lock")

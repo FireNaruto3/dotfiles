@@ -95,14 +95,6 @@ ShellRoot {
         id: niriSource
     }
 
-    Process {
-        command: [
-            "sh", "-c",
-            "pkill -TERM -f \"^$HOME/.local/bin/flameshot-v14$\" 2>/dev/null || true; sleep 0.25; exec \"$HOME/.local/bin/flameshot-v14\""
-        ]
-        running: true
-    }
-
     Osd {
         id: osd
 
@@ -184,6 +176,9 @@ ShellRoot {
         }
         function showMicrophone(): void { root.showOsd("microphone", "") }
         function showKeyboard(): void { root.showOsd("keyboard", "") }
+        function showKeyboardEffect(effect: string): void { root.showOsd("keyboard-effect", effect, false) }
+        function showPowerProfile(profile: string): void { root.showOsd("power-profile", profile, false) }
+        function showTouchpad(state: string): void { root.showOsd("touchpad", state, false) }
         function showPlayPause(): void { root.showOsd("media", "play-pause") }
         function showPlay(): void { root.showOsd("media", "play") }
         function showPause(): void { root.showOsd("media", "pause") }

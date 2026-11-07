@@ -71,6 +71,9 @@ input {
     focus-follows-mouse
 }
 
+// Fn+F10 writes this optional override to toggle the touchpad at runtime.
+include optional=true "~/.cache/niri/touchpad-disabled.kdl"
+
 
 // https://niri-wm.github.io/niri/Configuration:-Outputs
 output "Samsung Display Corp. ATNA40CU05-0  Unknown" {
@@ -181,8 +184,6 @@ spawn-sh-at-startup "$HOME/.config/matugen/apply-theme.sh --start mako"
 spawn-at-startup "awww-daemon"
 spawn-at-startup "/usr/libexec/xfce-polkit"
 spawn-at-startup "waypaper" "--restore" "--no-post-command"
-spawn-at-startup "wl-paste" "--type" "text" "--watch" "cliphist" "-max-items" "200" "store"
-spawn-at-startup "wl-paste" "--type" "image" "--watch" "cliphist" "-max-items" "200" "store"
 spawn-sh-at-startup "$HOME/.config/quickshell/scripts/display-control.sh set-brightness 50%"
 spawn-at-startup "swayidle" "-w" \
     "timeout" "270" "$HOME/.config/quickshell/scripts/display-control.sh save-brightness && $HOME/.config/quickshell/scripts/display-control.sh set-brightness 10%" "resume" "$HOME/.config/quickshell/scripts/display-control.sh restore-brightness" \
@@ -265,7 +266,6 @@ binds {
     Mod+S repeat=false hotkey-overlay-title="Open Quick Settings" { spawn-sh "qs ipc call panels toggleQuickSettings"; }
     Super+Alt+L allow-inhibiting=false hotkey-overlay-title="Lock the Screen: Quickshell" { spawn-sh "$HOME/.config/quickshell/scripts/lock.sh"; }
     Mod+W { spawn "sh" "-c" "pkill -x waypaper || waypaper"; }
-    Mod+Ctrl+V hotkey-overlay-title="Open clipboard history: Rofi" { spawn-sh "$HOME/.config/quickshell/scripts/clipboard-history.sh"; }
 
     //AUDIO and BRIGHTNESS
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh volume raise"; }
@@ -276,6 +276,10 @@ binds {
     XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh brightness lower"; }
     XF86KbdBrightnessUp   allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh keyboard raise"; }
     XF86KbdBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh keyboard lower"; }
+    XF86Launch3 repeat=false allow-when-locked=true hotkey-overlay-title="Cycle keyboard lighting effect" { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh keyboard effect-next"; }
+    XF86Launch4 repeat=false allow-when-locked=true hotkey-overlay-title="Cycle power profile" { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh power-profile next"; }
+    XF86TouchpadToggle repeat=false allow-when-locked=true hotkey-overlay-title="Toggle touchpad" { spawn-sh "$HOME/.config/quickshell/scripts/osd-control.sh touchpad toggle"; }
+    XF86Sleep repeat=false allow-inhibiting=false hotkey-overlay-title="Lock the Screen: Quickshell" { spawn-sh "$HOME/.config/quickshell/scripts/lock.sh"; }
 
     //MEDIA
     // Example media keys mapping using playerctl, this will work with any MPRIS-enabled media player.
@@ -287,7 +291,7 @@ binds {
 
 
     //SCREENSHOT
-    F6 hotkey-overlay-title="Capture and annotate a screenshot: Flameshot" { spawn-sh "$HOME/.local/bin/flameshot-v14 gui"; }
+    Mod+Shift+S repeat=false hotkey-overlay-title="Take a Screenshot" { screenshot; }
 
     //FOCUS WINDOWS
     Mod+H     { focus-column-left; }

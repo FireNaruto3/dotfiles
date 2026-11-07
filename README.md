@@ -12,13 +12,10 @@ linking anything into `$HOME` or installing the root-owned files. In particular,
 the display, ASUS, NVIDIA, NetBird, Git, OpenCode, and Waypaper stylesheet
 settings may not suit another machine.
 
-For the runtime process and data flow, see
-[How Everything Works](documentation/HowEverythingWorks.md).
+For login, runtime data flow, locking, suspend, and recovery, see
+[Desktop Architecture](documentation/DesktopArchitecture.md).
 For the root-installed policy inventory, see
 [System Changes](documentation/SystemChanges.md).
-For a guided explanation of Ly, PAM, keyring, portals, locking, package cleanup,
-and recovery, see
-[Login And Session Guide](documentation/LoginAndSession.md).
 For the tracked OpenCode configuration, agents, skills, and permissions, see
 [How OpenCode Works](documentation/HowOpencodeWorks.md).
 
@@ -55,12 +52,11 @@ For the tracked OpenCode configuration, agents, skills, and permissions, see
 | Zig | 0.17.0 for building Ly 1.5.0 |
 | Neovim | 0.13 development build tested; lazy.nvim itself requires Neovim 0.8+ |
 | lazy.nvim | `85c7ff3711b730b4030d03144f6db6375044ae82` (11.17.5), pinned in bootstrap and lockfile |
-| Flameshot | 14, installed as `~/.local/bin/flameshot-v14` |
 | OpenCode | 2.0.30 tested |
 
 These are reproducibility notes, not claims that every version is packaged by
 Ubuntu. Niri, Quickshell, Ly, Matugen, awww, Resources, ASUS Linux utilities,
-OpenCode, and Flameshot 14 may require their upstream repositories or release
+and OpenCode may require their upstream repositories or release
 artifacts. Verify signatures or checksums and follow each upstream project's
 Ubuntu instructions.
 
@@ -69,11 +65,10 @@ Ubuntu instructions.
 | `git`, GNU Stow | Clone and deploy the repository |
 | `niri` | Scrollable-tiling Wayland compositor |
 | Ly 1.5.0, Zig 0.17.0, `build-essential`, `libpam0g-dev`, `libaudit-dev` | TTY display manager and its pinned Wayland-only build toolchain |
+| `console-setup` | HiDPI-scaled Linux console font for Ly and the recovery TTYs |
 | `quickshell` | Per-output bar, OSD, dashboards, lock screen, and power controls |
 | `ghostty` | Terminal emulator |
 | `rofi` | Application launcher |
-| `wl-clipboard` + `cliphist` | Wayland clipboard access and searchable clipboard history |
-| Flameshot 14 | Screenshot capture and annotation; installed separately as `~/.local/bin/flameshot-v14` |
 | `mako` | Notifications and do-not-disturb mode |
 | `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, GNOME Keyring | Preferred portal backend, GTK Access/Notification fallback, and Secret portal |
 | `xfce-polkit` | Graphical PolicyKit authentication agent started by Niri |
@@ -91,7 +86,7 @@ Ubuntu instructions.
 | Rust/Cargo | Install the pinned Matugen release |
 | Python 3, ShellCheck | Local validation matching GitHub Actions |
 | JetBrains Mono Nerd Font, Papirus | Shell glyphs and Rofi icon theme |
-| Zsh, Oh My Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell and prompt configured by the recommended Stow set |
+| Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell, native completion, and prompt configured by the recommended Stow set |
 | Neovim, Tmux, OpenCode | Editor, terminal multiplexer, and coding agent configured by the recommended Stow set |
 
 The optional `autostart` package expects NetBird UI to be installed. Before
@@ -104,7 +99,7 @@ deploying, use this Ubuntu checklist:
 - Confirm `niri`, `qs`, `stow`, `git`, `bash`, `sh`, `jq`, `python3`,
   `shellcheck`, `brightnessctl`, `wpctl`, `playerctl`, `upower`,
   `powerprofilesctl`,
-  `nmcli`, `bluetoothctl`, `makoctl`, `cliphist`, `wl-paste`, `waypaper`,
+  `nmcli`, `bluetoothctl`, `makoctl`, `waypaper`,
   `awww-daemon`, `swayidle`, `rofi`, `wlogout`, `busctl`, `flock`, `logger`,
   `loginctl`, `notify-send`, `pgrep`, `pkill`, `runuser`, `setsid`, `systemctl`,
   and `timeout` are on `PATH`.
@@ -115,8 +110,6 @@ deploying, use this Ubuntu checklist:
   starting the session.
 - Install compatible `asusctl`/`asusd` only on supported ASUS hardware. Do not
   install the repository's module or sleep policy on unrelated systems.
-- Install Flameshot 14 at the configured path, or change the Niri and
-  Quickshell references together.
 - Review optional packages (`autostart`, `git`, and `opencode`) before stowing
   them because they have machine-wide or account-wide effects.
 
@@ -141,10 +134,9 @@ attributes use `asusctl`/`asusd`.
 | Mako | Compact notifications with urgency-colored borders |
 | Waypaper + Matugen | Wallpaper picker and coordinated wallpaper-derived desktop palette |
 | Wlogout | Wallpaper-themed logout and power actions |
-| Flameshot | Flameshot 14 configuration; the executable is installed separately |
 | Autostart | Machine-specific NetBird UI launcher and Blueman applet suppression |
 | Neovim | Lua configuration using `lazy.nvim`, Snacks, Oil, Neogit, and Gitsigns |
-| Zsh | Oh My Zsh, syntax highlighting, and Starship |
+| Zsh | Native completion, syntax highlighting, and Starship |
 | Tmux | Vi copy mode, mouse support, and a minimal status line |
 | Fastfetch | Custom system-information layout and ASCII art |
 | Git | Shared Git settings with identity loaded from an untracked local include |
@@ -158,15 +150,15 @@ uses Niri and Quickshell's bar and OSD.
 
 Each output gets a bar. It starts as a segmented vertical rail on the left and
 can be switched to a top horizontal layout for the running session. Both
-orientations provide workspace navigation, a system tray, clipboard history,
-Quick Settings, Bluetooth and network status, volume and brightness controls,
+orientations provide workspace navigation, a system tray, Quick Settings,
+Bluetooth and network status, volume and brightness controls,
 live CPU/RAM indicators, battery status, and a wlogout launcher. CPU and RAM
 both toggle Resources. The CPU tooltip adds AMD `k10temp/Tctl` temperature when
 available; RAM shows used and total GB. The displayed application is the active
 window on that output's active workspace.
 
-The vertical rail orders orientation, clipboard, Quick Settings, Bluetooth,
-network, volume, brightness, CPU, RAM, battery, clock, and power controls from
+The vertical rail orders orientation, Quick Settings, Bluetooth, network,
+volume, brightness, CPU, RAM, battery, clock, and power controls from
 top to bottom beneath its app/tray area. The horizontal layout places
 workspaces, clock, and tray on the left, the active window in the center, and
 CPU/RAM plus the same controls on the right. The dedicated Quick Settings button
@@ -175,8 +167,8 @@ is the only bar control highlighted while that drawer is open.
 The clock drawer contains MPRIS artwork and transport controls, Mako DND,
 uptime, and a navigable calendar. The unified quick-settings drawer orders its
 Bluetooth, network, and audio pages to match the bar controls. It opens
-from its dedicated button immediately after clipboard history, from the related
-status buttons, or with **Mod+S**; Bluetooth is the default page. Wi-Fi supports
+from its dedicated button, from the related status buttons, or with **Mod+S**;
+Bluetooth is the default page. Wi-Fi supports
 saved, open, and password-protected networks plus VPN/WireGuard toggles;
 Bluetooth manages paired devices; Audio selects and mutes input/output devices.
 The brightness and battery buttons open a separate power drawer for the active
@@ -187,8 +179,8 @@ horizontal bar.
 Ly authenticates on TTY2 and launches the packaged `niri-session` Wayland entry;
 TTY1 remains a recovery console. At session start, Niri generates the current
 wallpaper palette before launching Quickshell and Mako, then launches the
-PolicyKit agent, `awww-daemon`, Waypaper restoration, text and image clipboard
-watchers, and `swayidle`. Changing the wallpaper regenerates
+PolicyKit agent, `awww-daemon`, Waypaper restoration, and `swayidle`. Changing
+the wallpaper regenerates
 colors for Quickshell, Niri, Mako, Rofi, Ghostty, Waypaper, and Wlogout.
 Generated cache files use the fixed `~/.cache/matugen` directory because the
 Matugen output configuration and desktop consumers must agree on literal paths;
@@ -196,8 +188,7 @@ Matugen output configuration and desktop consumers must agree on literal paths;
 generated files, Mako and Ghostty reload immediately, new Rofi and Wlogout
 instances use the new palette, and the wallpaper hook restarts an open Waypaper
 window because its GTK CSS provider does not watch the generated stylesheet.
-Quickshell owns the Flameshot tray process. XDG
-autostart starts NetBird UI and suppresses the Blueman applet; Bluetooth
+XDG autostart starts NetBird UI and suppresses the Blueman applet; Bluetooth
 management remains available from the bar.
 
 ## Power Behavior
@@ -321,8 +312,7 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Super+Alt+L` | Lock the session |
 | `Mod+Q` | Close the focused window |
 | `Mod+O` | Toggle the Niri overview |
-| `F6` | Capture and annotate a screenshot with Flameshot |
-| `Mod+Ctrl+V` | Open clipboard history in Rofi |
+| `Fn+F6` (`Mod+Shift+S`) | Open Niri's interactive screenshot UI |
 
 ### Focus and Movement
 
@@ -390,8 +380,9 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 These hardware keys remain active while the session is locked, except that the
 microphone key can only mute an active microphone and cannot unmute it. The
 normal Quickshell instance shows a bottom-center OSD on the focused output for
-volume, microphone mute, display brightness, keyboard-backlight level, media
-actions, and Caps/Num/Scroll Lock changes while the session is unlocked.
+volume, microphone mute, display brightness, keyboard-backlight level and
+lighting effect, power profile, touchpad state, media actions, and
+Caps/Num/Scroll Lock changes while the session is unlocked.
 
 | Keybind | Action |
 |---------|--------|
@@ -403,6 +394,10 @@ actions, and Caps/Num/Scroll Lock changes while the session is unlocked.
 | `XF86MonBrightnessDown` (brightness down) | Lower the runtime-selected display backlight |
 | `XF86KbdBrightnessUp` (keyboard light up) | Raise the ASUS keyboard-backlight level |
 | `XF86KbdBrightnessDown` (keyboard light down) | Lower the ASUS keyboard-backlight level |
+| `Fn+F4` (`XF86Launch3`, Aura key) | Cycle through the ASUS keyboard's supported lighting effects |
+| `Fn+F5` (`XF86Launch4`, fan key) | Cycle through Power Saver, Balanced, and Performance profiles |
+| `Fn+F10` (`XF86TouchpadToggle`) | Toggle the touchpad |
+| `Fn+F11` (`XF86Sleep`) | Securely lock the session |
 | `XF86AudioPlay` / `XF86AudioPause` | Toggle playback through `playerctl` |
 | `XF86AudioStop` | Stop playback through `playerctl` |
 | `XF86AudioPrev` | Play the previous track through `playerctl` |
@@ -420,9 +415,8 @@ actions, and Caps/Num/Scroll Lock changes while the session is unlocked.
 
 The desktop scripts do not implement custom analytics or telemetry. They do
 read local process, hardware, battery, media-player, network, Bluetooth, and
-window metadata to render the shell. `cliphist` stores copied text and images
-locally, so its database can contain sensitive clipboard contents. The lock
-screen sends credentials only to the local PAM conversation. Ly uses its own
+window metadata to render the shell. The lock screen sends credentials only to
+the local PAM conversation. Ly uses its own
 tracked PAM service for login and starts GNOME Keyring with the authenticated
 password; this is separate from the narrower `quickshell-lock` PAM policy.
 
@@ -442,11 +436,11 @@ git clone https://github.com/FireNaruto3/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # Preview links and stop on conflicts before changing $HOME.
-stow --no-folding --simulate niri quickshell matugen flameshot ghostty nvim \
+stow --no-folding --simulate niri quickshell matugen ghostty nvim \
   rofi mako wlogout fastfetch starship tmux zsh waypaper scripts
 
 # Run only after reviewing the preview and backing up conflicting files.
-stow --no-folding niri quickshell matugen flameshot ghostty nvim rofi mako \
+stow --no-folding niri quickshell matugen ghostty nvim rofi mako \
   wlogout fastfetch starship tmux zsh waypaper scripts
 ```
 
@@ -495,10 +489,10 @@ The `opencode` package is global user configuration. It selects
 `openai/gpt-5.6-sol` with the built-in `build` agent by default, configures the
 Context7 MCP server, disables session sharing, enables automatic updates and
 context compaction, and installs global engineering instructions from
-`~/.config/opencode/AGENTS.md`. It also provides four custom agents and two
-skills. These settings and instructions affect OpenCode sessions in other
-repositories. Review the model name, provider authentication, data handling,
-costs, automatic-update policy, instruction scope, and upstream OpenCode
+`~/.config/opencode/AGENTS.md`. It also provides five custom agents, five
+commands, and six skills. These settings and instructions affect OpenCode
+sessions in other repositories. Review the model name, provider authentication,
+data handling, costs, automatic-update policy, instruction scope, and upstream OpenCode
 package before stowing it. OpenCode V2 watches instruction and command sources;
 if a broader configuration change appears stale, start a new session or use
 `opencode service restart` as a troubleshooting step rather than assuming every
@@ -509,15 +503,12 @@ tracked configuration and its permission implications.
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
 use that location. Generated themes are written to `~/.cache/matugen` rather
 than an `XDG_CACHE_HOME` override. Waypaper 2.8 does not expand `~` in its
-`stylesheet` setting, and Flameshot stores an absolute screenshot directory;
-both paths are account-specific and must be updated if the account home changes.
+`stylesheet` setting, so that account-specific path must be updated if the
+account home changes.
 
-Flameshot 14 must be installed separately at `~/.local/bin/flameshot-v14`; the
-`flameshot` Stow package supplies configuration only. Ubuntu's packaged 13.3
-release crops captures on the laptop's 1.75-scale display. Quickshell starts the
-tray process, and `F6` runs `flameshot-v14 gui`. Niri's built-in screenshot path
-is configured under `~/Pictures/Screenshots`, but no built-in screenshot action
-is currently bound.
+`Fn+F6` opens Niri's built-in interactive screenshot UI. Captures are copied to
+the clipboard and saved under `~/Pictures/Screenshots` using the configured
+`screenshot-path`.
 
 Ly 1.5.0 is built as a Wayland-only display manager from the pinned Codeberg
 release at `https://codeberg.org/fairyglade/ly` with Zig 0.17.0. Ubuntu does not
@@ -546,6 +537,17 @@ sudo reboot
 
 After GDM has been purged, reinstall `gdm3` before using that rollback sequence.
 
+Ly runs directly on the Linux console, so Niri's fractional output scale does
+not apply to it. The tracked `console-setup` policy uses a 14x28 Terminus font
+on TTY1 through TTY6 for the laptop's 2880x1800 panel. Ly uses a wider login
+field and binds display brightness down/up to literal `F7`/`F8`, matching the
+keycap positions on the ROG Zephyrus G14. Hold `Fn` when the firmware's function
+row mode sends multimedia events instead of literal function keys. The Ly
+brightness helper resolves the connected eDP panel's backlight through sysfs so
+it does not adjust a disconnected GPU's backlight interface. `F6` toggles
+password visibility in Ly; Niri uses the firmware-emitted `Mod+Shift+S` from
+`Fn+F6` for screenshots instead of binding bare `F6`.
+
 System-wide files are tracked under `system/` and installed as root-owned
 copies rather than user-writable symlinks. GNU `install` uses numbered backups
 here so an existing destination is not silently discarded:
@@ -566,6 +568,14 @@ sudo install --backup=numbered -D -o root -g root -m 0644 \
 sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/ly/config.ini \
   /etc/ly/config.ini
+
+sudo install --backup=numbered -D -o root -g root -m 0644 \
+  system/etc/default/console-setup \
+  /etc/default/console-setup
+
+sudo install --backup=numbered -D -o root -g root -m 0755 \
+  system/usr/libexec/ly-brightness \
+  /usr/libexec/ly-brightness
 
 sudo install --backup=numbered -D -o root -g root -m 0644 \
   system/etc/pam.d/ly \
@@ -663,9 +673,8 @@ niri validate -c niri/.config/niri/config.kdl
 /usr/bin/ly --validate-config system/etc/ly/config.ini
 bash -n quickshell/.config/quickshell/scripts/*.sh \
   scripts/.local/bin/gpu-mode tests/gpu-mode.sh \
-  tests/asus-power-profile-sync.sh
-sh -n quickshell/.config/quickshell/scripts/clipboard-history.sh \
-  quickshell/.config/quickshell/scripts/launch-wlogout.sh \
+  tests/asus-power-profile-sync.sh system/usr/libexec/ly-brightness
+sh -n quickshell/.config/quickshell/scripts/launch-wlogout.sh \
   quickshell/.config/quickshell/scripts/lock.sh \
   system/usr/lib/systemd/system-sleep/asus-keyboard-backlight \
   system/usr/lib/systemd/system-sleep/asus-power-profile-sync \

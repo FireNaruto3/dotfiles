@@ -272,14 +272,6 @@ Item {
                 }
 
                 SystemButton {
-                    text: "󰅌"
-                    contentOffsetX: root.panel.iconOffset(text)
-                    tooltip: "Clipboard history"
-                    tooltipRight: false
-                    onClicked: Quickshell.execDetached(["sh", root.panel.clipboardScriptPath])
-                }
-
-                SystemButton {
                     id: quickSettingsButton
                     text: "󰒓"
                     contentOffsetX: root.panel.iconOffset(text)

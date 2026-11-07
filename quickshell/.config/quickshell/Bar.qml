@@ -21,7 +21,6 @@ PanelWindow {
     readonly property real edgeInputPadding: 10
     readonly property var currentWindow: niriData.focusedWindowFor(screen ? screen.name : "")
     readonly property string osdScriptPath: Qt.resolvedUrl("scripts/osd-control.sh").toString().replace("file://", "")
-    readonly property string clipboardScriptPath: Qt.resolvedUrl("scripts/clipboard-history.sh").toString().replace("file://", "")
     readonly property string wlogoutScriptPath: Qt.resolvedUrl("scripts/launch-wlogout.sh").toString().replace("file://", "")
     readonly property real drawerWidth: displayedView === "quickSettings" ? 460 : (displayedView === "clock" ? 440 : 350)
     readonly property real drawerHeight: displayedView === "clock"
@@ -497,14 +496,6 @@ PanelWindow {
                     opticalCenter: true
                     tooltip: "Move bar to top"
                     onClicked: bar.toggleOrientation()
-                }
-
-                SystemButton {
-                    width: 34
-                    text: "󰅌"
-                    opticalCenter: true
-                    tooltip: "Clipboard history"
-                    onClicked: Quickshell.execDetached(["sh", bar.clipboardScriptPath])
                 }
 
                 SystemButton {

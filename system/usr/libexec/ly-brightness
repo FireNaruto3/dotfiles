@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -u -o pipefail
+
+drm_class_path=${DRM_CLASS_PATH:-/sys/class/drm}
+backlight_class_path=${BACKLIGHT_CLASS_PATH:-/sys/class/backlight}
+brightnessctl=${BRIGHTNESSCTL:-/usr/bin/brightnessctl}
+
+internal_connector() {
+    local connector status
+    local -a connected=()
+
+    shopt -s nullglob
+    for connector in "$drm_class_path"/card*-eDP-*; do
+        read -r status < "$connector/status" || continue
+        [[ $status == connected ]] && connected+=("$connector")
+    done
+    shopt -u nullglob
+
+    if (( ${#connected[@]} != 1 )); then
+        printf 'Unable to identify the connected internal display connector\n' >&2
+        return 1
+    fi
+
+    printf '%s\n' "${connected[0]}"
+}
+
+backlight_device() {
+    local connector connector_path card card_device driver backlight backlight_path
+    local -a direct=() gpu=() all=()
+
+    connector=$(internal_connector) || return 1
+    connector_path=$(readlink -f "$connector") || return 1
+    card=${connector##*/}
+    card=${card%%-*}
+    card_device=$(readlink -f "$drm_class_path/$card/device") || return 1
+    driver=$(basename "$(readlink -f "$drm_class_path/$card/device/driver")")
+
+    shopt -s nullglob
+    for backlight in "$backlight_class_path"/*; do
+        all+=("${backlight##*/}")
+        backlight_path=$(readlink -f "$backlight") || continue
+        [[ $backlight_path == "$connector_path"/* ]] && direct+=("${backlight##*/}")
+        [[ $backlight_path == "$card_device"/* ]] && gpu+=("${backlight##*/}")
+    done
+    shopt -u nullglob
+
+    if (( ${#direct[@]} == 1 )); then
+        printf '%s\n' "${direct[0]}"
+    elif [[ $driver == nvidia && -d $backlight_class_path/nvidia_wmi_ec_backlight ]]; then
+        printf '%s\n' nvidia_wmi_ec_backlight
+    elif (( ${#gpu[@]} == 1 )); then
+        printf '%s\n' "${gpu[0]}"
+    elif (( ${#all[@]} == 1 )); then
+        printf '%s\n' "${all[0]}"
+    else
+        printf 'Unable to identify the internal display backlight unambiguously\n' >&2
+        return 1
+    fi
+}
+
+case ${1:-} in
+    device)
+        backlight_device
+        ;;
+    raise)
+        device=$(backlight_device) || exit 1
+        "$brightnessctl" -q -d "$device" set +10%
+        ;;
+    lower)
+        device=$(backlight_device) || exit 1
+        maximum=$(<"$backlight_class_path/$device/max_brightness")
+        "$brightnessctl" -q -d "$device" --min-value="$((maximum * 5 / 100))" set 10%-
+        ;;
+    *)
+        printf 'Usage: %s {device|raise|lower}\n' "$0" >&2
+        exit 2
+        ;;
+esac

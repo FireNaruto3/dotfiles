@@ -22,8 +22,8 @@ machine-local snapshot; it is not presented as repository-managed policy.
 ## Tracked Root-Level Changes
 
 The following repository copies are intended to be installed as root-owned
-files. On 2026-10-15, all listed installed copies matched their repository
-sources and documented modes.
+files. On 2026-11-07, every listed installed copy matched its repository source
+and documented mode.
 
 | Repository source | Installed path | Mode | Purpose |
 |---|---|---:|---|
@@ -31,6 +31,8 @@ sources and documented modes.
 | `system/etc/UPower/UPower.conf` | `/etc/UPower/UPower.conf` | `0644` | Critical-battery thresholds and power-off action |
 | `system/etc/pam.d/quickshell-lock` | `/etc/pam.d/quickshell-lock` | `0644` | Dedicated local-password PAM policy for the lock shell |
 | `system/etc/ly/config.ini` | `/etc/ly/config.ini` | `0644` | Ly TTY display-manager appearance, session discovery, and login behavior |
+| `system/etc/default/console-setup` | `/etc/default/console-setup` | `0644` | 14x28 Terminus font for the HiDPI virtual consoles |
+| `system/usr/libexec/ly-brightness` | `/usr/libexec/ly-brightness` | `0755` | Adjust the connected internal panel from Ly without guessing a backlight device |
 | `system/etc/pam.d/ly` | `/etc/pam.d/ly` | `0644` | Ly login stack and GNOME Keyring integration |
 | `system/etc/systemd/user/quickshell-lock-shell.service` | `/etc/systemd/user/quickshell-lock-shell.service` | `0644` | Own the lock-shell process until the user unlocks |
 | `system/etc/systemd/user/quickshell-secure-lock.service` | `/etc/systemd/user/quickshell-secure-lock.service` | `0644` | Bounded user-service lock acquisition |
@@ -41,6 +43,30 @@ sources and documented modes.
 | `system/usr/libexec/asus-power-profile-sync` | `/usr/libexec/asus-power-profile-sync` | `0755` | Apply the ASUS profile matching the current power source |
 | `system/usr/libexec/quickshell-secure-suspend` | `/usr/libexec/quickshell-secure-suspend` | `0755` | Find the active Wayland user and request a secure lock |
 | `system/etc/modprobe.d/asus-nvidia.conf` | `/etc/modprobe.d/asus-nvidia.conf` | `0644` | Static NVIDIA and ASUS backlight policy |
+
+## Current Machine Snapshot
+
+The following state was verified after a reboot on 2026-11-07:
+
+- `ly@tty2.service` and `getty@tty1.service` are enabled and active;
+  `getty@tty2.service` is disabled and inactive.
+- The active local session reports `Service=ly`, `Desktop=niri`,
+  `Type=wayland`, `TTY=tty2`, and `State=active`.
+- GDM is absent. Both the installed and repository Ly configurations pass
+  `/usr/bin/ly --validate-config`.
+- Secure Boot is enabled. The kernel exposes `freeze` and `mem`; logind reports
+  suspend available and hibernation unavailable.
+- `asusd`, `asus-shutdown`, `power-profiles-daemon`, UPower, and the Cloudflare
+  WARP daemon are active. `asus-power-profile-sync.service` is enabled under
+  `graphical.target` and inactive after its successful oneshot boot run.
+- WARP's graphical taskbar user service is disabled and inactive. NetBird UI
+  remains active through XDG autostart.
+- No system units are failed. The user manager currently reports one unrelated
+  failed generated autostart unit for NVIDIA Settings; it is not configured by
+  this repository.
+
+This is an observed snapshot, not a guarantee that every service remains in the
+same state after later package or configuration changes.
 
 ## Login And Session Startup
 
@@ -53,8 +79,8 @@ The `ly` PAM service includes the distribution's `login` policy and adds GNOME
 Keyring hooks. Login password handling and keyring startup are separate from the
 minimal `quickshell-lock` PAM service used for screen unlock. Niri starts
 `/usr/libexec/xfce-polkit` to provide graphical PolicyKit prompts. The Ly login
-screen intentionally retains F1 shutdown, F2 restart, and F7 password visibility
-controls.
+screen intentionally retains F1 shutdown, F2 restart, F6 password visibility,
+and F7/F8 display-brightness controls.
 
 ## Sleep And Secure Boot
 
@@ -173,12 +199,12 @@ defaults and reconciles the active profile; the Aura command in `../README.md`
 reproducibly sets only the keyboard power-state policy. Quickshell can
 subsequently change the charge limit and keyboard brightness through `asusctl`.
 
-Observed state reverified on 2026-10-15:
+Observed state reverified on 2026-11-07:
 
 - `/etc/asusd/asusd.ron` uses an 80% charge limit, disables NVIDIA powerd on
   battery, links platform profiles to EPP, selects Balanced on AC and Quiet on
   battery, and has no AC/DC profile-tuning groups enabled.
-- `/etc/asusd/aura_19b6.ron` has Aura brightness Off and Rainbow Wave selected;
+- `/etc/asusd/aura_19b6.ron` has Aura brightness Medium and Rainbow Cycle selected;
   its stored built-in colors remain red. Keyboard lighting is enabled at boot,
   while awake, and during shutdown; the sleep animation is disabled.
 - `/etc/asusd/slash.ron` has the Slash display disabled. Its stored event flags
@@ -251,8 +277,9 @@ supported 2880x1800 refresh modes; this panel advertises 60 Hz and 120 Hz.
 The Quickshell power panel can select 60 Hz or 120 Hz. The bar and Niri's
 hardware brightness keys change the runtime-selected backlight in 5% increments
 with a 5% minimum. Quickshell provides the bottom-center hardware-key OSD for
-display and keyboard brightness, volume, microphone mute, media playback, and
-keyboard-lock state.
+display and keyboard brightness, keyboard lighting effects, power profiles,
+touchpad state, volume, microphone mute, media playback, and keyboard-lock
+state.
 
 The ASUS keyboard backlight can be changed among Off, Low, Medium, and High
 through `asusctl`.

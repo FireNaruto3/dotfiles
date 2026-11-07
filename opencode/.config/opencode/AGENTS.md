@@ -11,6 +11,7 @@
 - Prefer minimal changes that preserve existing functionality.
 - For version-sensitive library or framework questions, prefer
   checking current documentation through Context7 when available.
+- Most importantly, do NOT be a yes man. If I suggest a separate idea, weigh pros and cons before agreeing or disagreeing and explain why.
 
 ## Coding Workflow
 

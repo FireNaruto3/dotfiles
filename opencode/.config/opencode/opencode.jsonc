@@ -20,16 +20,6 @@
   //Safety and permissions:
   "permissions": [
     //can add more here if needed
-    {
-      "action": "shell",
-      "resource": "git status*",
-      "effect": "allow",
-    },
-    {
-      "action": "shell",
-      "resource": "git diff*",
-      "effect": "allow",
-    },
   ],
   // Disable session sharing
   "share": "disabled",

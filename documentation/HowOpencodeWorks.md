@@ -48,19 +48,26 @@ The `opencode` GNU Stow package links the following files under
 ├── AGENTS.md
 ├── agents/
 │   ├── code-reviewer.md
-│   ├── documentation.md
-│   ├── teacher.md
-│   └── update-tracker.md
+│   ├── debugger.md
+│   ├── documentation-writer.md
+│   ├── system-auditor.md
+│   └── teacher.md
+├── commands/
+│   ├── assess.md
+│   ├── learn.md
+│   ├── make-skill.md
+│   ├── practice.md
+│   └── review-learning.md
 ├── skills/
-│   ├── align-centers/
-│   │   └── SKILL.md
-│   └── personalized-learning/
-│       └── SKILL.md
+│   ├── align-centers/SKILL.md
+│   ├── assess/SKILL.md
+│   ├── explain/SKILL.md
+│   ├── personalized-learning/SKILL.md
+│   ├── practice/SKILL.md
+│   └── review/SKILL.md
 ```
 
-No global commands or plugins are currently tracked. The omitted directories
-shown elsewhere in this guide are optional OpenCode features, not part of this
-setup.
+No global plugins or custom executable tools are currently tracked.
 
 ### Project Configuration
 
@@ -111,8 +118,6 @@ The tracked global file currently configures:
 - `openai/gpt-5.6-sol` as the default model.
 - The built-in `build` agent as the default primary agent.
 - The remote Context7 MCP server.
-- Explicit shell allows for commands beginning with `git status` and
-  `git diff`.
 - Disabled session sharing.
 - Automatic OpenCode updates.
 - Automatic context compaction.
@@ -251,14 +256,15 @@ Primary agents can be selected directly in the OpenCode interface.
 
 | Agent | Mode | Purpose |
 |---|---|---|
-| `documentation` | Primary | Writes and maintains documentation; edits and shell commands require approval |
 | `teacher` | Primary | Provides guided teaching and can load the personalized-learning skill |
 | `code-reviewer` | Subagent | Reviews code without edit, shell, or subagent access |
-| `update-tracker` | Subagent | Audits Linux updates and compatibility without intentional mutation |
+| `debugger` | Subagent | Diagnoses reproducible failures with read-only evidence gathering |
+| `documentation-writer` | Subagent | Produces source-grounded documentation without changing implementation |
+| `system-auditor` | Subagent | Audits Linux health, dependencies, and update risk without mutation |
 
-All four tracked agents use the native V2 `permissions` list and action names.
-The update tracker denies edits and asks before shell commands, matching its
-read-only auditing role.
+All five tracked agents use native V2 permission rules. The four subagents deny
+edits and delegation; the debugger and system auditor ask before shell commands,
+while the reviewer and documentation writer deny shell access.
 
 ---
 
@@ -308,9 +314,10 @@ Agents may also discover and load relevant skills automatically.
 
 **When to create a skill:** When you have a reusable procedure that multiple agents or tasks could benefit from.
 
-This repository currently provides `personalized-learning` for tutoring and
-`align-centers` for optical UI alignment. The path determines each skill ID;
-the frontmatter `name` is its display name.
+This repository provides `align-centers` for optical UI alignment plus a
+learning suite: `personalized-learning`, `explain`, `practice`, `review`, and
+`assess`. The path determines each skill ID; frontmatter supplies display names
+and discovery descriptions.
 
 Examples:
 - Personalized learning
@@ -326,9 +333,9 @@ Commands are reusable prompt templates that you explicitly trigger using slash c
 
 They are useful for frequently repeated requests.
 
-This repository does not currently define custom commands. The examples below
-show how one could be added; they do not describe an installed `/explain`
-command.
+The tracked commands are `/learn`, `/practice`, `/assess`, `/review-learning`,
+and `/make-skill`. They provide explicit entry points into the learning workflow
+and reusable-skill creation.
 
 ### Example Command
 
@@ -548,13 +555,12 @@ The three general outcomes are:
 | `ask` | Request approval first |
 | `deny` | Block the action |
 
-Rules are ordered, and the last matching rule wins. OpenCode V2 also starts
-agents with a base policy that generally allows tools while asking for external
-directories and sensitive environment files. The two tracked `git status*` and
-`git diff*` rules are narrow explicit allows; they are not a general shell
-allowlist and do not make every unmatched command ask. The behavioral safety
-rules in `AGENTS.md` guide the model, but only permission rules are enforced by
-OpenCode itself.
+Rules are ordered, and the last matching rule wins. OpenCode V2 starts agents
+with a base policy that generally allows tools while asking before sensitive
+environment-file reads. The global permissions list is currently empty, so no
+extra global exceptions override that base policy. Behavioral safety rules in
+`AGENTS.md` guide the model, but only permission rules are enforced by OpenCode
+itself.
 
 ### Why Permissions Matter
 
