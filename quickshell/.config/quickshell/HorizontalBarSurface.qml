@@ -8,6 +8,12 @@ Item {
 
     required property var panel
 
+    function serviceAnchor(section) {
+        const item = section === "bluetooth" ? bluetoothButton
+            : (section === "network" ? networkButton : volumeButton)
+        return panel.anchorFor(item)
+    }
+
     ShellTheme { id: theme }
 
     Rectangle {
@@ -272,16 +278,6 @@ Item {
                 }
 
                 SystemButton {
-                    id: quickSettingsButton
-                    text: "󰒓"
-                    contentOffsetX: root.panel.iconOffset(text)
-                    tooltip: "Quick settings"
-                    tooltipRight: false
-                    active: root.panel.activeView === "quickSettings"
-                    onClicked: root.panel.openQuickSettings("bluetooth", quickSettingsButton)
-                }
-
-                SystemButton {
                     id: bluetoothButton
                     text: root.panel.systemData.bluetooth === "connected" ? "󰂱" : (root.panel.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
                     contentOffsetX: root.panel.iconOffset(text)
@@ -289,7 +285,8 @@ Item {
                         ? `Bluetooth: ${root.panel.systemData.bluetoothDevice}`
                         : `Bluetooth ${root.panel.systemData.bluetooth}`
                     tooltipRight: false
-                    onClicked: root.panel.openQuickSettings("bluetooth", bluetoothButton)
+                    active: root.panel.activeView === "bluetooth"
+                    onClicked: root.panel.toggleDrawer("bluetooth", root.panel.anchorFor(bluetoothButton))
                 }
 
                 SystemButton {
@@ -300,7 +297,8 @@ Item {
                         ? `${root.panel.systemData.ssid} (${root.panel.systemData.signal}%)`
                         : root.panel.systemData.network
                     tooltipRight: false
-                    onClicked: root.panel.openQuickSettings("network", networkButton)
+                    active: root.panel.activeView === "network"
+                    onClicked: root.panel.toggleDrawer("network", root.panel.anchorFor(networkButton))
                 }
 
                 SystemButton {
@@ -311,19 +309,19 @@ Item {
                         ? `Volume: ${root.panel.systemData.volume}% (muted)`
                         : `Volume: ${root.panel.systemData.volume}%`
                     tooltipRight: false
-                    onClicked: root.panel.openQuickSettings("audio", volumeButton)
+                    active: root.panel.activeView === "audio"
+                    onClicked: root.panel.toggleDrawer("audio", root.panel.anchorFor(volumeButton))
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
                     ])
                 }
 
-                SystemButton {
+                BrightnessButton {
                     id: brightnessButton
-                    text: root.panel.brightnessIcon()
-                    contentOffsetX: root.panel.iconOffset(text)
-                    tooltip: `Brightness: ${root.panel.systemData.brightness}%`
+                    brightness: root.panel.systemData.brightness
                     tooltipRight: false
-                    onClicked: root.panel.toggleDrawer("power", root.panel.anchorFor(brightnessButton))
+                    active: root.panel.activeView === "brightness"
+                    onClicked: root.panel.toggleDrawer("brightness", root.panel.anchorFor(brightnessButton))
                     onWheel: delta => Quickshell.execDetached([
                         "bash", root.panel.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
                     ])

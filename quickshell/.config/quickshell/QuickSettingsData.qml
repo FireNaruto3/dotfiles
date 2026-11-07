@@ -54,7 +54,7 @@ QtObject {
                 try {
                     root.values = JSON.parse(text.trim())
                 } catch (error) {
-                    root.errorMessage = "Unable to read quick settings"
+                    root.errorMessage = "Unable to read Bluetooth, network, and audio state"
                     errorTimer.restart()
                 }
             }

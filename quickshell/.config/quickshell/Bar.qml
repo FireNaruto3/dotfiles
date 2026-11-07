@@ -15,17 +15,18 @@ PanelWindow {
     property string activeView: "none"
     property real drawerAnchor: vertical ? height / 2 : width / 2
     property string displayedView: "none"
-    required property string quickSettingsPage
+    readonly property bool servicePanelActive: ["bluetooth", "network", "audio"].includes(activeView)
+    readonly property bool servicePanelDisplayed: ["bluetooth", "network", "audio"].includes(displayedView)
     property real reveal: activeView === "none" ? 0 : 1
     readonly property real railWidth: 46
     readonly property real edgeInputPadding: 10
     readonly property var currentWindow: niriData.focusedWindowFor(screen ? screen.name : "")
     readonly property string osdScriptPath: Qt.resolvedUrl("scripts/osd-control.sh").toString().replace("file://", "")
     readonly property string wlogoutScriptPath: Qt.resolvedUrl("scripts/launch-wlogout.sh").toString().replace("file://", "")
-    readonly property real drawerWidth: displayedView === "quickSettings" ? 460 : (displayedView === "clock" ? 440 : 350)
+    readonly property real drawerWidth: servicePanelDisplayed ? 460 : (displayedView === "clock" ? 440 : 350)
     readonly property real drawerHeight: displayedView === "clock"
         ? 478
-        : (displayedView === "quickSettings" ? 590
+        : (servicePanelDisplayed ? 524
         : (drawerLoader.item ? drawerLoader.item.implicitHeight : 397))
     readonly property real drawerScale: Math.min(
         1,
@@ -37,7 +38,6 @@ PanelWindow {
 
     signal openResources()
     signal toggleDrawer(string view, real anchorY)
-    signal toggleQuickSettings(string page, real anchorY)
     signal closeDrawer()
     signal toggleOrientation()
 
@@ -45,8 +45,12 @@ PanelWindow {
         Quickshell.execDetached(["sh", wlogoutScriptPath])
     }
 
-    function openQuickSettings(page, item): void {
-        toggleQuickSettings(page, anchorFor(item))
+    function serviceAnchor(section) {
+        if (!vertical)
+            return horizontalSurface.serviceAnchor(section)
+        const item = section === "bluetooth" ? bluetoothButton
+            : (section === "network" ? networkButton : volumeButton)
+        return anchorFor(item)
     }
 
     anchors {
@@ -60,10 +64,10 @@ PanelWindow {
     exclusiveZone: railWidth
     color: "transparent"
     aboveWindows: true
-    focusable: activeView === "quickSettings"
+    focusable: servicePanelActive || activeView === "brightness"
 
     WlrLayershell.namespace: "quickshell-desktop-bar"
-    WlrLayershell.keyboardFocus: activeView === "quickSettings"
+    WlrLayershell.keyboardFocus: servicePanelActive || activeView === "brightness"
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
 
@@ -110,10 +114,23 @@ PanelWindow {
     }
 
     function applicationIcon(appId) {
+        // Track the model so bindings refresh when desktop entries finish loading or change.
+        const entries = DesktopEntries.applications.values
+        const entry = appId ? (DesktopEntries.heuristicLookup(appId)
+            || entries.find(candidate => candidate.startupClass.toLowerCase() === appId.toLowerCase())) : null
+        if (entry && entry.icon) {
+            // Desktop entries may specify an absolute image path instead of a theme icon.
+            if (entry.icon.startsWith("/"))
+                return Qt.resolvedUrl(entry.icon)
+            const icon = Quickshell.iconPath(entry.icon, true)
+            if (icon)
+                return icon
+        }
+
         const aliases = {
             "code": "vscode"
         }
-        return Quickshell.iconPath(aliases[appId] || appId, true)
+        return (appId ? Quickshell.iconPath(aliases[appId] || appId, true) : "")
             || Quickshell.iconPath("application-x-executable", true)
     }
 
@@ -125,13 +142,6 @@ PanelWindow {
         if (systemData.volume < 67)
             return "󰖀"
         return "󰕾"
-    }
-
-    function brightnessIcon() {
-        const icons = ["󰪟", "󰪡", "󰪣", "󰪥"]
-        const brightness = Math.max(0, Math.min(100, systemData.brightness))
-        const index = Math.min(3, Math.floor(brightness * 4 / 101))
-        return icons[index]
     }
 
     function iconOffset(icon) {
@@ -265,7 +275,8 @@ PanelWindow {
                 sourceComponent: bar.displayedView === "clock"
                     ? clockDrawer
                     : (bar.displayedView === "power" ? powerDrawer
-                    : (bar.displayedView === "quickSettings" ? quickSettingsDrawer : null))
+                    : (bar.displayedView === "brightness" ? brightnessDrawer
+                    : (bar.servicePanelDisplayed ? serviceDrawer : null)))
             }
         }
     }
@@ -284,11 +295,16 @@ PanelWindow {
     }
 
     Component {
-        id: quickSettingsDrawer
-        QuickSettings {
+        id: brightnessDrawer
+        BrightnessPanel { systemData: bar.systemData }
+    }
+
+    Component {
+        id: serviceDrawer
+        ServicePanel {
             quickData: bar.quickSettingsData
             systemData: bar.systemData
-            requestedPage: bar.quickSettingsPage
+            section: bar.displayedView
         }
     }
 
@@ -499,16 +515,6 @@ PanelWindow {
                 }
 
                 SystemButton {
-                    id: quickSettingsButton
-                    width: 34
-                    text: "󰒓"
-                    opticalCenter: true
-                    tooltip: "Quick settings"
-                    active: bar.activeView === "quickSettings"
-                    onClicked: bar.openQuickSettings("bluetooth", quickSettingsButton)
-                }
-
-                SystemButton {
                     id: bluetoothButton
                     width: 34
                     text: bar.systemData.bluetooth === "connected" ? "󰂱" : (bar.systemData.bluetooth === "on" ? "󰂯" : "󰂲")
@@ -516,7 +522,8 @@ PanelWindow {
                     tooltip: bar.systemData.bluetooth === "connected"
                         ? `Bluetooth: ${bar.systemData.bluetoothDevice}`
                         : `Bluetooth ${bar.systemData.bluetooth}`
-                    onClicked: bar.openQuickSettings("bluetooth", bluetoothButton)
+                    active: bar.activeView === "bluetooth"
+                    onClicked: bar.toggleDrawer("bluetooth", bar.anchorFor(bluetoothButton))
                 }
 
                 SystemButton {
@@ -527,7 +534,8 @@ PanelWindow {
                     tooltip: bar.systemData.network === "wifi"
                         ? `${bar.systemData.ssid} (${bar.systemData.signal}%)`
                         : bar.systemData.network
-                    onClicked: bar.openQuickSettings("network", networkButton)
+                    active: bar.activeView === "network"
+                    onClicked: bar.toggleDrawer("network", bar.anchorFor(networkButton))
                 }
 
                 SystemButton {
@@ -538,19 +546,19 @@ PanelWindow {
                     tooltip: bar.systemData.muted
                         ? `Volume: ${bar.systemData.volume}% (muted)`
                         : `Volume: ${bar.systemData.volume}%`
-                    onClicked: bar.openQuickSettings("audio", volumeButton)
+                    active: bar.activeView === "audio"
+                    onClicked: bar.toggleDrawer("audio", bar.anchorFor(volumeButton))
                     onWheel: delta => Quickshell.execDetached([
                         "bash", bar.osdScriptPath, "volume", delta > 0 ? "raise" : "lower"
                     ])
                 }
 
-                SystemButton {
+                BrightnessButton {
                     id: brightnessButton
                     width: 34
-                    text: bar.brightnessIcon()
-                    opticalCenter: true
-                    tooltip: `Brightness: ${bar.systemData.brightness}%`
-                    onClicked: bar.toggleDrawer("power", bar.anchorFor(brightnessButton))
+                    brightness: bar.systemData.brightness
+                    active: bar.activeView === "brightness"
+                    onClicked: bar.toggleDrawer("brightness", bar.anchorFor(brightnessButton))
                     onWheel: delta => Quickshell.execDetached([
                         "bash", bar.osdScriptPath, "brightness", delta > 0 ? "raise" : "lower"
                     ])

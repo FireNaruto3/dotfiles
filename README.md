@@ -31,9 +31,9 @@ For the root-installed policy inventory, see
 |:----------------:|:------------:|
 | ![Clock dashboard with media controls, DND, uptime, and calendar](screenshots/clock-dashboard.webp) | ![Power drawer with display, power-profile, charge-limit, and keyboard-backlight controls](screenshots/power-drawer.webp) |
 
-| Unified Quick Settings |
-|:----------------------:|
-| ![Unified Quick Settings with Bluetooth, network, and audio pages](screenshots/quick-settings.webp) |
+| Previous combined settings layout (historical) |
+|:---------------------------------------------:|
+| ![Historical combined settings drawer, since replaced by standalone Bluetooth, Network, and Audio panels](screenshots/quick-settings.webp) |
 
 ## Requirements
 
@@ -106,7 +106,7 @@ deploying, use this Ubuntu checklist:
   starting the session.
 - Install compatible `asusctl`/`asusd` only on supported ASUS hardware. Do not
   install the repository's module or sleep policy on unrelated systems.
-- Review optional packages (`autostart` and `git`) before stowing
+- Review optional packages (`autostart`, `git`, and `pi`) before stowing
   them because they have machine-wide or account-wide effects.
 
 The ASUS controls are machine-specific. Niri matches the Samsung
@@ -123,7 +123,7 @@ attributes use `asusctl`/`asusd`.
 | Config | Description |
 |--------|-------------|
 | Niri | Scrollable tiling, input/output configuration, window rules, startup services, and keybindings |
-| Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, and clock/quick-settings/power drawers |
+| Quickshell | Per-output bar that toggles between a left rail and top layout; workspaces, tray, active window, system controls, OSD, lock screen, clock/power drawers, and standalone Bluetooth/Network/Audio/Brightness panels |
 | System policy | Ly and login PAM, logind and UPower policy, lock PAM and services, fail-closed suspend, ASUS profile/backlight resume hooks, and NVIDIA module options |
 | Ghostty | Wallpaper-derived theme with transparency and blur |
 | Rofi | Dark application launcher with Papirus icons |
@@ -136,6 +136,7 @@ attributes use `asusctl`/`asusd`.
 | Tmux | Vi copy mode, mouse support, and a minimal status line |
 | Fastfetch | Custom system-information layout and ASCII art |
 | Git | Shared Git settings with identity loaded from an untracked local include |
+| Pi | Optional coding-assistant global instructions and prompt templates for planning, implementation, and review |
 | Scripts | Reboot-only ASUS graphics-mode switching command |
 
 Legacy tracked Waybar and SwayOSD packages have been removed. The active session
@@ -145,30 +146,38 @@ uses Niri and Quickshell's bar and OSD.
 
 Each output gets a bar. It starts as a segmented vertical rail on the left and
 can be switched to a top horizontal layout for the running session. Both
-orientations provide workspace navigation, a system tray, Quick Settings,
-Bluetooth and network status, volume and brightness controls,
+orientations provide workspace navigation, a system tray,
+Bluetooth and network controls, volume and brightness controls,
 live CPU/RAM indicators, battery status, and a wlogout launcher. CPU and RAM
 both toggle Resources. The CPU tooltip adds AMD `k10temp/Tctl` temperature when
 available; RAM shows used and total GB. The displayed application is the active
 window on that output's active workspace.
 
-The vertical rail orders orientation, Quick Settings, Bluetooth, network,
-volume, brightness, CPU, RAM, battery, clock, and power controls from
-top to bottom beneath its app/tray area. The horizontal layout places
-workspaces, clock, and tray on the left, the active window in the center, and
-CPU/RAM plus the same controls on the right. The dedicated Quick Settings button
-is the only bar control highlighted while that drawer is open.
+The vertical rail orders orientation, Bluetooth, network, volume, brightness,
+CPU, RAM, battery, clock, and power controls from top to bottom beneath its
+app/tray area. The horizontal layout places workspaces, clock, and tray on the
+left, the active window in the center, and CPU/RAM plus the same controls on the
+right. Bluetooth, network, volume, and brightness each open a standalone panel anchored to
+their own icon; only the matching icon is highlighted while its panel is open.
+There is no combined Quick Settings drawer or gear button.
 
 The clock drawer contains MPRIS artwork and transport controls, Mako DND,
-uptime, and a navigable calendar. The unified quick-settings drawer orders its
-Bluetooth, network, and audio pages to match the bar controls. It opens
-from its dedicated button, from the related status buttons, or with **Mod+S**;
-Bluetooth is the default page. Wi-Fi supports
-saved, open, and password-protected networks plus VPN/WireGuard toggles;
-Bluetooth manages paired devices; Audio selects and mutes input/output devices.
-The brightness and battery buttons open a separate power drawer for the active
-power profile, ASUS charge limit, keyboard backlight, and internal display
-refresh rate. Drawers open to the right of the vertical rail or below the
+uptime, and a navigable calendar. Click Bluetooth for paired-device controls,
+network for Wi-Fi and VPN controls, or volume for Audio input/output controls.
+Each panel contains only its own section, without category tabs or navigation
+to other sections. Clicking another status icon switches to its panel and moves
+the attachment point; clicking the same icon again closes it. **Mod+S** toggles
+the Bluetooth panel on the focused output, anchored to its Bluetooth icon.
+Network supports saved, open, and password-protected Wi-Fi networks plus
+VPN/WireGuard toggles; Bluetooth manages paired devices; Audio selects and mutes
+input/output devices.
+The brightness button shows only a drawn sun (the exact percentage remains in
+its tooltip). Clicking it opens a dedicated brightness slider with a percentage
+readout, 1% steps, and a 5% minimum. Dragging previews the value and releasing
+applies it; click the slider and use arrow keys for 1% adjustments, or Home/End
+for the minimum/maximum. Scrolling the bar icon still adjusts brightness by 5%.
+The battery button opens the power drawer for the active power profile, ASUS
+charge limit, keyboard backlight, and internal display refresh rate. Drawers open to the right of the vertical rail or below the
 horizontal bar.
 
 Ly authenticates on TTY2 and launches the packaged `niri-session` Wayland entry;
@@ -302,7 +311,7 @@ moves the focused window or column, `Mod+Ctrl` focuses another monitor, and
 | `Mod+Return` | Open Ghostty |
 | `Mod+D` | Toggle Rofi |
 | `Mod+E` | Terminate an existing Thunar process or launch Thunar |
-| `Mod+S` | Toggle unified Quick Settings on the Bluetooth page |
+| `Mod+S` | Toggle the standalone Bluetooth panel |
 | `Mod+W` | Toggle Waypaper |
 | `Super+Alt+L` | Lock the session |
 | `Mod+Q` | Close the focused window |
@@ -445,8 +454,8 @@ command until it is clean. Optional packages can then be previewed and linked
 separately:
 
 ```bash
-stow --no-folding --simulate git autostart
-stow --no-folding git autostart
+stow --no-folding --simulate git autostart pi
+stow --no-folding git autostart pi
 ```
 
 Install the tested Matugen release as a user-local binary before starting Niri:
@@ -478,6 +487,19 @@ git remote set-url origin git@github.com:FireNaruto3/dotfiles.git
 The `autostart` package is machine-specific because it starts NetBird UI and
 suppresses Blueman's packaged applet with a minimal `Hidden=true` override.
 Bluetooth management remains available from the Quickshell bar.
+
+The optional `pi` package requires Pi to be installed separately and links
+`pi/.pi/agent/AGENTS.md` and `pi/.pi/agent/prompts/` into `~/.pi/agent/`.
+The global instructions set communication, safety, and validation preferences
+across projects; repository-specific instructions remain in each project's
+`AGENTS.md`. It provides global
+`/plan [task]`, `/build [task or plan]`, and `/review [focus or scope]` prompt
+templates. Planning and review request read-only behavior; building implements
+an approved plan and runs relevant checks without committing or pushing unless
+requested. These are behavioral instructions, not enforced tool permissions.
+Run `/reload` in Pi after installation or edits. Only instructions and templates
+are tracked; credentials, session history, and other Pi runtime data stay outside
+the repository.
 
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
 use that location. Generated themes are written to `~/.cache/matugen` rather

@@ -263,7 +263,7 @@ binds {
     Mod+Return hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
     Mod+D hotkey-overlay-title="Run an Application: rofi" { spawn-sh "pkill rofi || exec rofi -show drun"; }
     Mod+E hotkey-overlay-title="Open the file manager: thunar" {spawn-sh "pkill thunar || exec thunar"; } 
-    Mod+S repeat=false hotkey-overlay-title="Open Quick Settings" { spawn-sh "qs ipc call panels toggleQuickSettings"; }
+    Mod+S repeat=false hotkey-overlay-title="Open Bluetooth Controls" { spawn-sh "qs ipc call panels toggleBluetooth"; }
     Super+Alt+L allow-inhibiting=false hotkey-overlay-title="Lock the Screen: Quickshell" { spawn-sh "$HOME/.config/quickshell/scripts/lock.sh"; }
     Mod+W { spawn "sh" "-c" "pkill -x waypaper || waypaper"; }
 

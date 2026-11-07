@@ -5,21 +5,19 @@ Item {
 
     required property var quickData
     required property var systemData
-    property string requestedPage: "bluetooth"
-    property string currentPage: requestedPage
+    required property string section
     property var pendingWifi: null
 
     implicitWidth: 460
-    implicitHeight: 590
+    implicitHeight: 524
 
     ShellTheme { id: theme }
 
-    onRequestedPageChanged: currentPage = requestedPage
+    onSectionChanged: pendingWifi = null
+    Component.onCompleted: quickData.refresh()
     onVisibleChanged: {
-        if (visible) {
-            currentPage = requestedPage
+        if (visible)
             quickData.refresh()
-        }
     }
 
     component SectionLabel: Text {
@@ -27,49 +25,6 @@ Item {
         font.family: theme.fontFamily
         font.pixelSize: 10
         font.bold: true
-    }
-
-    component CategoryButton: Rectangle {
-        id: category
-        required property string label
-        required property string icon
-        property bool selected: false
-        signal clicked()
-
-        width: 78
-        height: 54
-        radius: 10
-        color: selected ? theme.cardActive : (mouse.containsMouse ? theme.cardHover : theme.card)
-        border.width: selected ? 1 : 0
-        border.color: theme.border
-
-        Column {
-            anchors.centerIn: parent
-            spacing: 2
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: category.icon
-                color: category.selected ? theme.accent : theme.text
-                font.family: theme.fontFamily
-                font.pixelSize: 18
-            }
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: category.label
-                color: category.selected ? theme.accent : theme.textMuted
-                font.family: theme.fontFamily
-                font.pixelSize: 9
-                font.bold: category.selected
-            }
-        }
-
-        MouseArea {
-            id: mouse
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: category.clicked()
-        }
     }
 
     component ActionRow: Rectangle {
@@ -208,7 +163,8 @@ Item {
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Quick Settings"
+                    text: root.section === "network" ? "Network"
+                        : (root.section === "bluetooth" ? "Bluetooth" : "Audio")
                     color: theme.text
                     font.family: theme.fontFamily
                     font.pixelSize: 17
@@ -225,39 +181,14 @@ Item {
                 }
             }
 
-            Row {
-                width: parent.width
-                height: 54
-                spacing: 8
-
-                CategoryButton {
-                    label: "Bluetooth"
-                    icon: "󰂯"
-                    selected: root.currentPage === "bluetooth"
-                    onClicked: root.currentPage = "bluetooth"
-                }
-                CategoryButton {
-                    label: "Network"
-                    icon: "󰤨"
-                    selected: root.currentPage === "network"
-                    onClicked: root.currentPage = "network"
-                }
-                CategoryButton {
-                    label: "Audio"
-                    icon: "󰕾"
-                    selected: root.currentPage === "audio"
-                    onClicked: root.currentPage = "audio"
-                }
-            }
-
             Rectangle { width: parent.width; height: 1; color: theme.border }
 
             Loader {
                 width: parent.width
-                height: parent.height - 32 - 54 - 1 - 3 * parent.spacing
+                height: parent.height - 32 - 1 - 2 * parent.spacing
                     - (errorText.visible ? errorText.implicitHeight + parent.spacing : 0)
-                sourceComponent: root.currentPage === "network" ? networkPage
-                    : (root.currentPage === "bluetooth" ? bluetoothPage
+                sourceComponent: root.section === "network" ? networkPage
+                    : (root.section === "bluetooth" ? bluetoothPage
                     : audioPage)
             }
 

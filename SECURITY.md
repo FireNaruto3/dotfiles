@@ -44,8 +44,8 @@ other live credentials in an issue, pull request, or log attachment.
   remain machine-local and should not be assumed safe on different hardware.
 - Helpers invoke local system services and utilities, including systemd,
   NetworkManager, BlueZ, PipeWire, `asusd`, and Niri IPC.
-- Quick Settings can connect to networks, manage paired Bluetooth devices,
-  and change PipeWire defaults. Wi-Fi passwords are passed to `nmcli` as process
+- The standalone Network, Bluetooth, and Audio panels can connect to networks,
+  manage paired Bluetooth devices, and change PipeWire defaults. Wi-Fi passwords are passed to `nmcli` as process
   arguments and may be visible through process
   inspection while the connection runs. The input and QML command state are
   cleared afterward. NetworkManager can persist the credential in its connection

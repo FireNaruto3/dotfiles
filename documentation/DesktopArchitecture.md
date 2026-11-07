@@ -112,16 +112,26 @@ lifetime and provides:
 
 - Niri workspaces, focused-window state, and system tray items.
 - Bluetooth, network, audio, brightness, battery, CPU, RAM, and clock status.
-- Clock, Quick Settings, and power drawers.
+- Clock and power drawers, plus standalone Bluetooth, Network, Audio, and Brightness panels
+  anchored to their matching bar icons (with no combined settings drawer).
+  `Mod+S` toggles Bluetooth on the focused output; only the open service's icon
+  is highlighted.
 - Volume, microphone, brightness, keyboard-lighting, profile, touchpad, media,
   and keyboard-lock OSDs.
 
 `NiriData.qml` consumes `niri msg --json event-stream`. General status is
 collected by `system-stats.sh`; CPU, AMD `Tctl`, and RAM use the lighter
-`resource-stats.sh`. Detailed Quick Settings and power collection runs only
-while its drawer is open. Hardware keybindings first apply their action through
+`resource-stats.sh`. Shared Bluetooth/network/audio collection runs only while
+one of those service panels is open; detailed power collection runs only while
+its drawer is open. Hardware keybindings first apply their action through
 the appropriate command and then make a best-effort Quickshell IPC call, so a
 failed OSD does not prevent the hardware change.
+
+The brightness icon opens its own slider panel, not the battery/power drawer.
+The slider previews 1% steps from 5–100% and applies on release through
+`display-control.sh set-brightness`, using the runtime-discovered backlight.
+Arrow keys adjust by 1% and Home/End select the minimum/maximum. The bar shows
+only the drawn sun; the percentage is in its tooltip and slider panel.
 
 Both CPU and RAM controls toggle the external Resources application. Niri's
 built-in interactive screenshot UI is bound to `Mod+Shift+S` (Fn+F6 on this
