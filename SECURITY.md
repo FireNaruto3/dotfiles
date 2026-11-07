@@ -52,7 +52,7 @@ other live credentials in an issue, pull request, or log attachment.
   profile according to the system's NetworkManager and secret-agent policy.
 - The NetBird autostart entry starts third-party networking software when the
   optional `autostart` package is deployed.
-- OpenCode and Neovim plugins can execute local commands and contact upstream
+- Neovim plugins can execute local commands and contact upstream
   services. Review their configuration and pinned revisions before use.
 
 No credentials should be committed. Git identity belongs in

@@ -9,15 +9,13 @@ OLED panel and uses Ly to start the Niri session from a TTY.
 This is a personal, machine-specific configuration, not a turnkey Ubuntu
 distribution. Read the commands and review package-specific settings before
 linking anything into `$HOME` or installing the root-owned files. In particular,
-the display, ASUS, NVIDIA, NetBird, Git, OpenCode, and Waypaper stylesheet
+the display, ASUS, NVIDIA, NetBird, Git, and Waypaper stylesheet
 settings may not suit another machine.
 
 For login, runtime data flow, locking, suspend, and recovery, see
 [Desktop Architecture](documentation/DesktopArchitecture.md).
 For the root-installed policy inventory, see
 [System Changes](documentation/SystemChanges.md).
-For the tracked OpenCode configuration, agents, skills, and permissions, see
-[How OpenCode Works](documentation/HowOpencodeWorks.md).
 
 ## Screenshots
 
@@ -52,12 +50,10 @@ For the tracked OpenCode configuration, agents, skills, and permissions, see
 | Zig | 0.17.0 for building Ly 1.5.0 |
 | Neovim | 0.13 development build tested; lazy.nvim itself requires Neovim 0.8+ |
 | lazy.nvim | `85c7ff3711b730b4030d03144f6db6375044ae82` (11.17.5), pinned in bootstrap and lockfile |
-| OpenCode | 2.0.30 tested |
 
 These are reproducibility notes, not claims that every version is packaged by
-Ubuntu. Niri, Quickshell, Ly, Matugen, awww, Resources, ASUS Linux utilities,
-and OpenCode may require their upstream repositories or release
-artifacts. Verify signatures or checksums and follow each upstream project's
+Ubuntu. Niri, Quickshell, Ly, Matugen, awww, Resources, and ASUS Linux utilities
+may require their upstream repositories or release artifacts. Verify signatures or checksums and follow each upstream project's
 Ubuntu instructions.
 
 | Package | Purpose |
@@ -87,7 +83,7 @@ Ubuntu instructions.
 | Python 3, ShellCheck | Local validation matching GitHub Actions |
 | JetBrains Mono Nerd Font, Papirus | Shell glyphs and Rofi icon theme |
 | Zsh, `zsh-syntax-highlighting`, Starship, Fastfetch | Interactive shell, native completion, and prompt configured by the recommended Stow set |
-| Neovim, Tmux, OpenCode | Editor, terminal multiplexer, and coding agent configured by the recommended Stow set |
+| Neovim, Tmux | Editor and terminal multiplexer configured by the recommended Stow set |
 
 The optional `autostart` package expects NetBird UI to be installed. Before
 deploying, use this Ubuntu checklist:
@@ -110,7 +106,7 @@ deploying, use this Ubuntu checklist:
   starting the session.
 - Install compatible `asusctl`/`asusd` only on supported ASUS hardware. Do not
   install the repository's module or sleep policy on unrelated systems.
-- Review optional packages (`autostart`, `git`, and `opencode`) before stowing
+- Review optional packages (`autostart` and `git`) before stowing
   them because they have machine-wide or account-wide effects.
 
 The ASUS controls are machine-specific. Niri matches the Samsung
@@ -141,7 +137,6 @@ attributes use `asusctl`/`asusd`.
 | Fastfetch | Custom system-information layout and ASCII art |
 | Git | Shared Git settings with identity loaded from an untracked local include |
 | Scripts | Reboot-only ASUS graphics-mode switching command |
-| OpenCode | Default model and agent, Context7 MCP integration, global instructions, specialized agents, reusable skills, update policy, and permissions |
 
 Legacy tracked Waybar and SwayOSD packages have been removed. The active session
 uses Niri and Quickshell's bar and OSD.
@@ -421,8 +416,7 @@ tracked PAM service for login and starts GNOME Keyring with the authenticated
 password; this is separate from the narrower `quickshell-lock` PAM policy.
 
 Some configured third-party programs communicate over the network: NetBird is
-a networking client, OpenCode sends prompts and context according to the chosen
-provider, Neovim bootstraps plugins from GitHub, and normal update tools contact
+a networking client, Neovim bootstraps plugins from GitHub, and normal update tools contact
 their configured repositories. Review those projects' policies and disable or
 omit packages you do not want. No credentials are intentionally tracked here.
 
@@ -451,8 +445,8 @@ command until it is clean. Optional packages can then be previewed and linked
 separately:
 
 ```bash
-stow --no-folding --simulate git autostart opencode
-stow --no-folding git autostart opencode
+stow --no-folding --simulate git autostart
+stow --no-folding git autostart
 ```
 
 Install the tested Matugen release as a user-local binary before starting Niri:
@@ -484,21 +478,6 @@ git remote set-url origin git@github.com:FireNaruto3/dotfiles.git
 The `autostart` package is machine-specific because it starts NetBird UI and
 suppresses Blueman's packaged applet with a minimal `Hidden=true` override.
 Bluetooth management remains available from the Quickshell bar.
-
-The `opencode` package is global user configuration. It selects
-`openai/gpt-5.6-sol` with the built-in `build` agent by default, configures the
-Context7 MCP server, disables session sharing, enables automatic updates and
-context compaction, and installs global engineering instructions from
-`~/.config/opencode/AGENTS.md`. It also provides five custom agents, five
-commands, and six skills. These settings and instructions affect OpenCode
-sessions in other repositories. Review the model name, provider authentication,
-data handling, costs, automatic-update policy, instruction scope, and upstream OpenCode
-package before stowing it. OpenCode V2 watches instruction and command sources;
-if a broader configuration change appears stale, start a new session or use
-`opencode service restart` as a troubleshooting step rather than assuming every
-edit requires a restart. See
-[`documentation/HowOpencodeWorks.md`](documentation/HowOpencodeWorks.md) for the
-tracked configuration and its permission implications.
 
 Keep the repository at `~/dotfiles`: the wallpaper directory and Fastfetch logo
 use that location. Generated themes are written to `~/.cache/matugen` rather
